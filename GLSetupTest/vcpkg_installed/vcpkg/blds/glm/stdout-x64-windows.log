@@ -1,0 +1,9 @@
+-- Downloading https://github.com/g-truc/glm/archive/5c46b9c07008ae65cb81ab79cd677ecc1934b903.tar.gz -> g-truc-glm-5c46b9c07008ae65cb81ab79cd677ecc1934b903.tar.gz...
+-- Extracting source C:/Users/James/AppData/Local/vcpkg/downloads/g-truc-glm-5c46b9c07008ae65cb81ab79cd677ecc1934b903.tar.gz
+-- Using source at D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glm/src/cc1934b903-8ceebbed1b.clean
+-- Found external ninja('1.11.0').
+-- Configuring x64-windows
+-- Building x64-windows-rel
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glm_x64-windows/share/glm/copyright
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glm_x64-windows/share/glm/usage
+-- Performing post-build validation

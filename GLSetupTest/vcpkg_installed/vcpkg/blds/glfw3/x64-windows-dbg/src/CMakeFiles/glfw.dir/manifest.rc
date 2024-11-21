@@ -1,0 +1,2 @@
+#pragma code_page(65001)
+2 /* CREATEPROCESS_MANIFEST_RESOURCE_ID */ 24 /* RT_MANIFEST */ "D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glfw3/x64-windows-dbg/src/CMakeFiles/glfw.dir/embed.manifest"

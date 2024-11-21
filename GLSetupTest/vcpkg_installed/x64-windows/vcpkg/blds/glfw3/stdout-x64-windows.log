@@ -1,0 +1,22 @@
+-- Using cached glfw-glfw-7482de6071d21db77a7236155da44c172a7f6c9e.tar.gz.
+-- Extracting source C:/Users/James/AppData/Local/vcpkg/downloads/glfw-glfw-7482de6071d21db77a7236155da44c172a7f6c9e.tar.gz
+-- Using source at D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/blds/glfw3/src/172a7f6c9e-7678776297.clean
+GLFW3 currently requires the following libraries from the system package manager:
+    xinerama
+    xcursor
+    xorg
+    libglu1-mesa
+    pkg-config
+
+These can be installed via brew install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
+-- Found external ninja('1.11.0').
+-- Configuring x64-windows
+-- Building x64-windows-dbg
+-- Building x64-windows-rel
+-- Fixing pkgconfig file: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/pkgconfig/glfw3.pc
+-- Using cached mingw-w64-i686-pkgconf-1~1.8.0-2-any.pkg.tar.zst.
+-- Using cached msys2-msys2-runtime-3.4.6-1-x86_64.pkg.tar.zst.
+-- Using msys root at C:/Users/James/AppData/Local/vcpkg/downloads/tools/msys2/6f3fa1a12ef85a6f
+-- Fixing pkgconfig file: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/debug/lib/pkgconfig/glfw3.pc
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/share/glfw3/copyright
+-- Performing post-build validation

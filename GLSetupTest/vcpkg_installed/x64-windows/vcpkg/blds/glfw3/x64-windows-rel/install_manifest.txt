@@ -1,0 +1,9 @@
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/glfw3dll.lib
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/bin/glfw3.dll
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/include/GLFW/glfw3.h
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/include/GLFW/glfw3native.h
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/cmake/glfw3/glfw3Config.cmake
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/cmake/glfw3/glfw3ConfigVersion.cmake
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/cmake/glfw3/glfw3Targets.cmake
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/cmake/glfw3/glfw3Targets-release.cmake
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glfw3_x64-windows/lib/pkgconfig/glfw3.pc

@@ -1,0 +1,21 @@
+Change Dir: 'D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/blds/glad/x64-windows-dbg'
+
+Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v -v -j17 install
+[1/4] cmd.exe /C "cd /D D:\Repos\GLSetupTest\GLSetupTest\vcpkg_installed\x64-windows\vcpkg\blds\glad\src\708967e402-274d415499.clean && C:\Users\James\AppData\Local\vcpkg\downloads\tools\python\python-3.11.5-x64\python.exe -m glad --profile=compatibility --out-path=D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/blds/glad/x64-windows-dbg --api= --generator=c-debug --extensions= --spec=gl --reproducible"
+[11/20/2024 15:49:16][INFO	][glad   	]: reproducible build, using packaged specification: 'gl.xml'
+[11/20/2024 15:49:16][INFO	][glad.files	]: opening 'gl.xml' from packaged path
+[11/20/2024 15:49:16][INFO	][glad   	]: generating 'gl' bindings: {'gl': None}
+[11/20/2024 15:49:16][INFO	][glad.files	]: opening 'khrplatform.h' from packaged path
+[11/20/2024 15:49:16][INFO	][glad   	]: generating 'gl' bindings - done
+[2/4] C:\PROGRA~1\MICROS~2\2022\COMMUN~1\VC\Tools\MSVC\1438~1.331\bin\Hostx64\x64\cl.exe    -ID:\Repos\GLSetupTest\GLSetupTest\vcpkg_installed\x64-windows\vcpkg\blds\glad\x64-windows-dbg\include /nologo /DWIN32 /D_WINDOWS /W3 /utf-8 /MP  /D_DEBUG /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\glad.dir\src\glad.c.obj /FdCMakeFiles\glad.dir\glad.pdb /FS -c D:\Repos\GLSetupTest\GLSetupTest\vcpkg_installed\x64-windows\vcpkg\blds\glad\x64-windows-dbg\src\glad.c
+[3/4] cmd.exe /C "cd . && C:\PROGRA~1\MICROS~2\2022\COMMUN~1\VC\Tools\MSVC\1438~1.331\bin\Hostx64\x64\lib.exe  /machine:x64 /nologo /out:glad.lib CMakeFiles\glad.dir\src\glad.c.obj  && cd ."
+[3/4] cmd.exe /C "cd /D D:\Repos\-- Install configuration: "Debug"
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/lib/glad.lib
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/include/glad/glad.h
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/include/KHR/khrplatform.h
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladConfig.cmake
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladConfigVersion.cmake
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladTargets.cmake
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladTargets-debug.cmake
+GLSetupTest\GLSetupTest\vcpkg_installed\x64-windows\vcpkg\blds\glad\x64-windows-dbg && C:\Users\James\AppData\Local\vcpkg\downloads\tools\cmake-3.27.1-windows\cmake-3.27.1-windows-i386\bin\cmake.exe -P cmake_install.cmake"
+

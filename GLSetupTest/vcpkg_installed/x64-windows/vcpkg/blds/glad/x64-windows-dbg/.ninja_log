@@ -1,0 +1,8 @@
+# ninja log v5
+2	394	7537921568345263	include/glad/glad.h	50d6e274eaff05e9
+2	394	7537921568345263	src/glad.c	50d6e274eaff05e9
+2	394	7537921568345263	D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/blds/glad/x64-windows-dbg/include/glad/glad.h	50d6e274eaff05e9
+2	394	7537921568345263	D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/x64-windows/vcpkg/blds/glad/x64-windows-dbg/src/glad.c	50d6e274eaff05e9
+395	610	7537921570819831	CMakeFiles/glad.dir/src/glad.c.obj	d4beefdc670c02e9
+610	641	7537921571074442	glad.lib	e59269d33bd3d4f9
+641	689	0	CMakeFiles/install.util	39d1d13366e2ea76

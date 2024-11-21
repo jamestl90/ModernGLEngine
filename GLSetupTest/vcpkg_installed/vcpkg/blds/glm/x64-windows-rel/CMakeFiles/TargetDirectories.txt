@@ -1,0 +1,5 @@
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glm/x64-windows-rel/CMakeFiles/edit_cache.dir
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glm/x64-windows-rel/CMakeFiles/rebuild_cache.dir
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glm/x64-windows-rel/CMakeFiles/list_install_components.dir
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glm/x64-windows-rel/CMakeFiles/install.dir
+D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/glm/x64-windows-rel/CMakeFiles/install/local.dir

@@ -1,0 +1,5 @@
+-- Downloading https://github.com/KhronosGroup/OpenGL-Registry/archive/5bae8738b23d06968e7c3a41308568120943ae77.tar.gz -> KhronosGroup-OpenGL-Registry-5bae8738b23d06968e7c3a41308568120943ae77.tar.gz...
+-- Extracting source C:/Users/James/AppData/Local/vcpkg/downloads/KhronosGroup-OpenGL-Registry-5bae8738b23d06968e7c3a41308568120943ae77.tar.gz
+-- Using source at D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/opengl-registry/src/120943ae77-d1a12ea691.clean
+-- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/opengl-registry_x64-windows/share/opengl-registry/copyright
+-- Performing post-build validation

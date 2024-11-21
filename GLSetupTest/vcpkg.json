@@ -1,0 +1,10 @@
+{
+  "name": "gl-setup-test",
+  "version": "1.0.0",
+  "description": "A project for setting up OpenGL with modern C++.",
+  "dependencies": [
+    "glfw3", 
+    "glad", 
+    "glm" 
+  ]
+}
