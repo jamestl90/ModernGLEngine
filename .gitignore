@@ -15,3 +15,6 @@
 *.ipch
 /.vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce
 /.vs/GLSetupTest/v17
+*.ipch
+*.ipch
+/GLSetupTest/vcpkg_installed/vcpkg

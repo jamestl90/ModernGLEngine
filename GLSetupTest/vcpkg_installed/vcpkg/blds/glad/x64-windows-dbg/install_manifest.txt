@@ -1,7 +1,0 @@
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/lib/glad.lib
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/include/glad/glad.h
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/include/KHR/khrplatform.h
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladConfig.cmake
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladConfigVersion.cmake
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladTargets.cmake
-D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/glad_x64-windows/debug/lib/cmake/glad/gladTargets-debug.cmake

@@ -1,5 +1,0 @@
--- Downloading https://github.com/KhronosGroup/EGL-Registry/archive/af97e2c27b49a090a335fc6ed5040c780ad9fec8.tar.gz -> KhronosGroup-EGL-Registry-af97e2c27b49a090a335fc6ed5040c780ad9fec8.tar.gz...
--- Extracting source C:/Users/James/AppData/Local/vcpkg/downloads/KhronosGroup-EGL-Registry-af97e2c27b49a090a335fc6ed5040c780ad9fec8.tar.gz
--- Using source at D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/blds/egl-registry/src/780ad9fec8-51aa70c4bd.clean
--- Installing: D:/Repos/GLSetupTest/GLSetupTest/vcpkg_installed/vcpkg/pkgs/egl-registry_x64-windows/share/egl-registry/copyright
--- Performing post-build validation
