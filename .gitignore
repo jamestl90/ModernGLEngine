@@ -7,3 +7,5 @@
 *.ipch
 *.ipch
 .vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce/MAIN.ipch
+*.vsidx
+*.vsidx
