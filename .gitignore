@@ -9,3 +9,7 @@
 .vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce/MAIN.ipch
 *.vsidx
 *.vsidx
+/GLSetupTest/x64/Debug
+/.vs/GLSetupTest/v17
+/.vs/GLSetupTest/v17
+*.ipch
