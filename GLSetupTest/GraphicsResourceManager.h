@@ -9,12 +9,12 @@ namespace JLEngine
 	class Graphics;
 
 	template <class T>
-	class Manager : public ResourceManager<T>
+	class GraphicsResourceManager : public ResourceManager<T>
 	{
 	public:
-		 Manager(Graphics* graphics);
+		 explicit GraphicsResourceManager(Graphics* graphics);
 
-		 virtual ~Manager() {}
+		 virtual ~GraphicsResourceManager() override {}
 
 		 void ReloadResources();
 
@@ -26,6 +26,6 @@ namespace JLEngine
 	};
 }
 
-#include "Manager.cpp"
+#include "GraphicsResourceManager.cpp"
 
 #endif

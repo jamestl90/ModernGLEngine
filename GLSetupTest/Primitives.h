@@ -3,7 +3,7 @@
 
 #include "Types.h"
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace JLEngine
 {

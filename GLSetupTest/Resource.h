@@ -47,6 +47,8 @@ namespace JLEngine
 
 		 Resource(uint32 handle, string& filename);
 
+		 Resource(uint32 handle);
+
 		/**
 		 * \fn	Resource::~Resource();
 		 *
@@ -147,7 +149,7 @@ namespace JLEngine
 		 * \return	The identifier.
 		 */
 
-		 uint32 GetHandle() { return m_handle; }
+		 const uint32 GetHandle() { return m_handle; }
 
 		/**
 		 * \fn	void Resource::setId(uint32 id)
@@ -195,10 +197,10 @@ namespace JLEngine
 		 * \return	The reference count.
 		 */
 
-		 int GetReferenceCount() { return m_referenceCount; }
+		 const int GetReferenceCount() { return m_referenceCount; }
 
 		 void FromFile(bool fromFile) { m_fromFile = fromFile; }
-		 bool IsFromFile() { return m_fromFile; }
+		 const bool IsFromFile() { return m_fromFile; }
 
 	protected:
 

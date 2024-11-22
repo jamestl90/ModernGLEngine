@@ -1,6 +1,7 @@
 #ifndef PLATFORM_SPECIFIC_H
 #define PLATFORM_SPECIFIC_H
 
+#undef APIENTRY
 #include <windows.h>
 #include <string>
 

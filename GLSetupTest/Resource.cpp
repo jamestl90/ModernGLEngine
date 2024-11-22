@@ -17,6 +17,11 @@ namespace JLEngine
 		m_filepath = "nopath";
 	}
 
+	Resource::Resource(uint32 handle)
+		: m_referenceCount(0), m_handle(handle), m_name(""), m_filename(""), m_filepath(""), m_fromFile(false)
+	{
+	}
+
 	Resource::~Resource()
 	{
 

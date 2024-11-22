@@ -107,6 +107,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)vcpkg_installed\x64-windows\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,27 +131,58 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FileHelpers.cpp" />
+    <ClCompile Include="FileSystem.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="GraphicsResourceManager.cpp" />
     <ClCompile Include="JLEngine.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Primitives.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="ShaderGroup.cpp" />
+    <ClCompile Include="ShaderManager.cpp" />
+    <ClCompile Include="ShaderProgram.cpp" />
+    <ClCompile Include="Singleton.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="TextureReader.cpp" />
+    <ClCompile Include="VertexBuffers.cpp" />
+    <ClCompile Include="VertexStructures.cpp" />
     <ClCompile Include="ViewFrustum.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Buffer.h" />
+    <ClInclude Include="FileHelpers.h" />
+    <ClInclude Include="FileSystem.h" />
     <ClInclude Include="Graphics.h" />
+    <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="GraphicsResourceManager.h" />
     <ClInclude Include="JLEngine.h" />
+    <ClInclude Include="Mesh.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Primitives.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShaderGroup.h" />
+    <ClInclude Include="ShaderManager.h" />
+    <ClInclude Include="ShaderProgram.h" />
+    <ClInclude Include="Singleton.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="TextureReader.h" />
+    <ClInclude Include="Transform3.h" />
     <ClInclude Include="Types.h" />
+    <ClInclude Include="VertexBuffers.h" />
+    <ClInclude Include="VertexStructures.h" />
     <ClInclude Include="ViewFrustum.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

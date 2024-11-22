@@ -2,3 +2,8 @@
 .vs/GLSetupTest/v17/ipch/AutoPCH/19060b8c2e8709a/SHADER.ipch
 .vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce/MAIN.ipch
 *.ipch
+*.obj
+*.tlog
+*.ipch
+*.ipch
+.vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce/MAIN.ipch

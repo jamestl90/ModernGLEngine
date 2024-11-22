@@ -1,33 +1,42 @@
 #ifndef GRAPHICS_RESOURCE_MANAGER_CPP
 #define GRAPHICS_RESOURCE_MANAGER_CPP
 
-#include "Manager.h"
+#include "GraphicsResourceManager.h"
+
+template class JLEngine::GraphicsResourceManager<JLEngine::ShaderProgram>;
+template class JLEngine::GraphicsResourceManager<JLEngine::Texture>;
 
 namespace JLEngine
 {
 	template <class T>
-	Manager<T>::Manager(Graphics* graphics)
+	GraphicsResourceManager<T>::GraphicsResourceManager(Graphics* graphics)
 		: m_graphics(graphics)
 	{
 	}
 
 
 	template <class T>
-	void Manager<T>::ReloadResources()
+	void GraphicsResourceManager<T>::ReloadResources()
 	{
-		std::for_each(m_resourceList.begin(), m_resourceList.end(), [this](T* )
+		for (T* graphicsResource : this->m_resourceList)
 		{
-			->Init(m_graphics);
-		});
+			if (graphicsResource) 
+			{
+				graphicsResource->Init(m_graphics);
+			}
+		}
 	}
 
 	template <class T>
-	void Manager<T>::UnloadResources()
+	void GraphicsResourceManager<T>::UnloadResources()
 	{
-		std::for_each(m_resourceList.begin(), m_resourceList.end(), [this](T* )
+		for (T* graphicsResource : this->m_resourceList)
 		{
-			->UnloadFromGraphics();
-		});
+			if (graphicsResource) 
+			{
+				graphicsResource->UnloadFromGraphics();
+			}
+		};
 	}
 }
 

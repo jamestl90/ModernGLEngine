@@ -16,7 +16,6 @@
 #include "Types.h"
 #include "Transform3.h"
 #include "RenderTarget.h"
-#include "Material.h"
 
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 
@@ -87,7 +86,7 @@ namespace JLEngine
 		// Shader
 
 		 void PrintActiveUniforms(uint32 programId);
-		 bool ShaderCompileErrorCheck(uint32 id, const std::string& name, bool compileCheck);
+		 bool ShaderCompileErrorCheck(uint32 id, const string& name, bool compileCheck);
 
 		 void CreateShader(ShaderProgram* program);
 		 void DisposeShader(ShaderProgram* program);

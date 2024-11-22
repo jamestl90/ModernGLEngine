@@ -2,12 +2,7 @@
 #include "ViewFrustum.h"
 #include "Mesh.h"
 #include "TextureReader.h"
-#include "EngineConfig.h"
-#include "Engine.h"
-#include "Exceptions.h"
 #include "FileHelpers.h"
-#include "RenderSystem.h"
-#include "AlertBox.h"
 
 #include <set>
 
@@ -159,7 +154,7 @@ namespace JLEngine
 
 			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
 
-			delete infoLog;
+			delete[] infoLog;
 
 			return false;
 		}
@@ -196,9 +191,10 @@ namespace JLEngine
 			s->SetShaderId(shaderId);
 
 			std::string shaderFile;
-			if (!JLStd::ReadTextFile(program->GetFilePath() + s->GetName(), shaderFile))
+			if (!ReadTextFile(program->GetFilePath() + s->GetName(), shaderFile))
 			{
-				throw JLStd::FileNotFound("Could not find file: " + program->GetFilePath() + s->GetName(), "Graphics");
+				throw "Could not find file: " + program->GetFilePath() + s->GetName(), "Graphics";
+				//throw JLStd::FileNotFound("Could not find file: " + program->GetFilePath() + s->GetName(), "Graphics");
 			}
 
 			const char* cStr = shaderFile.c_str();
@@ -626,7 +622,7 @@ namespace JLEngine
 		}
 		else
 		{
-			throw JLStd::FileNotFound(texture->GetFileName(), "Graphics");
+			throw "File not found: " + texture->GetFileName() + " Module: Graphics";
 		}
 	}
 
@@ -680,11 +676,11 @@ namespace JLEngine
 
 		if (mesh->HasIndices())
 		{
-			glDrawElements(GL_TRIANGLES, mesh->GetIndexBuffer().Size(), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+			glDrawElements(GL_TRIANGLES, (GLsizei)mesh->GetIndexBuffer().Size(), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
 		}
 		else
 		{
-			glDrawArrays(GL_TRIANGLES, 0, mesh->GetVertexBuffer().Size() / mesh->GetVertexBuffer().GetStride());
+			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)mesh->GetVertexBuffer().Size() / mesh->GetVertexBuffer().GetStride());
 		}
 
 		glBindVertexArray(0);
