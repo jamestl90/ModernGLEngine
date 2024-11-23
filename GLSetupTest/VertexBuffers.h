@@ -22,7 +22,7 @@ namespace JLEngine
 
 		void SetId(uint32& id) { m_id = id; }
 
-		uint32 GetId() { return m_id; }		
+		uint32 GetId() const { return m_id; }
 
 		void SetType(int type) { m_type = type; }
 
@@ -30,11 +30,11 @@ namespace JLEngine
 
 		void SetDrawType(int drawType) { m_drawType = drawType; }
 
-		int Type() { return m_type; }
+		int Type() const { return m_type; }
 
-		int DataType() { return m_dataType; }
+		int DataType() const { return m_dataType; }
 
-		int DrawType() { return m_drawType; }
+		int DrawType() const { return m_drawType; }
 
 	protected:
 

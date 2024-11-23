@@ -7,7 +7,6 @@
 
 #include "Window.h"
 
-#include "FileSystem.h"
 #include "ShaderProgram.h"
 #include "Texture.h"
 #include "VertexBuffers.h"
@@ -19,7 +18,6 @@
 
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 
-using JLEngine::FileSystem;
 using std::string;
 
 namespace JLEngine

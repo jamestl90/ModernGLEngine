@@ -4,12 +4,12 @@
 namespace JLEngine
 {
 	VertexBuffer::VertexBuffer(int type, int data, int draw )
-		: GraphicsBuffer(type, data, draw)
+		: GraphicsBuffer(type, data, draw), m_stride(0)
 	{
 	}
 
 	VertexBuffer::VertexBuffer( std::vector<float>& vertices, int type, int data, int draw )
-		: Buffer(vertices), GraphicsBuffer(type, data, draw)
+		: Buffer(vertices), GraphicsBuffer(type, data, draw), m_stride(0)
 	{
 	}
 

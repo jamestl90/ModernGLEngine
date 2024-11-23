@@ -18,3 +18,4 @@
 *.ipch
 *.ipch
 /GLSetupTest/vcpkg_installed/vcpkg
+/x64

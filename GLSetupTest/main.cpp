@@ -22,7 +22,11 @@ void fixedUpdate(double fixedTimeDelta)
 
 int main()
 {
-    JLEngine engine(1280, 720, "JL Engine", 60, 120); 
+    JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 120);
+
+    auto graphics = engine.GetGraphics();
+    auto shaderMgr = engine.GetShaderManager();
+    auto textureMgr = engine.GetTextureManager();
 
     engine.run(gameLogicUpdate, gameRender, fixedUpdate);
 
