@@ -4,7 +4,8 @@
   "description": "A project for setting up OpenGL with modern C++.",
   "dependencies": [
     "glfw3", 
-    "glad", 
-    "glm" 
+    "glad",
+    "glm",
+    "catch2"
   ]
 }

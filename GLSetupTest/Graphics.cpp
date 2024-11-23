@@ -130,7 +130,7 @@ namespace JLEngine
 		}
 	}
 
-	bool Graphics::UsingMSAA()
+	bool Graphics::UsingMSAA() const
 	{
 		return m_usingMSAA;
 	}

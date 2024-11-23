@@ -1,4 +1,4 @@
-cmake 3.27.2-msvc1
+cmake 3.27.1
 copyright 04b60f99a43bfd7fefdc8364b24aac704a2160cef969b75ba6a38b62dc4c4b70
 features core
 portfile.cmake 832b34e63f5af41ad1b2e4aa79c5bfa507a005b120b51548e674accc706837d7

@@ -80,8 +80,8 @@ namespace JLEngine
 		 void SwapBuffers();
 		 void Clear(uint32 flags);
 		 void ClearColour(float x, float y, float z, float w);
-
-		// Shader
+				
+		 // Shader
 
 		 void PrintActiveUniforms(uint32 programId);
 		 bool ShaderCompileErrorCheck(uint32 id, const string& name, bool compileCheck);
@@ -113,93 +113,93 @@ namespace JLEngine
 
 		// State modifier
 		
-		 void SetMSAA(bool flag);
-		 bool UsingMSAA();
+		void SetMSAA(bool flag);
+		bool UsingMSAA() const;
 
-		 void Enable(uint32 val);
-		 void Disable(uint32 val);
+		void Enable(uint32 val);
+		void Disable(uint32 val);
 
-		 void SetDepthFunc(uint32 val);
-		 void SetDepthMask(uint32 val);
+		void SetDepthFunc(uint32 val);
+		void SetDepthMask(uint32 val);
 
-		 void SetBlendFunc(uint32 first, uint32 second);
+		void SetBlendFunc(uint32 first, uint32 second);
 
-		 void SetCullFace(uint32 face);
+		void SetCullFace(uint32 face);
 
 		// Material
 		
-		 void CreateMaterial(Material* mat);
-		 void DisposeMaterial(Material* mat);
+		void CreateMaterial(Material* mat);
+		void DisposeMaterial(Material* mat);
 
 		// Texture 
 		
-		 bool CreateRenderTarget(RenderTarget* target);
-		 void DisposeRenderTarget(RenderTarget* target);
+		bool CreateRenderTarget(RenderTarget* target);
+		void DisposeRenderTarget(RenderTarget* target);
 
-		 void CreateTexture(Texture* texture, bool fromFile);
-		 void DisposeTexture(Texture* texture);
+		void CreateTexture(Texture* texture, bool fromFile);
+		void DisposeTexture(Texture* texture);
 
-		 void CreateTexture(uint32 count, uint32& id);
-		 void BindTexture(uint32 type, uint32 id);
-		 void DisposeTexture(uint32 count, uint32* textures);
+		void CreateTexture(uint32 count, uint32& id);
+		void BindTexture(uint32 type, uint32 id);
+		void DisposeTexture(uint32 count, uint32* textures);
 
-		 void SetActiveTexture(uint32 type);
+		void SetActiveTexture(uint32 type);
 
 		// Buffer objects
 		
-		 void CreateVertexBuffer(VertexBuffer& vbo);
-		 void CreateIndexBuffer(IndexBuffer& ibo);
+		void CreateVertexBuffer(VertexBuffer& vbo);
+		void CreateIndexBuffer(IndexBuffer& ibo);
 
-		 void DisposeVertexBuffer(VertexBuffer& vbo);
-		 void DisposeIndexBuffer(IndexBuffer& ibo);
+		void DisposeVertexBuffer(VertexBuffer& vbo);
+		void DisposeIndexBuffer(IndexBuffer& ibo);
 
-		 void CreateMesh(Mesh* mesh);
-		 void DisposeMesh(Mesh* mesh);
+		void CreateMesh(Mesh* mesh);
+		void DisposeMesh(Mesh* mesh);
 
 		// FBO
-		 void CreateFrameBuffer(uint32 count, uint32& id);
-		 void BindFrameBuffer(uint32 id);
-		 void DisposeFrameBuffer(uint32 count, uint32* fbo);
-		 void BindFrameBufferToTexture(uint32 type, uint32 attachment, uint32 target, uint32 id, int32 level = 0);
-		 uint32 CheckFrameBuffer();
+		void CreateFrameBuffer(uint32 count, uint32& id);
+		void BindFrameBuffer(uint32 id);
+		void DisposeFrameBuffer(uint32 count, uint32* fbo);
+		void BindFrameBufferToTexture(uint32 type, uint32 attachment, uint32 target, uint32 id, int32 level = 0);
+		uint32 CheckFrameBuffer();
 		// RBO
-		 void CreateRenderBuffer(uint32 count, uint32& id);
-		 void BindRenderBuffer(uint32 id);
-		 void RenderBufferStorage(uint32 type, uint32 internalFormat, uint32 width, uint32 height);
-		 void BindFrameBufferToRenderbuffer(uint32 type, uint32 internalFormat, uint32 target, uint32 id);
+		void CreateRenderBuffer(uint32 count, uint32& id);
+		void BindRenderBuffer(uint32 id);
+		void RenderBufferStorage(uint32 type, uint32 internalFormat, uint32 width, uint32 height);
+		void BindFrameBufferToRenderbuffer(uint32 type, uint32 internalFormat, uint32 target, uint32 id);
 		// VAO
-		 uint32 CreateVertexArray();
-		 void CreateVertexArray(uint32 count, uint32& id);
-		 void BindVertexArray(uint32 vaoID);
+		uint32 CreateVertexArray();
+		void CreateVertexArray(uint32 count, uint32& id);
+		void BindVertexArray(uint32 vaoID);
 		// VBO
-		 void CreateBuffer(uint32 count, uint32& id);
-		 void DisposeBuffer(uint32 count, uint32* id);
-		 void BindBuffer(uint32 buffType, uint32 vboID);
-		 void SetBufferData(uint32 buffType, ptrdiff_t size, void* data, uint32 usage);
+		void CreateBuffer(uint32 count, uint32& id);
+		void DisposeBuffer(uint32 count, uint32* id);
+		void BindBuffer(uint32 buffType, uint32 vboID);
+		void SetBufferData(uint32 buffType, ptrdiff_t size, void* data, uint32 usage);
 
-		 void EnableVertexAttribArray(uint32 pos);
-		 void DisableVertexAttribArray(uint32 pos);
+		void EnableVertexAttribArray(uint32 pos);
+		void DisableVertexAttribArray(uint32 pos);
 
-		 void SetBufferSubData( uint32 target, ptrdiff_t offset, int32 size, void* data);
-		 void SetAttributePointer(uint32 index, int32 count, uint32 datatype, bool normalise, int32 size, void* offset);
+		void SetBufferSubData( uint32 target, ptrdiff_t offset, int32 size, void* data);
+		void SetAttributePointer(uint32 index, int32 count, uint32 datatype, bool normalise, int32 size, void* offset);
 
-		 void* MapBufferData(uint32 target, uint32 access);
-		 bool UnmapBufferData(uint32 target);
+		void* MapBufferData(uint32 target, uint32 access);
+		bool UnmapBufferData(uint32 target);
 
 		// Render calls
 
-		 void DrawAABB(AABB& aabb);
+		void DrawAABB(AABB& aabb);
 
-		 void BeginPrimitiveDraw();
-		 void RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId = -1);
-		 void EndPrimitiveDraw();
+		void BeginPrimitiveDraw();
+		void RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId = -1);
+		void EndPrimitiveDraw();
 
-		 void RenderMesh(Mesh* mesh);
-		 void DrawArrayBuffer(uint32 drawMode, uint32 first, uint32 count);
-		 void DrawElementBuffer(uint32 drawMode, int32 count, uint32 dataType, void* offset);
-		 void DrawBuffers(uint32 count, uint32* targets);
+		void RenderMesh(Mesh* mesh);
+		void DrawArrayBuffer(uint32 drawMode, uint32 first, uint32 count);
+		void DrawElementBuffer(uint32 drawMode, int32 count, uint32 dataType, void* offset);
+		void DrawBuffers(uint32 count, uint32* targets);
 
-		 void GeneratePrimitives();
+		void GeneratePrimitives();
 
 	private:
 

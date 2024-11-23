@@ -1,5 +1,5 @@
-cmake 3.27.2-msvc1
-egl-registry 87ce8749d26eee1cf0254df8db2ddb6b2d39b51983e8cdbaf8302310614f9841
+cmake 3.27.1
+egl-registry 4d75a0378ac578f72f9705945ea9bd984d485d31189ee407b50fc9fbc2db52c4
 features core
 portfile.cmake 36daba38de28b8fecd57f96ce43cc97df0c02c3d3aa8451db7aeadfa3e766324
 ports.cmake 5a8e00cedff0c898b1f90f7d129329d0288801bc9056562b039698caf31ff3f3
