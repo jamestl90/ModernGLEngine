@@ -2,7 +2,7 @@
 #define TEXTURE_READER_H
 
 #include <string>
-#include <stb/stb_image.h>
+#include <stb_image.h>
 
 #include "Types.h"
 
