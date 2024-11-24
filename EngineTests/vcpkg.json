@@ -1,0 +1,10 @@
+{
+  "name": "engine-tests",
+  "version": "1.0.0",
+  "description": "Testing project for JLEngine",
+  "dependencies": [
+    "catch2",
+    "glfw3",
+    "glad"
+  ]
+}

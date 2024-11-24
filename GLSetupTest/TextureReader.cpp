@@ -1,3 +1,6 @@
+#include <glad/glad.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 #include "TextureReader.h"
 
 namespace JLEngine
@@ -13,31 +16,52 @@ namespace JLEngine
 
 	bool TextureReader::ReadTexture( const std::string& texture )
 	{
-		//ilGenImages(1, &m_texture);
-		//ilBindImage(m_texture);
-		//
-		//ILboolean success = ilLoadImage(texture.c_str());
-		//
-		//if (success)
-		//{
-		//	m_success = true;
-		//}
-		//else
-		//{
-		//	m_success = false;
-		//}
-		//
-		//if (!m_success)
-		//{
-		//	return false;
-		//}
-		//
-		//m_internalFormat = ilGetInteger(IL_IMAGE_BPP);
-		//m_format = ilGetInteger(IL_IMAGE_FORMAT);
-		//m_width = ilGetInteger(IL_IMAGE_WIDTH);
-		//m_height = ilGetInteger(IL_IMAGE_HEIGHT);
+        // Use stb_image to load the image
+        int width, height, channels;
+        unsigned char* data = stbi_load(texture.c_str(), &width, &height, &channels, 0);
 
-		return m_success;
+        if (data == nullptr) // Check if loading failed
+        {
+            m_success = false;
+            return false;
+        }
+
+        // Store texture metadata
+        m_width = width;
+        m_height = height;
+        m_internalFormat = channels; // This corresponds to the number of channels (1 for grayscale, 3 for RGB, 4 for RGBA)
+
+        // Determine the appropriate OpenGL format based on channels
+        switch (channels)
+        {
+        case 1: // Grayscale
+            m_format = GL_RED;
+            break;
+        case 2: // Grayscale + Alpha
+            m_format = GL_RG;
+            break;
+        case 3: // RGB
+            m_format = GL_RGB;
+            break;
+        case 4: // RGBA
+            m_format = GL_RGBA;
+            break;
+        default:
+            // Handle other cases, maybe set to unknown
+            m_format = 0;
+            break;
+        }
+
+        // Mark as success
+        m_success = true;
+
+        // Optionally, store the image data (e.g., for later use with OpenGL)
+        // For example, you could create an OpenGL texture here using the data
+
+        // Don't forget to free the image data after usage!
+        stbi_image_free(data);
+
+        return m_success;
 	}
 
 	void TextureReader::Clear()

@@ -1,0 +1,3 @@
+﻿  main.cpp
+MSVCRT.lib(exe_main.obj) : error LNK2001: unresolved external symbol main
+D:\Repos\GLSetupTest\x64\Release\EngineTests.exe : fatal error LNK1120: 1 unresolved externals
