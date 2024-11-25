@@ -22,17 +22,17 @@ namespace JLEngine
 		ResourceManager();
 		virtual ~ResourceManager() { Clear(); }
 
-		T* Add(string& name, string& path);
-		T* Add(string& name, T* res);
+		T* Add(string name, string path);
+		T* Add(string name, T* res);
 		void Clear();
 		void Remove(uint32 handle);
 
 		// slow linear search
-		void Remove(const std::string& name, string path = "");
+		void Remove(const std::string name, string path);
 
 		T* GetResource(uint32 handle);
-		T* GetResource(string& name);
-		T* GetResource(string& name, string path = "");
+		T* GetResource(string name);
+		T* GetResource(string name, string path);
 
 		virtual void ReloadResources() = 0;
 
@@ -88,7 +88,7 @@ namespace JLEngine
 	}
 
 	template <class T>
-	T* ResourceManager<T>::GetResource(string& name, string path)
+	T* ResourceManager<T>::GetResource(string name, string path)
 	{
 		for (auto it = m_resourceList.begin(); it != m_resourceList.end(); it++)
 		{
@@ -101,7 +101,7 @@ namespace JLEngine
 	}
 
 	template <class T>
-	T* ResourceManager<T>::GetResource(string& name)
+	T* ResourceManager<T>::GetResource(string name)
 	{
 		for (auto it = m_resourceList.begin(); it != m_resourceList.end(); it++)
 		{
@@ -112,7 +112,7 @@ namespace JLEngine
 	}
 
 	template <class T>
-	void ResourceManager<T>::Remove(const std::string& fullName, string path)
+	void ResourceManager<T>::Remove(const std::string fullName, string path)
 	{
 		bool noPath = false;
 
@@ -159,7 +159,7 @@ namespace JLEngine
 	}
 
 	template <class T>
-	T* ResourceManager<T>::Add(string& name, T* res)
+	T* ResourceManager<T>::Add(string name, T* res)
 	{
 		size_t handle;
 		bool freeHandle = false;
@@ -187,7 +187,7 @@ namespace JLEngine
 	}
 
 	template <class T>
-	T* ResourceManager<T>::Add(string& name, string& path)
+	T* ResourceManager<T>::Add(string name, string path)
 	{
 		T* resource = GetResource(name, path);
 

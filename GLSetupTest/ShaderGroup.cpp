@@ -11,7 +11,7 @@ namespace JLEngine
 		m_shaders.clear();
 	}
 
-	void ShaderGroup::AddShader(int type, std::string& name)
+	void ShaderGroup::AddShader(int type, std::string name)
 	{
 		m_shaders.push_back(new Shader(type, name));
 	}
@@ -25,7 +25,8 @@ namespace JLEngine
 	{
 		for (uint32 i = 0; i < m_shaders.size(); ++i)
 		{
-			delete m_shaders[i];
+			if (m_shaders[i] != nullptr)
+				delete m_shaders[i];
 		}
 		m_shaders.clear();
 	}

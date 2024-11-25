@@ -14,7 +14,7 @@ namespace JLEngine
 
 		~ShaderGroup();
 
-		void AddShader(int type, std::string& name);
+		void AddShader(int type, std::string name);
 
 		std::vector<Shader*>& GetShaders();
 

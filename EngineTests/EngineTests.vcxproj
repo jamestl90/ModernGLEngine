@@ -106,15 +106,16 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>$(SolutionDir)GLSetupTest\</AdditionalIncludeDirectories>
+      <PreprocessToFile>false</PreprocessToFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);catch2maind.lib;$(SolutionDir)GLSetupTest\x64\Debug\TextureReader.obj;</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);catch2maind.lib;$(SolutionDir)GLSetupTest\x64\Debug\TextureReader.obj;$(SolutionDir)GLSetupTest\x64\Debug\ShaderManager.obj;$(SolutionDir)GLSetupTest\x64\Debug\ShaderGroup.obj;$(SolutionDir)GLSetupTest\x64\Debug\Shader.obj;$(SolutionDir)GLSetupTest\x64\Debug\ShaderProgram.obj;$(SolutionDir)GLSetupTest\x64\Debug\Resource.obj;$(SolutionDir)GLSetupTest\x64\Debug\Graphics.obj;$(SolutionDir)GLSetupTest\x64\Debug\Window.obj;$(SolutionDir)GLSetupTest\x64\Debug\VertexBuffers.obj;$(SolutionDir)GLSetupTest\x64\Debug\VertexStructures.obj;$(SolutionDir)GLSetupTest\x64\Debug\ViewFrustum.obj;$(SolutionDir)GLSetupTest\x64\Debug\Primitives.obj;$(SolutionDir)GLSetupTest\x64\Debug\FileHelpers.obj;$(SolutionDir)GLSetupTest\x64\Debug\Mesh.obj</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)EngineTests\vcpkg_installed\x64-windows\debug\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -139,6 +140,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ShaderManager_Test.cpp" />
     <ClCompile Include="TextureReader_Test.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -5,6 +5,7 @@
   "dependencies": [
     "catch2",
     "glfw3",
-    "glad"
+    "glad",
+    "glm"
   ]
 }

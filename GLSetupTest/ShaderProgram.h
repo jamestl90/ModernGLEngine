@@ -19,7 +19,7 @@ namespace JLEngine
 	{
 	public:
 
-		ShaderProgram(uint32 handle, string& name, string& path);
+		ShaderProgram(uint32 handle, string name, string path);
 		~ShaderProgram();
 
 		void Init(Graphics* graphics);

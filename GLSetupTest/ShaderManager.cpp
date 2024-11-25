@@ -11,9 +11,9 @@ namespace JLEngine
 	{
 
 	}
-	uint32 ShaderManager::Add(string& vert, string& frag, string& path)
+	uint32 ShaderManager::Add(string vert, string frag, string path)
 	{
-		string shaderName = "default";
+		string shaderName = vert + frag;
 		ShaderProgram* program = GraphicsResourceManager<ShaderProgram>::Add(shaderName, path);
 
 		ShaderGroup group;
@@ -27,7 +27,7 @@ namespace JLEngine
 		return program->GetHandle();
 	}
 
-	uint32 ShaderManager::Add( ShaderGroup& group, string& name, string& path )
+	uint32 ShaderManager::Add(ShaderGroup& group, string name, string path)
 	{
 		ShaderProgram* program = GraphicsResourceManager<ShaderProgram>::Add(name, path);
 

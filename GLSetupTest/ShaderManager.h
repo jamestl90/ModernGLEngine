@@ -18,9 +18,9 @@ namespace JLEngine
 		ShaderManager(Graphics* graphics);
 		~ShaderManager();
 
-		uint32 Add(string& vert, string& frag, string& path);
+		uint32 Add(string vert, string frag, string path);
 
-		uint32 Add(ShaderGroup& group, string& name, string& path);
+		uint32 Add(ShaderGroup& group, string name, string path);
 	};
 }
 
