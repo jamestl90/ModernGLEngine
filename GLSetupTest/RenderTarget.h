@@ -3,16 +3,13 @@
 
 #include "Types.h"
 #include "Texture.h"
-#include "GraphicsResource.h"
 
 namespace JLEngine
 {
-	class RenderTarget : public GraphicsResource
+	class RenderTarget : public Resource
 	{
 	public:
-		RenderTarget(uint32 handle, string& name, string& path);
-
-		RenderTarget(uint32 width, uint32 height, bool useDepth, int numSources);
+		RenderTarget(uint32 handle, string& name, string& path, int numSources);
 
 		~RenderTarget();
 

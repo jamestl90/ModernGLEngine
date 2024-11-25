@@ -2,32 +2,95 @@
 
 namespace JLEngine
 {
-	Texture::Texture(uint32 handle, string& name, string& path) 
-		: GraphicsResource(handle, name, path), m_width(-1), m_height(-1), m_dataType(GL_UNSIGNED_BYTE)
-	{
+    Texture::Texture(uint32_t handle, const std::string& name, const std::string& filename)
+        : Resource(handle, name), m_filename(filename), m_clamped(false), m_mipmaps(false),
+        m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0), m_channels(0)
+    {
+    }
 
-	}
+    // Constructor for raw-data texture
+    Texture::Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, void* data, int channels)
+        : Resource(handle, name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
+        m_mipmaps(false), m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0)
+    {
+        if (data)
+        {
+            // Copy the raw data into m_data
+            size_t dataSize = width * height * channels;
+            m_data.assign(static_cast<unsigned char*>(data), static_cast<unsigned char*>(data) + dataSize);
+        }
+    }
 
-	Texture::Texture(uint32 handle, string& fileName) 
-		: GraphicsResource(handle, fileName), m_width(-1), m_height(-1), m_dataType(GL_UNSIGNED_BYTE)
-	{
-		UnloadFromGraphics();
-	}
+    Texture::~Texture()
+    {
+        m_data.clear();
+        if (m_graphics)
+        {
+            m_graphics->DisposeTexture(this);
+        }
+        if (m_id != 0)
+        {
+            glDeleteTextures(1, &m_id);
+        }
+    }
 
-	Texture::~Texture()
-	{
-		m_graphics->DisposeTexture(this);
-	}
+    void Texture::SetFormat(GLenum internalFormat, GLenum format, GLenum dataType)
+    {
+        m_internalFormat = internalFormat;
+        m_format = format;
+        m_dataType = dataType;
+    }
 
-	void Texture::Init(Graphics* graphics)
-	{
-		m_graphics = graphics;
+    void Texture::InitFromData(const std::vector<unsigned char>& data, int width, int height, int channels, bool clamped, bool mipmaps)
+    {
+        m_data = data;
+        m_width = width;
+        m_height = height;
+        m_channels = channels;
+        m_clamped = clamped;
+        m_mipmaps = mipmaps;
 
-		m_graphics->CreateTexture(this, m_fromFile);	
-	}
+        // Determine the appropriate OpenGL format
+        switch (channels)
+        {
+        case 1:
+            m_format = GL_RED;
+            m_internalFormat = GL_R8;
+            break;
+        case 2:
+            m_format = GL_RG;
+            m_internalFormat = GL_RG8;
+            break;
+        case 3:
+            m_format = GL_RGB;
+            m_internalFormat = GL_RGB8;
+            break;
+        case 4:
+            m_format = GL_RGBA;
+            m_internalFormat = GL_RGBA8;
+            break;
+        default:
+            m_format = GL_RGBA;
+            m_internalFormat = GL_RGBA8;
+            std::cerr << "Unsupported channel count: " << channels << std::endl;
+            break;
+        }
+    }
 
-	void Texture::UnloadFromGraphics()
-	{
-		m_graphics->DisposeTexture(this);
-	}
+    void Texture::UploadToGPU(Graphics* graphics, bool freeData)
+    {
+        m_graphics = graphics;
+
+        if (m_data.empty())
+        {
+            std::cerr << "No texture data to upload to GPU!" << std::endl;
+            return;
+        }
+
+        m_graphics->CreateTexture(this);
+
+        // Clear raw data after uploading to GPU to free memory
+        if (freeData)
+            m_data.clear();
+    }
 }

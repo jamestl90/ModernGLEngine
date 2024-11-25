@@ -92,15 +92,15 @@ namespace JLEngine
 		glCompileShader(vertId);
 		glShaderSource(fragId, 1, &cStrFrag, NULL);
 		glCompileShader(fragId);
-		ShaderCompileErrorCheck(vertId, std::string("Default.Vert"), false);
-		ShaderCompileErrorCheck(fragId, std::string("Default.Frag"), false);
+		ShaderCompileErrorCheck(vertId, false);
+		ShaderCompileErrorCheck(fragId, false);
 
 		m_defaultShader = glCreateProgram();
 
 		glAttachShader(m_defaultShader, vertId);
 		glAttachShader(m_defaultShader, fragId);
 		glLinkProgram(m_defaultShader);
-		ShaderCompileErrorCheck(m_defaultShader, std::string("Default.Prog"), false);
+		ShaderCompileErrorCheck(m_defaultShader, false);
 
 		GeneratePrimitives();
 	}
@@ -135,7 +135,7 @@ namespace JLEngine
 		return m_usingMSAA;
 	}
 
-	bool Graphics::ShaderCompileErrorCheck(uint32 id, const std::string& name, bool compileCheck)
+	bool Graphics::ShaderCompileErrorCheck(uint32 id, bool compileCheck)
 	{
 		GLint compileStatus;
 
@@ -180,19 +180,18 @@ namespace JLEngine
 
 	void Graphics::CreateShader(ShaderProgram* program)
 	{
-		ShaderGroup group = program->GetShaderGroup();
-
-		for (uint32 i = 0; i < group.GetShaders().size(); i++)
+		auto shaders = program->GetShaders();
+		for (uint32 i = 0; i < shaders.size(); i++)
 		{
-			Shader* s = group.GetShaders().at(i);
+			Shader& s = shaders.at(i);
 
-			GLuint shaderId = glCreateShader(s->GetType());
-			s->SetShaderId(shaderId);
+			GLuint shaderId = glCreateShader(s.GetType());
+			s.SetShaderId(shaderId);
 
 			std::string shaderFile;
-			if (!ReadTextFile(program->GetFilePath() + s->GetName(), shaderFile))
+			if (!ReadTextFile(program->GetFilePath() + s.GetName(), shaderFile))
 			{
-				throw "Could not find file: " + program->GetFilePath() + s->GetName(), "Graphics";
+				throw "Could not find file: " + program->GetFilePath() + s.GetName(), "Graphics";
 				//throw JLStd::FileNotFound("Could not find file: " + program->GetFilePath() + s->GetName(), "Graphics");
 			}
 
@@ -200,29 +199,29 @@ namespace JLEngine
 			glShaderSource(shaderId, 1, &cStr, NULL);
 			glCompileShader(shaderId);
 
-			ShaderCompileErrorCheck(shaderId, program->GetFilePath() + s->GetName(), false);
+			ShaderCompileErrorCheck(shaderId, false);
 		}
 
 		GLuint programID = glCreateProgram();
 		program->SetProgramId(programID);
 
-		for (uint32 i = 0; i < group.GetShaders().size(); i++)
+		for (uint32 i = 0; i < shaders.size(); i++)
 		{
-			glAttachShader(programID, group.GetShaders().at(i)->GetShaderId());
+			glAttachShader(programID, shaders.at(i).GetShaderId());
 		}
 
 		glLinkProgram(programID);
 
-		if (!ShaderCompileErrorCheck(programID, program->GetFileName(), true))
+		if (!ShaderCompileErrorCheck(programID, true))
 		{
 			DisposeShader(program);
 		}
 		else
 		{
 			// another loop to delete :( not sure if i can delete the shader before linking, probably not
-			for (uint32 i = 0; i < group.GetShaders().size(); i++)
+			for (uint32 i = 0; i < shaders.size(); i++)
 			{
-				glDeleteShader(group.GetShaders().at(i)->GetShaderId());
+				glDeleteShader(shaders.at(i).GetShaderId());
 			}
 		}		
 	}
@@ -281,12 +280,12 @@ namespace JLEngine
 
 	void Graphics::DisposeShader(ShaderProgram* program)
 	{
-		ShaderGroup group = program->GetShaderGroup();
+		auto shaders = program->GetShaders();
 
-		for (auto it = group.GetShaders().begin(); it != group.GetShaders().end(); it++)
+		for (auto it = shaders.begin(); it != shaders.end(); it++)
 		{
-			glDetachShader(program->GetProgramId(), (*it)->GetShaderId());
-			glDeleteShader((*it)->GetShaderId());
+			glDetachShader(program->GetProgramId(), (*it).GetShaderId());
+			glDeleteShader((*it).GetShaderId());
 		}
 
 		glDeleteProgram(program->GetProgramId());
@@ -475,7 +474,7 @@ namespace JLEngine
 		glUseProgram(0);
 	}
 
-	void Graphics::CreateTexture( uint32 count, uint32& id )
+	void Graphics::CreateTextures( uint32 count, uint32& id )
 	{
 		glGenTextures(count, &id);
 	}
@@ -556,19 +555,7 @@ namespace JLEngine
 
 	}
 
-	void Graphics::CreateTexture(Texture* texture, bool fromFile)
-	{
-		if (fromFile)
-		{
-			BuildTextureFromFile(texture);
-		}
-		else
-		{
-			BuildTextureFromData(texture);
-		}
-	}
-
-	void Graphics::BuildTextureFromData( Texture* texture )
+	void Graphics::CreateTexture( Texture* texture )
 	{
 		GLuint image;
 		glGenTextures(1, &image); 
@@ -580,54 +567,13 @@ namespace JLEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, texture->GetInternalFormat(), texture->GetWidth(), texture->GetHeight(), 0, texture->GetFormat(), texture->GetDataType(), texture->GetData());
-		texture->SetTextureId(image);
-	}
-
-	void Graphics::BuildTextureFromFile( Texture* texture)
-	{
-		TextureReader reader;
-
-		bool success = reader.ReadTexture(texture->GetFileName());
-
-		if (success)
-		{
-			int internalFormat = reader.GetInternalFormat();
-			int format = reader.GetFormat();
-			int width = reader.GetWidth();
-			int height = reader.GetHeight();
-
-			GLuint image;
-
-			glGenTextures(1, &image); 
-			glBindTexture(GL_TEXTURE_2D, image);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
-			if (texture->IsClamped())
-			{
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			}
-			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, reader.GetData()); /* Texture specification */
-
-			reader.Clear(); // can't forget this
-
-			texture->SetInternalFormat(internalFormat);
-			texture->SetFormat(format);
-			texture->SetWidth(width);
-			texture->SetHeight(height);
-			texture->SetTextureId(image);
-			texture->SetData(reader.GetData());
-		}
-		else
-		{
-			throw "File not found: " + texture->GetFileName() + " Module: Graphics";
-		}
+		glTexImage2D(GL_TEXTURE_2D, 0, texture->GetInternalFormat(), texture->GetWidth(), texture->GetHeight(), 0, texture->GetFormat(), texture->GetDataType(), texture->GetData().data());
+		texture->SetGPUID(image);
 	}
 
 	void Graphics::DisposeTexture(Texture* texture)
 	{
-		GLuint id = texture->GetTextureId();
+		GLuint id = texture->GetGPUID();
 	
 		glDeleteTextures(1, &id);
 	}

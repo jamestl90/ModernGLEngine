@@ -5,8 +5,7 @@
 #include <vector>
 
 #include "Shader.h"
-#include "ShaderGroup.h"
-#include "GraphicsResource.h"
+#include "Resource.h"
 
 using std::vector;
 using std::string;
@@ -15,32 +14,32 @@ namespace JLEngine
 {
 	class Graphics;
 
-	class ShaderProgram : public GraphicsResource
+	class ShaderProgram : public Resource
 	{
 	public:
 
 		ShaderProgram(uint32 handle, string name, string path);
 		~ShaderProgram();
 
-		void Init(Graphics* graphics);
+		void UploadToGPU(Graphics* graphics);
 
 		void SetProgramId(uint32 id) { m_programId = id; }
 		uint32 GetProgramId() { return m_programId; }
 
-		void SetShaderGroup(ShaderGroup& group) { m_shaderGroup = group; }
-		ShaderGroup& GetShaderGroup() { return m_shaderGroup; }
+		void AddShader(Shader& shader) { m_shaders.push_back(shader); }
+		void GetShader(int type, Shader& shader);
+		void GetShader(string name, Shader& shader);
+		const std::vector<Shader> GetShaders() { return m_shaders; }
 
-		Shader* GetShader(int type);
+		const std::string GetFilePath() { return m_filename; }
 
 		void UnloadFromGraphics();
 
 	private:
 
-		bool m_isBound;
-
 		uint32 m_programId;
-
-		ShaderGroup m_shaderGroup;
+		std::string m_filename;
+		std::vector<Shader> m_shaders;
 
 		Graphics* m_graphics;
 	};

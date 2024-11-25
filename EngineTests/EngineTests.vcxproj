@@ -141,7 +141,6 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ShaderManager_Test.cpp" />
-    <ClCompile Include="TextureReader_Test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GLSetupTest\GLSetupTest.vcxproj">

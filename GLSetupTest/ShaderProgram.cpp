@@ -5,17 +5,16 @@
 namespace JLEngine
 {
 	ShaderProgram::ShaderProgram(uint32 handle, string name, string path) 
-		: GraphicsResource(handle, name, path), m_graphics(nullptr), m_isBound(false), m_programId(-1)
+		: Resource(handle, name), m_graphics(nullptr), m_filename(path), m_programId(-1)
 	{
 	}
 
 	ShaderProgram::~ShaderProgram()
 	{
 		UnloadFromGraphics();
-		m_shaderGroup.CleanUp();
 	}
 
-	void ShaderProgram::Init(Graphics* graphics)
+	void ShaderProgram::UploadToGPU(Graphics* graphics)
 	{
 		m_graphics = graphics;
 
@@ -25,7 +24,6 @@ namespace JLEngine
 		}
 		catch (const std::exception& ex)
 		{
-
 			if (!Platform::AlertBox(std::string(ex.what()), "Shader Error"))
 			{
 				std::cout << ex.what() << std::endl;
@@ -33,16 +31,28 @@ namespace JLEngine
 		}
 	}
 
-	Shader* ShaderProgram::GetShader(int type)
+	void ShaderProgram::GetShader(int type, Shader& shader)
 	{
-		for (int i = 0; i < (signed)m_shaderGroup.GetShaders().size(); i++)
+		for (auto s : m_shaders)
 		{
-			if (m_shaderGroup.GetShaders()[i]->GetType() == type)
+			if (s.GetType() == type)
 			{
-				return m_shaderGroup.GetShaders()[i];
+				shader = s;
+				break;
 			}
 		}
-		return nullptr;
+	}
+
+	void ShaderProgram::GetShader(string name, Shader& shader)
+	{
+		for (auto s : m_shaders)
+		{
+			if (s.GetName() == name)
+			{
+				shader = s;
+				break;
+			}
+		}
 	}
 
 	void ShaderProgram::UnloadFromGraphics()

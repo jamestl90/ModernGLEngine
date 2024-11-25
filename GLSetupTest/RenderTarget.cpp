@@ -4,20 +4,13 @@
 
 namespace JLEngine
 {
-	RenderTarget::RenderTarget(uint32 handle, string& name, string& path)
-		: GraphicsResource(handle, name, path), m_fbo(-1), m_dbo(-1), m_sources(nullptr), 
-		m_height(0), m_width(0), m_useDepth(false), m_numSources(0), m_useWindowSize(false), m_drawBuffers(nullptr)
-	{
-
-	}
-
-	RenderTarget::RenderTarget(uint32 width, uint32 height, bool useDepth, int numSources)
-		: GraphicsResource(uint32(0)), m_fbo(-1), m_dbo(-1), m_sources(nullptr),
-		m_height(height), m_width(width), m_useDepth(useDepth), m_numSources(numSources), m_useWindowSize(false), m_drawBuffers(nullptr)
+	RenderTarget::RenderTarget(uint32 handle, string& name, string& path, int numSources)
+		: Resource(handle, path + name), m_fbo(-1), m_dbo(-1), m_sources(nullptr), m_numSources(numSources),
+		m_height(0), m_width(0), m_useDepth(false), m_useWindowSize(false), m_drawBuffers(nullptr)
 	{
 		m_sources = new uint32[numSources];
 		m_drawBuffers = new uint32[numSources];
-		
+
 		for (uint32 i = 0; i < m_numSources; i++)
 		{
 			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;

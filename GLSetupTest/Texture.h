@@ -1,81 +1,64 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
-#include "GraphicsResource.h"
+#include "Resource.h"
 #include "Graphics.h"
 
 namespace JLEngine
 {
 	class Graphics;
 
-	class Texture : public GraphicsResource
-	{
-	public:
-		Texture(uint32 handle, string& name, string& path);
+    class Texture : public Resource
+    {
+    public:
+        // Constructor for file-based texture
+        Texture(uint32_t handle, const std::string& name, const std::string& filename);
 
-		Texture(uint32 handle, string& fileName);
+        // Constructor for raw-data texture
+        Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, void* data, int channels);
 
-		~Texture();	
+        ~Texture();
 
-		void Init(Graphics* graphics);
+        // Initialize texture with raw data
+        void InitFromData(const std::vector<unsigned char>& data, int width, int height, int channels, bool clamped, bool mipmaps);
+        void FreeData() { m_data.clear(); }
 
-		void UnloadFromGraphics();
+        // Upload texture data to GPU
+        void UploadToGPU(Graphics* graphics, bool freeData);
 
-		void SetClampToEdge(bool flag) { m_clampToEdge = flag; }
+        void SetGPUID(uint32 id) { m_id = id; }
+        void SetFormat(GLenum internalFormat, GLenum format, GLenum dataType);
+        void SetClamped(bool clamped) { m_clamped = clamped; }
+        void EnableMipmaps(bool enable) { m_mipmaps = enable; }
+        
+        uint32 GetFormat() const { return m_format; }
+        uint32 GetInternalFormat() const { return m_internalFormat; }
+        bool IsClamped() { return m_clamped; }
+        uint32_t GetGPUID() const { return m_id; }
+        int GetDataType() const { return m_dataType; }
+        int GetWidth() const { return m_width; }
+        int GetHeight() const { return m_height; }
+        int GetChannels() const { return m_channels; }
+        const std::vector<unsigned char>& GetData() const { return m_data; }
 
-		bool IsClamped() { return m_clampToEdge; }
+    private:
+        Graphics* m_graphics = nullptr;  // Pointer to Graphics system for texture operations
 
-		void SetTextureRepeat(float flag) { m_repeat = flag; }
+        std::string m_filename;          // For file-based textures
 
-		float GetRepeat() { return m_repeat; }
+        uint32_t m_width = 0, m_height = 0; // Texture dimensions
+        int m_channels = 0;              // Number of channels (e.g., 3 for RGB, 4 for RGBA)
+        std::vector<unsigned char> m_data;  // Texture raw data (replacing `void*` for safety)
 
-		void SetFormat(int format) { m_format = format; }
+        bool m_clamped = false;          // Clamping option
+        bool m_mipmaps = false;          // Mipmap option
 
-		int GetFormat() { return m_format; }
+        GLenum m_internalFormat;         // OpenGL internal format (e.g., GL_RGBA8)
+        GLenum m_format;                 // OpenGL format (e.g., GL_RGBA)
+        GLenum m_dataType;               // OpenGL data type (e.g., GL_UNSIGNED_BYTE)
 
-		void SetInternalFormat(int format) { m_internalFormat = format; }
-
-		int GetInternalFormat() { return m_internalFormat; }
-
-		void SetWidth(int width) { m_width = width; }
-
-		int GetWidth() { return m_width; }
-
-		void SetHeight(int height) { m_height = height; }
-
-		int GetHeight() { return m_height; }
-
-		uint32 GetTextureId() { return m_id; }
-
-		void SetTextureId(uint32 id) { m_id = id; }
-
-		void* GetData() { return m_data; }
-
-		void SetData(void* data) { m_data = data; }
-
-		void SetDataType(int dataType) { m_dataType = dataType; }
-
-		int GetDataType() { return m_dataType; }
-
-	private:
-
-		Graphics* m_graphics;
-
-		bool m_clampToEdge;
-		float m_repeat;
-
-		int m_width;
-		int m_height;
-
-		int m_format;
-		int m_internalFormat;
-
-		void* m_data;
-
-		int m_dataType;
-
-		uint32 m_id;
-	};
+        uint32_t m_id = 0;               // OpenGL texture ID
+    };
 }
 
 #endif

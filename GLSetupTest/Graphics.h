@@ -84,7 +84,7 @@ namespace JLEngine
 		 // Shader
 
 		 void PrintActiveUniforms(uint32 programId);
-		 bool ShaderCompileErrorCheck(uint32 id, const string& name, bool compileCheck);
+		 bool ShaderCompileErrorCheck(uint32 id, bool compileCheck);
 
 		 void CreateShader(ShaderProgram* program);
 		 void DisposeShader(ShaderProgram* program);
@@ -136,10 +136,10 @@ namespace JLEngine
 		bool CreateRenderTarget(RenderTarget* target);
 		void DisposeRenderTarget(RenderTarget* target);
 
-		void CreateTexture(Texture* texture, bool fromFile);
 		void DisposeTexture(Texture* texture);
 
-		void CreateTexture(uint32 count, uint32& id);
+		void CreateTexture(Texture* texture);
+		void CreateTextures(uint32 count, uint32& id);
 		void BindTexture(uint32 type, uint32 id);
 		void DisposeTexture(uint32 count, uint32* textures);
 
@@ -202,9 +202,6 @@ namespace JLEngine
 		void GeneratePrimitives();
 
 	private:
-
-		void BuildTextureFromData(Texture* texture);
-		void BuildTextureFromFile(Texture* texture);
 
 		void CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 indices[], uint32 indSize, uint32 ids[]);
 

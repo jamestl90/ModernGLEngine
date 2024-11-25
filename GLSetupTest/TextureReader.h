@@ -2,44 +2,24 @@
 #define TEXTURE_READER_H
 
 #include <string>
+#include <vector>
 
 #include "Types.h"
 
 namespace JLEngine
 {
-	class TextureReader
-	{
-	public:
-		TextureReader();
+    class TextureReader
+    {
+    public:
+        TextureReader();
+        ~TextureReader();
 
-		~TextureReader();
+        bool ReadTexture(const std::string& texture, std::vector<unsigned char>& outData,
+            int& outWidth, int& outHeight, int& outChannels);
 
-		bool ReadTexture(const std::string& texture);
+    private:
 
-		void Clear();
-
-		byte* GetData();
-
-		const int& GetFormat() { return m_format; }
-
-		const int& GetInternalFormat() { return m_internalFormat; }
-
-		const int& GetWidth() { return m_width; }
-
-		const int& GetHeight() { return m_height; }
-
-	private:
-
-		bool m_success;
-
-		int m_width;
-
-		int m_height;
-
-		int m_format;
-
-		int m_internalFormat;
-	};
+    };
 }
 
 #endif

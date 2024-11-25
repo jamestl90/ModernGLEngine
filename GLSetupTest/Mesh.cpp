@@ -4,7 +4,7 @@
 namespace JLEngine
 {
 	Mesh::Mesh( uint32 handle, string& name, string& path )
-		: GraphicsResource(handle, name, path), m_materialId(-1)
+		: Resource(handle, path + name), m_materialId(-1)
 	{
 	}
 

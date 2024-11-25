@@ -2,15 +2,15 @@
 #define MESH_H
 
 #include "Types.h"
-#include "GraphicsResource.h"
 #include "Primitives.h"
 #include "VertexBuffers.h"
+#include "Resource.h"
 
 namespace JLEngine
 {
 	class Graphics;
 
-	class Mesh : public GraphicsResource
+	class Mesh : public Resource
 	{
 	public:
 		Mesh(uint32 handle, string& name, string& path);
