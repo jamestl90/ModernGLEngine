@@ -2,25 +2,16 @@
 
 namespace JLEngine
 {
-	ViewFrustum::ViewFrustum(Window* window, float fov, float near, float far)
-		: m_window(window)
+	ViewFrustum::ViewFrustum(float fov, float aspect, float near, float far)
 	{
 		m_fov = fov;
 		m_near = near;
 		m_far = far;
-		m_aspect = GetAspect();
+		m_aspect = aspect;
 	}
 
 	ViewFrustum::~ViewFrustum()
 	{
-	}
-
-	float ViewFrustum::GetAspect()
-	{
-		int width = m_window->getWidth();
-		int height = m_window->getHeight();
-
-		return static_cast<float>(width) / static_cast<float>(height);
 	}
 
 	void ViewFrustum::UpdatePerspective(const glm::mat4& transform, float fov, float near, float far, float aspect /*= -1.0f*/ )
@@ -29,7 +20,7 @@ namespace JLEngine
 		m_near = near;
 		m_far = far;
 
-		aspect == -1.0f ? m_aspect = GetAspect() : m_aspect = aspect; // use aspect based on window width/height if set to -1.0f
+		m_aspect = aspect; // use aspect based on window width/height if set to -1.0f
 
 		UpdatePerspective(transform);
 	}

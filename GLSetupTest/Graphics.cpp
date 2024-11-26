@@ -14,7 +14,7 @@ namespace JLEngine
 		float nearDist = 0.1f;
 		float farDist = 10000000.0f;
 
-		m_viewFrustum = new ViewFrustum(m_window, fov, nearDist, farDist);
+		m_viewFrustum = new ViewFrustum(fov, window->GetWidth() / window->GetHeight(), nearDist, farDist);
 
 		m_clearColour = glm::vec4(1.0f);
 
@@ -60,9 +60,10 @@ namespace JLEngine
 
 	void Graphics::Initialise()
 	{
-		glViewport(0, 0, m_window->getWidth(), m_window->getHeight());
+		glViewport(0, 0, m_window->GetWidth(), m_window->GetHeight());
 		glClearColor(m_clearColour.x, m_clearColour.y, m_clearColour.z, m_clearColour.w); 
 		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
 
 		std::string defaultShaderV = 
 			"#version 400\n" 
@@ -601,7 +602,7 @@ namespace JLEngine
 
 	void Graphics::SwapBuffers()
 	{
-		m_window->swapBuffers();
+		m_window->SwapBuffers();
 	}
 
 	void Graphics::RenderMesh(Mesh* mesh)
@@ -801,14 +802,16 @@ namespace JLEngine
 
 	void Graphics::GeneratePrimitives()
 	{
-		float coneVerts[13 * 3] = {  // x, y, z
+		float coneVerts[13 * 3] = 
+		{  
 			0.f, 0.f, 0.f,
 			0.f, 1.f, -1.f,   -0.5f, 0.866f, -1.f,   -0.866f, 0.5f, -1.f,
 			-1.f, 0.f, -1.f,   -0.866f, -0.5f, -1.f,   -0.5f, -0.866f, -1.f,
 			0.f, -1.f, -1.f,   0.5f, -0.866f, -1.f,   0.866f, -0.5f, -1.f,
 			1.f, 0.f, -1.f,   0.866f, 0.5f, -1.f,   0.5f, 0.866f, -1.f,
 		};
-		uint32 coneInds[22 * 3] = {
+		uint32 coneInds[22 * 3] = 
+		{
 			0, 1, 2,   0, 2, 3,   0, 3, 4,   0, 4, 5,   0, 5, 6,   0, 6, 7,
 			0, 7, 8,   0, 8, 9,   0, 9, 10,   0, 10, 11,   0, 11, 12,   0, 12, 1,
 			10, 6, 2,   10, 8, 6,   10, 9, 8,   8, 7, 6,   6, 4, 2,   6, 5, 4,   4, 3, 2,
@@ -817,12 +820,12 @@ namespace JLEngine
 	
 		float octahedronVerts[18] = 
 		{
-			0.2843f, 10.1878f, -0.3454f,
-			0.2843f, -0.0000f, -10.5332f,
-			-9.9035f, -0.0000f, -0.3454f,
-			0.2843f, -0.0000f, 9.8424f,
-			10.4721f, -0.0000f, -0.3454f,
-			0.2843f, -10.1878f, -0.3454f
+			 0.0f,  1.0f,  0.0f,  
+			 1.0f,  0.0f,  0.0f,  
+			 0.0f,  0.0f,  1.0f,  
+			 0.0f,  0.0f, -1.0f,  
+			-1.0f,  0.0f,  0.0f,  
+			 0.0f, -1.0f,  0.0f   
 		};
 
 		uint32 octahedronInds[24] = 
@@ -925,6 +928,17 @@ namespace JLEngine
 		glCullFace(face);
 	}
 
+	void Graphics::DumpInfo()
+	{
+		std::cout << "****************************************************" << std::endl;
+		std::cout << m_shaderInfo << std::endl;
+		std::cout << m_versionInfo << std::endl;
+		std::cout << m_vendorInfo << std::endl;
+		std::cout << m_rendererInfo << std::endl;
+		std::cout << "MSAA Buffers: " << m_MSAABuffers << std::endl;
+		std::cout << "MSAA Samples: " << m_MSAASamples << std::endl;
+		std::cout << "****************************************************" << std::endl;
+	}
 }
 
 //void Graphics::loadMeshAdv(Mesh* mesh)

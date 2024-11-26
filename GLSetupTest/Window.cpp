@@ -34,7 +34,9 @@ namespace JLEngine
         glfwWindowHint(GLFW_SAMPLES, 4); // msaa samples
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+        glfwWindowHint(GLFW_DEPTH_BITS, 24);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
         // Create a GLFW windowed mode window and its OpenGL context
         m_window = glfwCreateWindow(m_width, m_height, name, nullptr, nullptr);
@@ -66,27 +68,27 @@ namespace JLEngine
         return true;
     }
 
-    int Window::getWidth() const
+    int Window::GetWidth() const
     {
         return m_width;
     }
 
-    int Window::getHeight() const
+    int Window::GetHeight() const
     {
         return m_height;
     }
 
-    bool Window::shouldClose() const
+    bool Window::ShouldClose() const
     {
         return glfwWindowShouldClose(m_window);
     }
 
-    void Window::swapBuffers()
+    void Window::SwapBuffers()
     {
         glfwSwapBuffers(m_window);
     }
 
-    void Window::pollEvents()
+    void Window::PollEvents()
     {
         glfwPollEvents();
     }

@@ -201,6 +201,8 @@ namespace JLEngine
 
 		void GeneratePrimitives();
 
+		void DumpInfo();
+
 	private:
 
 		void CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 indices[], uint32 indSize, uint32 ids[]);

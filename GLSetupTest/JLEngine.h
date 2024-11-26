@@ -7,6 +7,7 @@
 #include "Graphics.h"
 #include "TextureManager.h"
 #include "ShaderManager.h"
+#include "Input.h"
 
 namespace JLEngine
 {
@@ -15,12 +16,13 @@ namespace JLEngine
     public:
         JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate);
         void run(std::function<void(double deltaTime)> logicUpdate,
-            std::function<void()> render,
+            std::function<void(Graphics& graphics)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
-        Graphics* GetGraphics() const;
-        ShaderManager* GetShaderManager() const;
+        Graphics*       GetGraphics()       const;
+        ShaderManager*  GetShaderManager()  const;
         TextureManager* GetTextureManager() const;
+        Input*          GetInput()          const;
 
     private:
         void setFixedUpdateRate(int fps);
@@ -29,6 +31,7 @@ namespace JLEngine
 
         void logPerformanceMetrics();
 
+        std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
         std::unique_ptr<Graphics> m_graphics;
         std::unique_ptr<TextureManager> m_textureManager;

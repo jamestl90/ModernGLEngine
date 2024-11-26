@@ -15,11 +15,13 @@ namespace JLEngine
         ~Window();
 
         bool init(const char* name);
-        int getWidth() const;
-        int getHeight() const;
-        bool shouldClose() const;
-        void swapBuffers();
-        void pollEvents();
+        int GetWidth() const;
+        int GetHeight() const;
+        bool ShouldClose() const;
+        void SwapBuffers();
+        void PollEvents();
+
+        GLFWwindow* GetGLFWwindow() { return m_window; }
 
     private:
         GLFWwindow* m_window;

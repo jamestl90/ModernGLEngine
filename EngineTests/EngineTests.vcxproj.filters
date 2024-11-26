@@ -21,10 +21,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TextureReader_Test.cpp">
+    <ClCompile Include="ShaderManager_Test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ShaderManager_Test.cpp">
+    <ClCompile Include="TextureManager_Test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

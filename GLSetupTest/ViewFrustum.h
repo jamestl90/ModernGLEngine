@@ -19,10 +19,10 @@ namespace JLEngine
 	class ViewFrustum
 	{
 	public:
-		 ViewFrustum(Window* window, float fov, float near, float far);
+		 ViewFrustum(float fov, float aspect, float near, float far);
 		 ~ViewFrustum();
 
-		 void UpdatePerspective(const glm::mat4& transform, float fov, float near, float far, float aspect = -1.0f);
+		 void UpdatePerspective(const glm::mat4& transform, float fov, float near, float far, float aspect);
 		 void UpdatePerspective(const glm::mat4& transform);
 
 		 bool Contains(AABB box);
@@ -36,9 +36,7 @@ namespace JLEngine
 		 void SetFov(float fov) { m_fov = fov; }
 		 float GetFov() { return m_fov; }
 
-		 float GetAspect();
-
-		 void Update();
+		 float SetAspect(float aspect) { m_aspect = aspect; };
 
 	private:
 

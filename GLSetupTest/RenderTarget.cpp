@@ -31,8 +31,8 @@ namespace JLEngine
 
 		if (m_useWindowSize)
 		{
-			m_width = m_graphics->GetWindow()->getWidth();
-			m_height = m_graphics->GetWindow()->getHeight();
+			m_width = m_graphics->GetWindow()->GetWidth();
+			m_height = m_graphics->GetWindow()->GetHeight();
 		}
 
 		m_graphics->CreateRenderTarget(this);
