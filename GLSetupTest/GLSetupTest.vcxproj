@@ -107,7 +107,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)stb\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)stb\;$(ProjectDir)tiny_gltf\</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -139,6 +139,7 @@
     <ClCompile Include="JLEngine.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="Primitives.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
@@ -165,6 +166,7 @@
     <ClInclude Include="Input.h" />
     <ClInclude Include="JLEngine.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Primitives.h" />
     <ClInclude Include="Renderer.h" />

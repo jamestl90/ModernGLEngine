@@ -27,10 +27,10 @@ namespace JLEngine
 
 		 bool Contains(AABB box);
 
-		 void SetNear(float near) { m_near = near; }
+		 void SetNear(float nearPlane) { m_near = nearPlane; }
 		 float GetNear() { return m_near; }
 
-		 void SetFar(float far) { m_far = far; }
+		 void SetFar(float farPlane) { m_far = farPlane; }
 		 float GetFar() { return m_far; }
 
 		 void SetFov(float fov) { m_fov = fov; }

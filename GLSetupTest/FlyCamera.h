@@ -19,34 +19,21 @@ namespace JLEngine
             updateCameraVectors();
         }
 
-        glm::mat4 GetViewMatrix() 
+        glm::mat4 GetViewMatrix() const
         {
             return glm::lookAt(Position, Position + Front, Up);
         }
-
-        void HandleKeyPress(int key, float deltaTime)
-        {
-            float velocity = MovementSpeed * deltaTime;
-            if (key == GLFW_KEY_W)
-                Position += Front * velocity;
-            if (key == GLFW_KEY_S)
-                Position -= Front * velocity;
-            if (key == GLFW_KEY_A)
-                Position -= Right * velocity;
-            if (key == GLFW_KEY_D)
-                Position += Right * velocity;
-        }
-
+        
         void ProcessKeyboard(GLFWwindow* window, float deltaTime) 
         {
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-                HandleKeyPress(GLFW_KEY_W, (float)deltaTime);
+                handleKeyPress(GLFW_KEY_W, (float)deltaTime);
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-                HandleKeyPress(GLFW_KEY_S, (float)deltaTime);
+                handleKeyPress(GLFW_KEY_S, (float)deltaTime);
             if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-                HandleKeyPress(GLFW_KEY_A, (float)deltaTime);
+                handleKeyPress(GLFW_KEY_A, (float)deltaTime);
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-                HandleKeyPress(GLFW_KEY_D, (float)deltaTime);
+                handleKeyPress(GLFW_KEY_D, (float)deltaTime);
         }
 
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true) 
@@ -67,6 +54,8 @@ namespace JLEngine
             updateCameraVectors();
         }
 
+        const glm::vec3 GetPosition() { return Position; }
+
     private:
         void updateCameraVectors() 
         {
@@ -78,6 +67,20 @@ namespace JLEngine
             Right = glm::normalize(glm::cross(Front, WorldUp));
             Up = glm::normalize(glm::cross(Right, Front));
         }
+
+        void handleKeyPress(int key, float deltaTime)
+        {
+            float velocity = MovementSpeed * deltaTime;
+            if (key == GLFW_KEY_W)
+                Position += Front * velocity;
+            if (key == GLFW_KEY_S)
+                Position -= Front * velocity;
+            if (key == GLFW_KEY_A)
+                Position -= Right * velocity;
+            if (key == GLFW_KEY_D)
+                Position += Right * velocity;
+        }
+
 
         Window* m_window;
         Input* m_input;

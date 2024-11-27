@@ -14,7 +14,7 @@ namespace JLEngine
 		float nearDist = 0.1f;
 		float farDist = 10000000.0f;
 
-		m_viewFrustum = new ViewFrustum(fov, window->GetWidth() / window->GetHeight(), nearDist, farDist);
+		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 
 		m_clearColour = glm::vec4(1.0f);
 
@@ -340,46 +340,40 @@ namespace JLEngine
 		glUniform4f(id, x, y, z, w);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, glm::vec2& vec)
+	void Graphics::SetUniform(uint32 programId, string name, const glm::vec2& vec)
 	{
 		GLuint id = glGetUniformLocation(programId, name.c_str());
 		glUniform2fv(id, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, glm::vec3& vec)
+	void Graphics::SetUniform(uint32 programId, string name, const glm::vec3& vec)
 	{
 		GLuint id = glGetUniformLocation(programId, name.c_str());
 		glUniform3fv(id, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, glm::vec4& vec)
+	void Graphics::SetUniform(uint32 programId, string name, const glm::vec4& vec)
 	{
 		GLuint id = glGetUniformLocation(programId, name.c_str());
 		glUniform4fv(id, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, glm::mat2& mat)
+	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat2& mat)
 	{
 		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix2fv(id, count, transpose, &mat[0][0]);
+		glUniformMatrix2fv(id, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, glm::mat3& mat)
+	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat3& mat)
 	{
 		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix3fv(id, count, transpose, &mat[0][0]);
+		glUniformMatrix3fv(id, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, glm::mat4& mat)
+	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat4& mat)
 	{
 		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix4fv(id, count, transpose, &mat[0][0]);
-	}
-
-	void Graphics::SetUniform( uint32 programId, string name, int count, bool transpose, const glm::mat4& mat )
-	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix4fv(id, count, transpose, &mat[0][0]);
+		glUniformMatrix4fv(id, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
 	uint32 Graphics::CreateVertexArray()
@@ -609,12 +603,12 @@ namespace JLEngine
 	{
 		if (mesh == nullptr) return;
 
-		if (m_drawAABB)
-		{
-			AABB meshAABB = mesh->GetAABB();
-
-			DrawAABB(meshAABB);
-		}
+		//if (m_drawAABB)
+		//{
+		//	AABB meshAABB = mesh->GetAABB();
+		//
+		//	DrawAABB(meshAABB);
+		//}
 
 		GLuint vaoId = mesh->GetVaoId();
 
@@ -622,7 +616,10 @@ namespace JLEngine
 
 		if (mesh->HasIndices())
 		{
-			glDrawElements(GL_TRIANGLES, (GLsizei)mesh->GetIndexBuffer().Size(), GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+			auto ibo = mesh->GetIndexBuffer();
+			GLsizei size = (GLsizei)ibo.Size();
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
+			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
 		}
 		else
 		{
@@ -928,7 +925,7 @@ namespace JLEngine
 		glCullFace(face);
 	}
 
-	void Graphics::DumpInfo()
+	void Graphics::DumpInfo() const
 	{
 		std::cout << "****************************************************" << std::endl;
 		std::cout << m_shaderInfo << std::endl;

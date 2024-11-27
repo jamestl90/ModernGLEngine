@@ -99,13 +99,12 @@ namespace JLEngine
 		 void SetUniform(uint32 programId, string name, float x, float y, float z);
 		 void SetUniform(uint32 programId, string name, float x, float y, float z, float w);
 
-		 void SetUniform(uint32 programId, string name, glm::vec2& vec);
-		 void SetUniform(uint32 programId, string name, glm::vec3& vec);
-		 void SetUniform(uint32 programId, string name, glm::vec4& vec);
+		 void SetUniform(uint32 programId, string name, const glm::vec2& vec);
+		 void SetUniform(uint32 programId, string name, const glm::vec3& vec);
+		 void SetUniform(uint32 programId, string name, const glm::vec4& vec);
 
-		 void SetUniform(uint32 programId, string name, int count, bool transpose, glm::mat2& mat);
-		 void SetUniform(uint32 programId, string name, int count, bool transpose, glm::mat3& mat);
-		 void SetUniform(uint32 programId, string name, int count, bool transpose, glm::mat4& mat);
+		 void SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat2& mat);
+		 void SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat3& mat);
 		 void SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat4& mat);
 
 		 void BindShader(uint32 programId);
@@ -201,7 +200,7 @@ namespace JLEngine
 
 		void GeneratePrimitives();
 
-		void DumpInfo();
+		void DumpInfo() const;
 
 	private:
 

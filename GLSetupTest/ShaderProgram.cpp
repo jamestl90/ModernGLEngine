@@ -55,6 +55,55 @@ namespace JLEngine
 		}
 	}
 
+	void ShaderProgram::CacheUniformLocation(const std::string& name)
+	{
+		GLint location = glGetUniformLocation(m_programId, name.c_str());
+		if (location == -1) {
+			std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
+		}
+		m_uniformLocations[name] = location;
+	}
+
+	int ShaderProgram::GetUniformLocation(const std::string& name) const
+	{
+		// Retrieve the cached location
+		auto it = m_uniformLocations.find(name);
+		if (it != m_uniformLocations.end()) {
+			return it->second;
+		}
+		else {
+			std::cerr << "Error: Uniform '" << name << "' not cached!" << std::endl;
+			return -1;
+		}
+	}
+
+	void ShaderProgram::SetUniform(const std::string& name, const glm::mat4& matrix) const
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetUniform(m_programId, name, 1, false, matrix);
+		}
+	}
+
+	void ShaderProgram::SetUniform(const std::string& name, const glm::vec3& vector) const
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetUniform(m_programId, name, vector);
+		}
+	}
+
+	void ShaderProgram::SetUniform(const std::string& name, uint32 value) const
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetUniform(m_programId, name, value);
+		}
+	}
+
 	void ShaderProgram::UnloadFromGraphics()
 	{
 		m_graphics->DisposeShader(this);

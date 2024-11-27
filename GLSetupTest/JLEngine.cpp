@@ -60,7 +60,7 @@ namespace JLEngine
         std::function<void(double fixedDeltaTime)> fixedUpdate)
     {
         const double targetRenderTime = 1.0 / m_maxFrameRate; 
-        auto lastRenderTime = glfwGetTime();
+        double lastRenderTime = 0;
 
         // The main game loop
         while (!m_window->ShouldClose()) 
@@ -99,18 +99,22 @@ namespace JLEngine
             logPerformanceMetrics();
         }
     }
+
     Graphics* JLEngineCore::GetGraphics() const
     {
         return m_graphics.get();
     }
+
     ShaderManager* JLEngineCore::GetShaderManager() const
     {
         return m_shaderManager.get();
     }
+
     TextureManager* JLEngineCore::GetTextureManager() const
     {
         return m_textureManager.get();
     }
+
     Input* JLEngineCore::GetInput() const
     {
         return m_input.get();
