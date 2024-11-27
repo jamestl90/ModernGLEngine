@@ -179,7 +179,7 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::CreateShader(ShaderProgram* program)
+	void Graphics::CreateShaderFromFile(ShaderProgram* program)
 	{
 		auto shaders = program->GetShaders();
 		for (uint32 i = 0; i < shaders.size(); i++)
@@ -225,6 +225,57 @@ namespace JLEngine
 				glDeleteShader(shaders.at(i).GetShaderId());
 			}
 		}		
+	}
+
+
+	void Graphics::CreateShaderFromText(ShaderProgram* program, std::vector<std::string> shaderTexts)
+	{
+		auto shaders = program->GetShaders();
+
+		if (shaderTexts.size() < shaders.size())
+		{
+			std::cout << "Not enough shader text provided" << std::endl;
+			return;
+		}
+
+		for (uint32 i = 0; i < shaders.size(); i++)
+		{
+			Shader& s = shaders.at(i);
+
+			GLuint shaderId = glCreateShader(s.GetType());
+			s.SetShaderId(shaderId);
+
+			auto shaderFile = shaderTexts[i];
+
+			const char* cStr = shaderFile.c_str();
+			glShaderSource(shaderId, 1, &cStr, NULL);
+			glCompileShader(shaderId);
+
+			ShaderCompileErrorCheck(shaderId, false);
+		}
+
+		GLuint programID = glCreateProgram();
+		program->SetProgramId(programID);
+
+		for (uint32 i = 0; i < shaders.size(); i++)
+		{
+			glAttachShader(programID, shaders.at(i).GetShaderId());
+		}
+
+		glLinkProgram(programID);
+
+		if (!ShaderCompileErrorCheck(programID, true))
+		{
+			DisposeShader(program);
+		}
+		else
+		{
+			// another loop to delete :( not sure if i can delete the shader before linking, probably not
+			for (uint32 i = 0; i < shaders.size(); i++)
+			{
+				glDeleteShader(shaders.at(i).GetShaderId());
+			}
+		}
 	}
 
 	//void Graphics::CreateShader(ShaderProgram* program)
@@ -292,88 +343,74 @@ namespace JLEngine
 		glDeleteProgram(program->GetProgramId());
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, uint32 x)
+	void Graphics::SetUniform(uint32 location, uint32 x)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform1i(id, x);
+		glUniform1i(location, x);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, uint32 x, uint32 y)
+	void Graphics::SetUniform(uint32 location, uint32 x, uint32 y)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform2i(id, x, y);
+		glUniform2i(location, x, y);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, uint32 x, uint32 y, uint32 z)
+	void Graphics::SetUniform(uint32 location, uint32 x, uint32 y, uint32 z)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform3i(id, x, y, z);
+		glUniform3i(location, x, y, z);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, uint32 x, uint32 y, uint32 z, uint32 w)
+	void Graphics::SetUniform(uint32 location, uint32 x, uint32 y, uint32 z, uint32 w)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform4i(id, x, y, z, w);
+		glUniform4i(location, x, y, z, w);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, float x)
+	void Graphics::SetUniform(uint32 location, float x)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform1f(id, x);
+		glUniform1f(location, x);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, float x, float y)
+	void Graphics::SetUniform(uint32 location, float x, float y)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform2f(id, x, y);
+		glUniform2f(location, x, y);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, float x, float y, float z)
+	void Graphics::SetUniform(uint32 location, float x, float y, float z)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform3f(id, x, y, z);
+		glUniform3f(location, x, y, z);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, float x, float y, float z, float w)
+	void Graphics::SetUniform(uint32 location, float x, float y, float z, float w)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform4f(id, x, y, z, w);
+		glUniform4f(location, x, y, z, w);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, const glm::vec2& vec)
+	void Graphics::SetUniform(uint32 location, const glm::vec2& vec)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform2fv(id, 1, &vec[0]);
+		glUniform2fv(location, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, const glm::vec3& vec)
+	void Graphics::SetUniform(uint32 location, const glm::vec3& vec)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform3fv(id, 1, &vec[0]);
+		glUniform3fv(location, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, const glm::vec4& vec)
+	void Graphics::SetUniform(uint32 location, const glm::vec4& vec)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniform4fv(id, 1, &vec[0]);
+		glUniform4fv(location, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat2& mat)
+	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat2& mat)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix2fv(id, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+		glUniformMatrix2fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat3& mat)
+	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat3& mat)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix3fv(id, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+		glUniformMatrix3fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
-	void Graphics::SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat4& mat)
+	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat4& mat)
 	{
-		GLuint id = glGetUniformLocation(programId, name.c_str());
-		glUniformMatrix4fv(id, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+		glUniformMatrix4fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
 	uint32 Graphics::CreateVertexArray()
@@ -613,6 +650,7 @@ namespace JLEngine
 		GLuint vaoId = mesh->GetVaoId();
 
 		glBindVertexArray(vaoId);
+		glBindTexture(GL_TEXTURE_2D, 0);
 
 		if (mesh->HasIndices())
 		{
@@ -627,6 +665,43 @@ namespace JLEngine
 		}
 
 		glBindVertexArray(0);
+	}
+
+	void Graphics::RenderMeshWithTexture(Mesh* mesh, Texture* texture)
+	{
+		if (mesh == nullptr) return;
+		if (texture == nullptr) return;
+
+		GLuint vaoId = mesh->GetVaoId();
+
+		glBindVertexArray(vaoId);
+
+		auto texId = texture->GetGPUID();
+
+		if (!glIsTexture(texId)) 
+		{
+			std::cerr << "Error: Invalid texture ID." << std::endl;
+			glBindVertexArray(0);
+			return;
+		}
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texId);
+
+		if (mesh->HasIndices())
+		{
+			auto ibo = mesh->GetIndexBuffer();
+			GLsizei size = (GLsizei)ibo.Size();
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
+			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+		}
+		else
+		{
+			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)mesh->GetVertexBuffer().Size() / mesh->GetVertexBuffer().GetStride());
+		}
+
+		glBindVertexArray(0);
+		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	// immediate mode :(
@@ -890,12 +965,14 @@ namespace JLEngine
 	void Graphics::RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId )
 	{
 		if (shaderId == -1)
-		{
-			SetUniform(m_defaultShader, "u_MVP", 1, false, mvp);
+		{	
+			auto loc = glGetUniformLocation(m_defaultShader, "u_MVP");
+			SetUniform(loc, 1, false, mvp);
 		}
 		else
 		{
-			SetUniform(shaderId, "u_MVP", 1, false, mvp);
+			auto loc = glGetUniformLocation(shaderId, "u_MVP");
+			SetUniform(loc, 1, false, mvp);
 		}
 
 		switch (type)

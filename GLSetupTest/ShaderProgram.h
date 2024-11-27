@@ -20,6 +20,7 @@ namespace JLEngine
 	{
 	public:
 
+		ShaderProgram(uint32 handle, string name);
 		ShaderProgram(uint32 handle, string name, string path);
 		~ShaderProgram();
 
@@ -29,6 +30,7 @@ namespace JLEngine
 		uint32 GetProgramId() { return m_programId; }
 
 		void AddShader(Shader& shader) { m_shaders.push_back(shader); }
+		void AddShader(Shader& shader, string source);
 		void GetShader(int type, Shader& shader);
 		void GetShader(string name, Shader& shader);
 		const std::vector<Shader> GetShaders() { return m_shaders; }
@@ -49,6 +51,7 @@ namespace JLEngine
 
 	private:
 
+		std::vector<std::string> m_shaderTexts;
 		uint32 m_programId;
 		std::string m_filename;
 		std::vector<Shader> m_shaders;

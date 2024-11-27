@@ -9,7 +9,9 @@
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
 JLEngine::Mesh* mesh;
+JLEngine::Texture* texture;
 std::shared_ptr<JLEngine::ShaderProgram> meshShader;
+std::shared_ptr<JLEngine::ShaderProgram> basicLit;
 GLFWwindow* window;
 
 void gameRender(JLEngine::Graphics& graphics)
@@ -31,17 +33,16 @@ void gameRender(JLEngine::Graphics& graphics)
     graphics.RenderPrimitive(mvpB, JLEngine::PrimitiveType::Octahedron, shaderId);
     graphics.EndPrimitiveDraw();
 
-    auto shader = meshShader.get();
+    auto shader = basicLit.get();
     graphics.BindShader(shader->GetProgramId());
     shader->SetUniform("uModel", glm::translate(glm::vec3(-10.0f, 0.0f, 0.0f)));
     shader->SetUniform("uView", view);
     shader->SetUniform("uProjection", projection);
     shader->SetUniform("uLightPos", glm::vec3(5.0f, 15.0f, 5.0f));
     shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f));
-    shader->SetUniform("uViewPos", flyCamera->GetPosition());
     shader->SetUniform("uTexture", 0); // Texture unit
 
-    graphics.RenderMesh(mesh);
+    graphics.RenderMeshWithTexture(mesh, texture);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -84,20 +85,23 @@ int main()
     input = engine.GetInput();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
 
-    meshShader = shaderMgr->LoadShaderProgram("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
-    meshShader.get()->CacheUniformLocation("uModel");
-    meshShader.get()->CacheUniformLocation("uView");
-    meshShader.get()->CacheUniformLocation("uProjection");
-    meshShader.get()->CacheUniformLocation("uLightPos");
-    meshShader.get()->CacheUniformLocation("uLightColor");
-    meshShader.get()->CacheUniformLocation("uViewPos");
-    meshShader.get()->CacheUniformLocation("uTexture");
-
-    mesh = JLEngine::LoadModel(std::string("../Assets/cube.glb"), graphics);
-
     input->SetKeyboardCallback(KeyboardCallback);
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
+
+    texture = textureMgr->LoadTextureFromFile("DefaulTexture", "../Assets/floor_default_grid.png").get();
+
+    //meshShader = shaderMgr->LoadShaderFromFile("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
+    //meshShader.get()->CacheUniformLocation("uModel");
+    //meshShader.get()->CacheUniformLocation("uView");
+    //meshShader.get()->CacheUniformLocation("uProjection");
+    //meshShader.get()->CacheUniformLocation("uLightPos");
+    //meshShader.get()->CacheUniformLocation("uLightColor");
+    //meshShader.get()->CacheUniformLocation("uTexture");
+
+    basicLit = shaderMgr->BasicLitShader();
+
+    mesh = JLEngine::LoadModel(std::string("../Assets/cube.glb"), graphics);
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 

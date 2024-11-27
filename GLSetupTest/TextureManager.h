@@ -9,7 +9,6 @@
 namespace JLEngine
 {
 	class Texture;
-	class RenderSystem;
 
     class TextureManager : public ResourceManager<Texture>
     {

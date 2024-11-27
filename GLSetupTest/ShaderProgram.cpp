@@ -4,7 +4,12 @@
 
 namespace JLEngine
 {
-	ShaderProgram::ShaderProgram(uint32 handle, string name, string path) 
+	ShaderProgram::ShaderProgram(uint32 handle, string name)
+		: Resource(handle, name), m_graphics(nullptr), m_programId(-1)
+	{
+	}
+
+	ShaderProgram::ShaderProgram(uint32 handle, string name, string path)
 		: Resource(handle, name), m_graphics(nullptr), m_filename(path), m_programId(-1)
 	{
 	}
@@ -20,7 +25,16 @@ namespace JLEngine
 
 		try
 		{
-			m_graphics->CreateShader(this);
+			if (m_shaderTexts.size() == 0)
+			{
+				m_graphics->CreateShaderFromFile(this);
+			}
+			else
+			{				
+				m_graphics->CreateShaderFromText(this, m_shaderTexts);
+				m_shaderTexts.clear();
+			}
+
 		}
 		catch (const std::exception& ex)
 		{
@@ -29,6 +43,12 @@ namespace JLEngine
 				std::cout << ex.what() << std::endl;
 			}
 		}
+	}
+
+	void ShaderProgram::AddShader(Shader& shader, string source) 
+	{ 
+		m_shaderTexts.push_back(source);
+		m_shaders.push_back(shader); 
 	}
 
 	void ShaderProgram::GetShader(int type, Shader& shader)
@@ -58,7 +78,8 @@ namespace JLEngine
 	void ShaderProgram::CacheUniformLocation(const std::string& name)
 	{
 		GLint location = glGetUniformLocation(m_programId, name.c_str());
-		if (location == -1) {
+		if (location == -1) 
+		{
 			std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
 		}
 		m_uniformLocations[name] = location;
@@ -82,7 +103,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(m_programId, name, 1, false, matrix);
+			m_graphics->SetUniform(location, 1, false, matrix);
 		}
 	}
 
@@ -91,7 +112,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(m_programId, name, vector);
+			m_graphics->SetUniform(location, vector);
 		}
 	}
 
@@ -100,7 +121,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(m_programId, name, value);
+			m_graphics->SetUniform(location, value);
 		}
 	}
 

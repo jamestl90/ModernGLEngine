@@ -1,12 +1,11 @@
 #include "TextureManager.h"
 #include "Texture.h"
-#include "Platform.h"
 
 namespace JLEngine
 {
     // Load texture from file
 
-    inline std::shared_ptr<Texture> TextureManager::LoadTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
+    std::shared_ptr<Texture> TextureManager::LoadTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
     {
         return Add(name, [&]()
             {
@@ -30,7 +29,7 @@ namespace JLEngine
 
     // Load texture from raw data
 
-    inline std::shared_ptr<Texture> TextureManager::LoadTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data, GLenum internalFormat, GLenum format, GLenum dataType, bool clamped, bool mipmaps)
+    std::shared_ptr<Texture> TextureManager::LoadTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data, GLenum internalFormat, GLenum format, GLenum dataType, bool clamped, bool mipmaps)
     {
         return Add(name, [&]()
             {

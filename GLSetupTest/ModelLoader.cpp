@@ -144,15 +144,6 @@ namespace JLEngine
 
 			size_t count = positionAccessor.count * 3; // Assuming vec3 positions
 			vertexData.insert(vertexData.end(), positions, positions + count);
-
-			std::cout << "Loaded positions:" << std::endl;
-			for (size_t i = 0; i < std::min(count / 3, size_t(5)); ++i) 
-			{
-				std::cout << "[" << i << "]: "
-					<< positions[i * 3] << ", "
-					<< positions[i * 3 + 1] << ", "
-					<< positions[i * 3 + 2] << std::endl;
-			}
 		}
 		else 
 		{
@@ -193,16 +184,6 @@ namespace JLEngine
 
 			size_t count = normalAccessor.count * 3; // Assuming vec3 normals
 			vertexData.insert(vertexData.end(), normals, normals + count);
-
-			// Debug: Print the first few normals
-			std::cout << "Loaded normals:" << std::endl;
-			for (size_t i = 0; i < std::min(normalAccessor.count, size_t(5)); ++i) 
-			{
-				std::cout << "[" << i << "]: "
-					<< normals[i * 3] << ", "
-					<< normals[i * 3 + 1] << ", "
-					<< normals[i * 3 + 2] << std::endl;
-			}
 		}
 		else 
 		{
@@ -241,15 +222,6 @@ namespace JLEngine
 
 			size_t count = texCoordAccessor.count * 2; // Assuming vec2 texture coordinates
 			vertexData.insert(vertexData.end(), texCoords, texCoords + count);
-
-			// Debug: Print the first few texture coordinates
-			std::cout << "Loaded texture coordinates:" << std::endl;
-			for (size_t i = 0; i < std::min(texCoordAccessor.count, size_t(5)); ++i) 
-			{
-				std::cout << "[" << i << "]: "
-					<< texCoords[i * 2] << ", "
-					<< texCoords[i * 2 + 1] << std::endl;
-			}
 		}
 		else 
 		{

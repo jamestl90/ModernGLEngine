@@ -14,24 +14,20 @@ namespace JLEngine
 	class ShaderManager : public ResourceManager<ShaderProgram>
 	{
 	public:
-        ShaderManager(Graphics* graphics) : m_graphics(graphics) {}
+        ShaderManager(Graphics* graphics);
 
-        std::shared_ptr<ShaderProgram> LoadShaderProgram(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
-        {
-            return Add(name, [&]()
-                {
-                    auto program = std::make_shared<ShaderProgram>(GenerateHandle(), name, folderPath);
-                    
-                    Shader vertProgram(GL_VERTEX_SHADER, vert);
-                    Shader fragProgram(GL_FRAGMENT_SHADER, frag);
-                    program->AddShader(vertProgram);
-                    program->AddShader(fragProgram);
-                    program->UploadToGPU(m_graphics);
+        std::shared_ptr<ShaderProgram> LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
+        std::shared_ptr<ShaderProgram> LoadShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
 
-                    return program;
-                });
-        }    
+        std::shared_ptr<ShaderProgram> BasicUnlitShader();
+        std::shared_ptr<ShaderProgram> BasicLitShader();
+        std::shared_ptr<ShaderProgram> SolidColorShader();
     private:
+
+        std::shared_ptr<ShaderProgram> m_basicUnlit;
+        std::shared_ptr<ShaderProgram> m_basicLit;
+        std::shared_ptr<ShaderProgram> m_solidColor;
+
         Graphics* m_graphics;
 	};
 }

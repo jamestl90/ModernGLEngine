@@ -86,26 +86,27 @@ namespace JLEngine
 		 void PrintActiveUniforms(uint32 programId);
 		 bool ShaderCompileErrorCheck(uint32 id, bool compileCheck);
 
-		 void CreateShader(ShaderProgram* program);
+		 void CreateShaderFromFile(ShaderProgram* program);
+		 void CreateShaderFromText(ShaderProgram* program, std::vector<std::string> shaderTexts);
 		 void DisposeShader(ShaderProgram* program);
 
-		 void SetUniform(uint32 programId, string name, uint32 x);
-		 void SetUniform(uint32 programId, string name, uint32 x, uint32 y);
-		 void SetUniform(uint32 programId, string name, uint32 x, uint32 y, uint32 z);
-		 void SetUniform(uint32 programId, string name, uint32 x, uint32 y, uint32 z, uint32 w);
-
-		 void SetUniform(uint32 programId, string name, float x);
-		 void SetUniform(uint32 programId, string name, float x, float y);
-		 void SetUniform(uint32 programId, string name, float x, float y, float z);
-		 void SetUniform(uint32 programId, string name, float x, float y, float z, float w);
-
-		 void SetUniform(uint32 programId, string name, const glm::vec2& vec);
-		 void SetUniform(uint32 programId, string name, const glm::vec3& vec);
-		 void SetUniform(uint32 programId, string name, const glm::vec4& vec);
-
-		 void SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat2& mat);
-		 void SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat3& mat);
-		 void SetUniform(uint32 programId, string name, int count, bool transpose, const glm::mat4& mat);
+		 void SetUniform(uint32 location, uint32 x);
+		 void SetUniform(uint32 location, uint32 x, uint32 y);
+		 void SetUniform(uint32 location, uint32 x, uint32 y, uint32 z);
+		 void SetUniform(uint32 location, uint32 x, uint32 y, uint32 z, uint32 w);
+						
+		 void SetUniform(uint32 location, float x);
+		 void SetUniform(uint32 location, float x, float y);
+		 void SetUniform(uint32 location, float x, float y, float z);
+		 void SetUniform(uint32 location, float x, float y, float z, float w);
+						
+		 void SetUniform(uint32 location, const glm::vec2& vec);
+		 void SetUniform(uint32 location, const glm::vec3& vec);
+		 void SetUniform(uint32 location, const glm::vec4& vec);
+						
+		 void SetUniform(uint32 location, int count, bool transpose, const glm::mat2& mat);
+		 void SetUniform(uint32 location, int count, bool transpose, const glm::mat3& mat);
+		 void SetUniform(uint32 location, int count, bool transpose, const glm::mat4& mat);
 
 		 void BindShader(uint32 programId);
 		 void UnbindShader();
@@ -194,6 +195,7 @@ namespace JLEngine
 		void EndPrimitiveDraw();
 
 		void RenderMesh(Mesh* mesh);
+		void RenderMeshWithTexture(Mesh* mesh, Texture* texture);
 		void DrawArrayBuffer(uint32 drawMode, uint32 first, uint32 count);
 		void DrawElementBuffer(uint32 drawMode, int32 count, uint32 dataType, void* offset);
 		void DrawBuffers(uint32 count, uint32* targets);
