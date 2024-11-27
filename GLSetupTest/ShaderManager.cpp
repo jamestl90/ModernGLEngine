@@ -71,6 +71,8 @@ namespace JLEngine
                 uniform sampler2D uTexture;
                 uniform vec3 uLightPos;
                 uniform vec3 uLightColor;
+                uniform int uUseTexture;
+                uniform vec4 uSolidColor;
                 out vec4 FragColor;
                 void main()
                 {
@@ -81,7 +83,12 @@ namespace JLEngine
                     vec3 ambient = 0.1 * uLightColor;
                     vec3 lighting = ambient + diffuse;
                     vec4 texColor = texture(uTexture, vTexCoord);
-                    FragColor = vec4(lighting, 1.0) * texColor;
+                    if (uUseTexture == 1) {
+                        FragColor = vec4(lighting, 1.0) * texColor;
+                    }
+                    else {
+                        FragColor = vec4(lighting, 1.0) * uSolidColor;
+                    }       
                 }
             )";
 
@@ -92,7 +99,8 @@ namespace JLEngine
             m_basicLit.get()->CacheUniformLocation("uTexture");
             m_basicLit.get()->CacheUniformLocation("uLightPos");
             m_basicLit.get()->CacheUniformLocation("uLightColor");
-            m_basicLit.get()->CacheUniformLocation("uTexture");
+            m_basicLit.get()->CacheUniformLocation("uUseTexture");
+            m_basicLit.get()->CacheUniformLocation("uSolidColor");
         }
         return m_basicLit;
     }
@@ -121,10 +129,17 @@ namespace JLEngine
                 #version 400 core
                 in vec2 vTexCoord;
                 uniform sampler2D uTexture;
+                uniform int uUseTexture;
+                uniform vec4 uSolidColor;
                 out vec4 FragColor;
                 void main()
                 {
-                    FragColor = texture(uTexture, vTexCoord);
+                    if (uUseTexture == 1) {
+                        FragColor = texture(uTexture, vTexCoord);
+                    }
+                    else {
+                        FragColor = vec4(lighting, 1.0) * uSolidColor;
+                    }
                 }
             )";
 
@@ -133,6 +148,8 @@ namespace JLEngine
             m_basicUnlit.get()->CacheUniformLocation("uView");
             m_basicUnlit.get()->CacheUniformLocation("uProjection");
             m_basicUnlit.get()->CacheUniformLocation("uTexture");
+            m_basicUnlit.get()->CacheUniformLocation("uUseTexture");
+            m_basicUnlit.get()->CacheUniformLocation("uSolidColor");
         }
         return m_basicUnlit;
     }

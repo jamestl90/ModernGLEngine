@@ -3,8 +3,13 @@
 
 namespace JLEngine
 {
+	Mesh::Mesh(uint32 handle, string& name) 
+		: Resource(handle, name), m_materialId(-1), m_vao(0), m_graphics(nullptr), m_hasIndices(false)
+	{
+	}
+
 	Mesh::Mesh( uint32 handle, string& name, string& path )
-		: Resource(handle, path + name), m_materialId(-1)
+		: Resource(handle, path + name), m_materialId(-1), m_vao(0), m_graphics(nullptr), m_hasIndices(false)
 	{
 	}
 

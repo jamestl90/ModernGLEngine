@@ -134,6 +134,7 @@
     <ClCompile Include="FileHelpers.cpp" />
     <ClCompile Include="FileSystem.cpp" />
     <ClCompile Include="FlyCamera.cpp" />
+    <ClCompile Include="Geometry.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="JLEngine.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="FileHelpers.h" />
     <ClInclude Include="FileSystem.h" />
     <ClInclude Include="FlyCamera.h" />
+    <ClInclude Include="Geometry.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="JLEngine.h" />

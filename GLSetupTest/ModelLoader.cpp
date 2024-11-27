@@ -1,4 +1,6 @@
 #include "ModelLoader.h"
+#include "Geometry.h"
+
 #undef APIENTRY
 #define TINYGLTF_IMPLEMENTATION
 #include <tiny_gltf.h>
@@ -42,7 +44,7 @@ namespace JLEngine
 				LoadPositionAttribute(model, primitive, positions);
 				LoadNormalAttribute(model, primitive, normals);
 				LoadTexCoordAttribute(model, primitive, texCoords);
-				GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+				Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
 				vbo.Set(vertexData);
 
 				std::set<JLEngine::VertexAttribute> attributes;
@@ -71,46 +73,6 @@ namespace JLEngine
 			}
 		}
 		return jlmesh;
-	}
-
-	void GenerateInterleavedVertexData(const std::vector<float>& positions,
-		const std::vector<float>& normals,
-		const std::vector<float>& texCoords,
-		std::vector<float>& vertexData)
-	{
-		size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
-
-		// Resize the interleaved array
-		vertexData.resize(vertexCount * (3 + 3 + 2)); // 3 for position, 3 for normal, 2 for texCoords
-
-		for (size_t i = 0; i < vertexCount; ++i) {
-			// Interleave position
-			vertexData[i * 8 + 0] = positions[i * 3 + 0];
-			vertexData[i * 8 + 1] = positions[i * 3 + 1];
-			vertexData[i * 8 + 2] = positions[i * 3 + 2];
-
-			// Interleave normal (if available)
-			if (!normals.empty()) {
-				vertexData[i * 8 + 3] = normals[i * 3 + 0];
-				vertexData[i * 8 + 4] = normals[i * 3 + 1];
-				vertexData[i * 8 + 5] = normals[i * 3 + 2];
-			}
-			else {
-				vertexData[i * 8 + 3] = 0.0f;
-				vertexData[i * 8 + 4] = 0.0f;
-				vertexData[i * 8 + 5] = 1.0f; // Default normal
-			}
-
-			// Interleave texture coordinates (if available)
-			if (!texCoords.empty()) {
-				vertexData[i * 8 + 6] = texCoords[i * 2 + 0];
-				vertexData[i * 8 + 7] = texCoords[i * 2 + 1];
-			}
-			else {
-				vertexData[i * 8 + 6] = 0.0f;
-				vertexData[i * 8 + 7] = 0.0f; // Default UV
-			}
-		}
 	}
 
 	void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,

@@ -1,0 +1,47 @@
+#ifndef GEOMETRY_H
+#define GEOMETRY_H
+
+#include <string>
+#include <tuple>
+#include <glm/glm.hpp>
+#include "Mesh.h"
+
+namespace JLEngine
+{
+	class Graphics;
+
+	struct Vec3Hash 
+	{
+		std::size_t operator()(const glm::vec3& v) const 
+		{
+			return std::hash<float>()(v.x) ^ (std::hash<float>()(v.y) << 1) ^ (std::hash<float>()(v.z) << 2);
+		}
+	};
+
+	class Geometry
+	{
+	public:
+		static Mesh* GenerateSphere(Graphics* graphics, string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments);
+
+		static Mesh* GenerateBox(Graphics* graphics, std::string name, float width, float length, float height);
+
+		static void GenerateInterleavedVertexData(const std::vector<float>& positions,
+			const std::vector<float>& normals,
+			const std::vector<float>& texCoords,
+			std::vector<float>& vertexData);
+
+		static std::vector<glm::vec3> CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32>& indices);
+	};
+
+	class Polygon
+	{
+	public:
+		static uint32 AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
+			int lastTriCount, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 p4, glm::vec3 normal, glm::vec2 ufBotLeft, glm::vec2 uvOffset, bool flip = false);
+
+		static uint32 AddBox(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
+			int triCount, const glm::vec3& center, float width, float length, float height);
+	};
+}
+
+#endif

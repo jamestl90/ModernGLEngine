@@ -13,6 +13,7 @@ namespace JLEngine
 	class Mesh : public Resource
 	{
 	public:
+		Mesh(uint32 handle, string& name);
 		Mesh(uint32 handle, string& name, string& path);
 
 		~Mesh();

@@ -116,6 +116,15 @@ namespace JLEngine
 		}
 	}
 
+	void ShaderProgram::SetUniform(const std::string& name, const glm::vec4& vector) const
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetUniform(location, vector);
+		}
+	}
+
 	void ShaderProgram::SetUniform(const std::string& name, uint32 value) const
 	{
 		GLint location = GetUniformLocation(name);

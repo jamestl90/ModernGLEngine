@@ -5,10 +5,12 @@
 #include "FlyCamera.h"
 #include "ModelLoader.h"
 #include "Mesh.h"
+#include "Geometry.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
-JLEngine::Mesh* mesh;
+JLEngine::Mesh* cubeMesh;
+JLEngine::Mesh* sphereMesh;
 JLEngine::Texture* texture;
 std::shared_ptr<JLEngine::ShaderProgram> meshShader;
 std::shared_ptr<JLEngine::ShaderProgram> basicLit;
@@ -23,26 +25,24 @@ void gameRender(JLEngine::Graphics& graphics)
     glm::mat4 view = flyCamera->GetViewMatrix();
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
     glm::mat4 vp = projection * view; 
-    glm::mat4 mvpA = vp * glm::mat4(1.0f);
-    glm::mat4 mvpB = vp * glm::translate(glm::vec3(5.0f, 0.0f, 0.0f));
-
-    uint32 shaderId = -1; // Use the default shader
-
-    graphics.BeginPrimitiveDraw();
-    graphics.RenderPrimitive(mvpA, JLEngine::PrimitiveType::Cone, shaderId);
-    graphics.RenderPrimitive(mvpB, JLEngine::PrimitiveType::Octahedron, shaderId);
-    graphics.EndPrimitiveDraw();
+    glm::mat4 mvpA = vp * glm::translate(glm::vec3(5.0f, 0.0f, 0.0f));
 
     auto shader = basicLit.get();
     graphics.BindShader(shader->GetProgramId());
-    shader->SetUniform("uModel", glm::translate(glm::vec3(-10.0f, 0.0f, 0.0f)));
+    shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)));
     shader->SetUniform("uView", view);
     shader->SetUniform("uProjection", projection);
     shader->SetUniform("uLightPos", glm::vec3(5.0f, 15.0f, 5.0f));
-    shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f));
-    shader->SetUniform("uTexture", 0); // Texture unit
+    shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f)); 
+    shader->SetUniform("uUseTexture", 0);
+    shader->SetUniform("uSolidColor", glm::vec4(1.8f, 0.5f, 0.2f, 1.0f));
 
-    graphics.RenderMeshWithTexture(mesh, texture);
+    graphics.RenderMesh(sphereMesh);
+
+    shader->SetUniform("uModel", glm::translate(glm::vec3(-10.0f, 0.0f, 0.0f)));
+    shader->SetUniform("uTexture", 0);
+    shader->SetUniform("uUseTexture", 1);
+    graphics.RenderMeshWithTexture(cubeMesh, texture);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -101,7 +101,9 @@ int main()
 
     basicLit = shaderMgr->BasicLitShader();
 
-    mesh = JLEngine::LoadModel(std::string("../Assets/cube.glb"), graphics);
+    //cubeMesh = JLEngine::LoadModel(std::string("../Assets/cube.glb"), graphics);
+    cubeMesh = JLEngine::Geometry::GenerateBox(graphics, "Box1", 1, 1, 1);
+    sphereMesh = JLEngine::Geometry::GenerateSphere(graphics, "Sphere1", 1.0f, 15, 15);
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
