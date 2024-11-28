@@ -87,9 +87,9 @@ namespace JLEngine
         JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
         ibo.Set(indices);
 
-        auto mesh = new Mesh(0, name, name);
+        auto mesh = new Mesh(0, name);
         mesh->SetVertexBuffer(vbo);
-        mesh->SetIndexBuffer(ibo);
+        mesh->AddIndexBuffer(ibo);
         graphics->CreateMesh(mesh);
         return mesh;
 	}
@@ -143,7 +143,7 @@ namespace JLEngine
         // Build the Mesh
         auto mesh = new Mesh(0, name);
         mesh->SetVertexBuffer(vbo);
-        mesh->SetIndexBuffer(ibo);
+        mesh->AddIndexBuffer(ibo);
         graphics->CreateMesh(mesh);
 
         return mesh;

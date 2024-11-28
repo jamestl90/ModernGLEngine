@@ -21,27 +21,28 @@ namespace JLEngine
     class ResourceManager
     {
     public:
-        std::shared_ptr<T> Get(const std::string& name)
+        T* Get(const std::string& name)
         {
             auto it = m_resources.find(name);
             if (it != m_resources.end())
             {
-                return it->second;
+                return it->second.get(); // Return raw pointer
             }
 
             return nullptr;
         }
 
-        std::shared_ptr<T> Add(const std::string& name, const std::function<std::shared_ptr<T>()>& loader)
+        T* Add(const std::string& name, const std::function<std::unique_ptr<T>()>& loader)
         {
             if (m_resources.find(name) != m_resources.end())
             {
-                return m_resources[name]; // Return existing resource
+                return m_resources[name].get(); // Return existing resource as raw pointer
             }
 
             auto resource = loader();
-            m_resources[name] = resource;
-            return resource;
+            T* rawPtr = resource.get();
+            m_resources[name] = std::move(resource); // Store unique_ptr
+            return rawPtr; // Return raw pointer
         }
 
         void Remove(const std::string& name)
@@ -64,7 +65,7 @@ namespace JLEngine
         }
 
     protected:
-        uint32_t GenerateHandle()
+        uint32 GenerateHandle()
         {
             if (!m_freeHandles.empty())
             {
@@ -76,9 +77,9 @@ namespace JLEngine
         }
 
     private:
-        std::unordered_map<std::string, std::shared_ptr<T>> m_resources;
-        std::stack<uint32_t> m_freeHandles;
-        uint32_t m_nextHandle = 0;
+        std::unordered_map<std::string, std::unique_ptr<T>> m_resources;
+        std::stack<uint32> m_freeHandles;
+        uint32 m_nextHandle = 0;
     };
 }
 

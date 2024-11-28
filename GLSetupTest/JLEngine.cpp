@@ -19,6 +19,15 @@ namespace JLEngine
         m_graphics = std::make_unique<Graphics>(m_window.get());
         m_textureManager = std::make_unique<TextureManager>(m_graphics.get());
         m_shaderManager = std::make_unique<ShaderManager>(m_graphics.get());
+        m_materialManager = std::make_unique<MaterialManager>(m_graphics.get());
+        m_meshManager = std::make_unique<MeshManager>(m_graphics.get());
+
+        m_assetLoader = std::make_unique<AssetLoader>(
+            m_shaderManager.get(),
+            m_meshManager.get(),
+            m_materialManager.get(),
+            m_textureManager.get()
+        );
 
         m_input.get()->SetRawMouseMotion(true);
         setVsync(true);
@@ -90,8 +99,8 @@ namespace JLEngine
             render(*m_graphics, interpolationFactor); 
             m_window->SwapBuffers();
             m_frameCount++;
-
             m_window->PollEvents();
+
             logPerformanceMetrics();
         }
     }
@@ -111,8 +120,22 @@ namespace JLEngine
         return m_textureManager.get();
     }
 
+    MeshManager* JLEngineCore::GetMeshManager() const
+    {
+        return m_meshManager.get();
+    }
+
+    MaterialManager* JLEngineCore::GetMaterialManager() const
+    {
+        return m_materialManager.get();
+    }
+
     Input* JLEngineCore::GetInput() const
     {
         return m_input.get();
+    }
+    AssetLoader* JLEngineCore::GetAssetLoader() const
+    {
+        return m_assetLoader.get();
     }
 }

@@ -7,11 +7,11 @@ namespace JLEngine
 
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
+    ShaderProgram* ShaderManager::LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
     {
         return Add(name, [&]()
             {
-                auto program = std::make_shared<ShaderProgram>(GenerateHandle(), name, folderPath);
+                auto program = std::make_unique<ShaderProgram>(GenerateHandle(), name, folderPath);
 
                 Shader vertProgram(GL_VERTEX_SHADER, vert);
                 Shader fragProgram(GL_FRAGMENT_SHADER, frag);
@@ -23,11 +23,11 @@ namespace JLEngine
             });
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::LoadShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
+    ShaderProgram* ShaderManager::LoadShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
     {
         return Add(name, [&]()
             {
-                auto program = std::make_shared<ShaderProgram>(GenerateHandle(), name);
+                auto program = std::make_unique<ShaderProgram>(GenerateHandle(), name);
 
                 Shader vertProgram(GL_VERTEX_SHADER, "vert");
                 Shader fragProgram(GL_FRAGMENT_SHADER, "frag");
@@ -39,7 +39,7 @@ namespace JLEngine
             });
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::BasicLitShader()
+    ShaderProgram* ShaderManager::BasicLitShader()
     {
         if (m_basicLit == nullptr)
         {
@@ -93,19 +93,19 @@ namespace JLEngine
             )";
 
             m_basicLit = LoadShaderFromSource("BasicLitShader", vertexShaderCode, fragmentShaderCode);
-            m_basicLit.get()->CacheUniformLocation("uModel");
-            m_basicLit.get()->CacheUniformLocation("uView");
-            m_basicLit.get()->CacheUniformLocation("uProjection");
-            m_basicLit.get()->CacheUniformLocation("uTexture");
-            m_basicLit.get()->CacheUniformLocation("uLightPos");
-            m_basicLit.get()->CacheUniformLocation("uLightColor");
-            m_basicLit.get()->CacheUniformLocation("uUseTexture");
-            m_basicLit.get()->CacheUniformLocation("uSolidColor");
+            m_basicLit->CacheUniformLocation("uModel");
+            m_basicLit->CacheUniformLocation("uView");
+            m_basicLit->CacheUniformLocation("uProjection");
+            m_basicLit->CacheUniformLocation("uTexture");
+            m_basicLit->CacheUniformLocation("uLightPos");
+            m_basicLit->CacheUniformLocation("uLightColor");
+            m_basicLit->CacheUniformLocation("uUseTexture");
+            m_basicLit->CacheUniformLocation("uSolidColor");
         }
         return m_basicLit;
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::BasicUnlitShader()
+    ShaderProgram* ShaderManager::BasicUnlitShader()
     {
         if (m_basicUnlit == nullptr)
         {
@@ -144,17 +144,17 @@ namespace JLEngine
             )";
 
             m_basicUnlit = LoadShaderFromSource("BasicUnlitShader", unlitVertexShaderCode, unlitFragmentShaderCode);
-            m_basicUnlit.get()->CacheUniformLocation("uModel");
-            m_basicUnlit.get()->CacheUniformLocation("uView");
-            m_basicUnlit.get()->CacheUniformLocation("uProjection");
-            m_basicUnlit.get()->CacheUniformLocation("uTexture");
-            m_basicUnlit.get()->CacheUniformLocation("uUseTexture");
-            m_basicUnlit.get()->CacheUniformLocation("uSolidColor");
+            m_basicUnlit->CacheUniformLocation("uModel");
+            m_basicUnlit->CacheUniformLocation("uView");
+            m_basicUnlit->CacheUniformLocation("uProjection");
+            m_basicUnlit->CacheUniformLocation("uTexture");
+            m_basicUnlit->CacheUniformLocation("uUseTexture");
+            m_basicUnlit->CacheUniformLocation("uSolidColor");
         }
         return m_basicUnlit;
     }
 
-    std::shared_ptr<ShaderProgram> ShaderManager::SolidColorShader()
+    ShaderProgram* ShaderManager::SolidColorShader()
     {
         if (m_solidColor == nullptr)
         {
@@ -181,10 +181,10 @@ namespace JLEngine
             )";
 
             m_solidColor = LoadShaderFromSource("SolidColorShader", solidColorVertexShaderCode, solidColorFragmentShaderCode);
-            m_solidColor.get()->CacheUniformLocation("uModel");
-            m_solidColor.get()->CacheUniformLocation("uView");
-            m_solidColor.get()->CacheUniformLocation("uProjection");
-            m_solidColor.get()->CacheUniformLocation("uColor");
+            m_solidColor->CacheUniformLocation("uModel");
+            m_solidColor->CacheUniformLocation("uView");
+            m_solidColor->CacheUniformLocation("uProjection");
+            m_solidColor->CacheUniformLocation("uColor");
         }
         return m_solidColor;
     }

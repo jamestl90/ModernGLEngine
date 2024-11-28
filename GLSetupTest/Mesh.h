@@ -5,6 +5,7 @@
 #include "Primitives.h"
 #include "VertexBuffers.h"
 #include "Resource.h"
+#include "Material.h"
 
 namespace JLEngine
 {
@@ -13,37 +14,28 @@ namespace JLEngine
 	class Mesh : public Resource
 	{
 	public:
-		Mesh(uint32 handle, string& name);
-		Mesh(uint32 handle, string& name, string& path);
-
+		Mesh(uint32 handle, const string& name);
 		~Mesh();
 
-		void Init(Graphics* graphics);
-
+		void UploadToGPU(Graphics* graphics, bool freeData);
 		void UnloadFromGraphics();
 
 		void SetVao(uint32 id) { m_vao = id; }
-
 		uint32 GetVaoId() { return m_vao; }
-
 		void SetVertexBuffer(VertexBuffer& vbo);
-
 		VertexBuffer& GetVertexBuffer();
 
-		void SetIndexBuffer(IndexBuffer& ibo);
-
+		void AddIndexBuffer(IndexBuffer& ibo);
 		void SetHasIndices(bool hasIndices) { m_hasIndices = hasIndices; }
-
 		bool HasIndices() { return m_hasIndices; }
-
 		IndexBuffer& GetIndexBuffer();
+		IndexBuffer& GetIndexBufferAt(int idx);
+		std::vector<IndexBuffer>& GetIndexBuffers() { return m_ibos; }
 
-		uint32 GetMaterialHandle() { return m_materialId; }
-
-		void SetMaterial(uint32 handle) { m_materialId = handle; }
+		Material* GetMaterialAt(int idx) { return m_materials[idx]; }
+		void AddMaterial(Material* material) { m_materials.push_back(material); }
 
 		const AABB& GetAABB() { return m_aabb; }
-
 		AABB CalculateAABB();
 
 	private:
@@ -54,11 +46,11 @@ namespace JLEngine
 
 		bool m_hasIndices;
 
-		uint32 m_materialId;
+		std::vector<Material*> m_materials;
 
 		uint32 m_vao;
 
-		IndexBuffer m_ibo;
+		std::vector<IndexBuffer> m_ibos;
 
 		VertexBuffer m_vbo;
 	};

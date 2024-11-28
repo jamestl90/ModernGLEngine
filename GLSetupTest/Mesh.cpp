@@ -3,13 +3,8 @@
 
 namespace JLEngine
 {
-	Mesh::Mesh(uint32 handle, string& name) 
-		: Resource(handle, name), m_materialId(-1), m_vao(0), m_graphics(nullptr), m_hasIndices(false)
-	{
-	}
-
-	Mesh::Mesh( uint32 handle, string& name, string& path )
-		: Resource(handle, path + name), m_materialId(-1), m_vao(0), m_graphics(nullptr), m_hasIndices(false)
+	Mesh::Mesh(uint32 handle, const string& name)
+		: Resource(handle, name), m_vao(0), m_graphics(nullptr), m_hasIndices(false)
 	{
 	}
 
@@ -18,7 +13,15 @@ namespace JLEngine
 		UnloadFromGraphics();
 
 		m_vbo.Clear();
-		m_ibo.Clear();
+
+		if (m_ibos.size() > 0)
+		{
+			for (auto& ibo : m_ibos)
+			{
+				ibo.Clear();
+			}
+			m_ibos.clear();
+		}
 	}
 
 	AABB Mesh::CalculateAABB()
@@ -33,20 +36,16 @@ namespace JLEngine
 		return m_aabb;
 	}
 
-	void Mesh::Init(Graphics* graphics)
+	void Mesh::UploadToGPU(Graphics* graphics, bool freeData)
 	{
 		m_graphics = graphics;
 
-		// saves us from doing those 4 lines 
-		// of code commented out below
 		m_graphics->CreateMesh(this);
 
-		/*
-		graphics->createVertexArrayObject(m_vao);
-		graphics->bindVertexArrayObject(m_vao);
-		graphics->BuildVertexBuffer(m_vbo);
-		graphics->BuildIndexBuffer(m_ibo);
-		*/
+		if (freeData)
+		{
+			m_vbo.Clear();
+		}
 
 		if (m_vbo.GetBuffer().size() > 50.0f)
 		{
@@ -64,15 +63,20 @@ namespace JLEngine
 		return m_vbo;
 	}
 
-	void Mesh::SetIndexBuffer( IndexBuffer& ibo )
+	void Mesh::AddIndexBuffer( IndexBuffer& ibo )
 	{
-		m_ibo = ibo;
+		m_ibos.push_back(ibo);
 		m_hasIndices = true;
 	}
 
 	IndexBuffer& Mesh::GetIndexBuffer()
 	{
-		return m_ibo;
+		return m_ibos[0];
+	}
+
+	IndexBuffer& Mesh::GetIndexBufferAt(int idx)
+	{
+		return m_ibos[idx];
 	}
 
 	void Mesh::UnloadFromGraphics()

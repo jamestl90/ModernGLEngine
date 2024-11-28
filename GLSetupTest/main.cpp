@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 #include "JLEngine.h"
 #include "FlyCamera.h"
-#include "ModelLoader.h"
+#include "GltfLoader.h"
 #include "Mesh.h"
 #include "Geometry.h"
 
@@ -13,8 +13,8 @@ JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 JLEngine::Texture* texture;
-std::shared_ptr<JLEngine::ShaderProgram> meshShader;
-std::shared_ptr<JLEngine::ShaderProgram> basicLit;
+JLEngine::ShaderProgram* meshShader;
+JLEngine::ShaderProgram* basicLit;
 GLFWwindow* window;
 
 void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
@@ -28,7 +28,7 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
     glm::mat4 vp = projection * view; 
     glm::mat4 mvpA = vp * glm::translate(glm::vec3(5.0f, 0.0f, 0.0f));
 
-    auto shader = basicLit.get();
+    auto shader = basicLit;
     graphics.BindShader(shader->GetProgramId());
     shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)));
     shader->SetUniform("uView", view);
@@ -96,7 +96,7 @@ int main()
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
 
-    texture = textureMgr->LoadTextureFromFile("DefaulTexture", "../Assets/floor_default_grid.png").get();
+    texture = textureMgr->LoadTextureFromFile("DefaulTexture", "../Assets/floor_default_grid.png");
 
     //meshShader = shaderMgr->LoadShaderFromFile("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
     //meshShader.get()->CacheUniformLocation("uModel");
@@ -108,8 +108,8 @@ int main()
 
     basicLit = shaderMgr->BasicLitShader();
 
-    //cubeMesh = JLEngine::LoadModel(std::string("../Assets/cube.glb"), graphics);
-    planeMesh = JLEngine::LoadModel(std::string("../Assets/plane.glb"), graphics);
+    //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
+    planeMesh = JLEngine::LoadModelGLB(std::string("../Assets/plane.glb"), graphics);
     cubeMesh = JLEngine::Geometry::GenerateBox(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphere(graphics, "Sphere1", 1.0f, 15, 15);
 

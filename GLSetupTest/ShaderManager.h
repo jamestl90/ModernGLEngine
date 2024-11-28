@@ -16,17 +16,17 @@ namespace JLEngine
 	public:
         ShaderManager(Graphics* graphics);
 
-        std::shared_ptr<ShaderProgram> LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
-        std::shared_ptr<ShaderProgram> LoadShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
+        ShaderProgram* LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
+        ShaderProgram* LoadShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
 
-        std::shared_ptr<ShaderProgram> BasicUnlitShader();
-        std::shared_ptr<ShaderProgram> BasicLitShader();
-        std::shared_ptr<ShaderProgram> SolidColorShader();
+        ShaderProgram* BasicUnlitShader();
+        ShaderProgram* BasicLitShader();
+        ShaderProgram* SolidColorShader();
     private:
 
-        std::shared_ptr<ShaderProgram> m_basicUnlit;
-        std::shared_ptr<ShaderProgram> m_basicLit;
-        std::shared_ptr<ShaderProgram> m_solidColor;
+        ShaderProgram* m_basicUnlit;
+        ShaderProgram* m_basicLit;
+        ShaderProgram* m_solidColor;
 
         Graphics* m_graphics;
 	};

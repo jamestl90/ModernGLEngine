@@ -558,7 +558,10 @@ namespace JLEngine
 		CreateVertexBuffer(mesh->GetVertexBuffer());
 		if (mesh->HasIndices())
 		{
-			CreateIndexBuffer(mesh->GetIndexBuffer());
+			for (auto& ibo : mesh->GetIndexBuffers())
+			{
+				CreateIndexBuffer(ibo);
+			}
 		}
 		glBindVertexArray(0);
 	}
@@ -571,8 +574,11 @@ namespace JLEngine
 		glDeleteBuffers(1, &vboID);
 		if (mesh->HasIndices())
 		{
-			GLuint iboID = mesh->GetIndexBuffer().GetId();
-			glDeleteBuffers(1, &iboID);
+			for (auto& ibo : mesh->GetIndexBuffers())
+			{
+				GLuint iboID = ibo.GetId();
+				glDeleteBuffers(1, &iboID);
+			}
 		}
 		glDeleteBuffers(1, &vaoID);
 	}
@@ -654,7 +660,7 @@ namespace JLEngine
 
 		if (mesh->HasIndices())
 		{
-			auto ibo = mesh->GetIndexBuffer();
+			auto& ibo = mesh->GetIndexBuffer();
 			GLsizei size = (GLsizei)ibo.Size();
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
 			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));

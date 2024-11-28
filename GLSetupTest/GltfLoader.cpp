@@ -1,4 +1,4 @@
-#include "ModelLoader.h"
+#include "GltfLoader.h"
 #include "Geometry.h"
 
 #undef APIENTRY
@@ -12,12 +12,13 @@
 
 #include <iostream>
 #include <vector>
+#include "MeshManager.h"
 
 namespace JLEngine
 {
-	JLEngine::Mesh* JLEngine::LoadModel(std::string fileName, Graphics* graphics)
+	JLEngine::Mesh* JLEngine::LoadModelGLB(std::string fileName, Graphics* graphics)
 	{
-		JLEngine::Mesh* jlmesh = new Mesh(0, fileName, fileName);
+		JLEngine::Mesh* jlmesh = new Mesh(0, fileName);
 		tinygltf::TinyGLTF loader;
 		tinygltf::Model model;
 		std::string err;
@@ -66,13 +67,99 @@ namespace JLEngine
 				jlmesh->SetVertexBuffer(vbo);
 				if (primitive.indices >= 0) 
 				{
-					jlmesh->SetIndexBuffer(ibo);
+					jlmesh->AddIndexBuffer(ibo);
 				}
 
-				jlmesh->Init(graphics);
+				jlmesh->UploadToGPU(graphics, true);
 			}
 		}
 		return jlmesh;
+	}
+
+	JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, const tinygltf::Primitive& primitive, MeshManager* meshMgr)
+	{
+		// Create a VertexBuffer
+		JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+		std::vector<float> positions;
+		std::vector<float> normals;
+		std::vector<float> texCoords;
+		std::vector<float> vertexData;
+
+		LoadPositionAttribute(model, primitive, positions);
+		LoadNormalAttribute(model, primitive, normals);
+		LoadTexCoordAttribute(model, primitive, texCoords);
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+		vbo.Set(vertexData);
+
+		std::set<JLEngine::VertexAttribute> attributes;
+		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
+		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
+		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
+
+		for (VertexAttribute attrib : attributes)
+		{
+			vbo.AddAttribute(attrib);
+		}
+		vbo.CalcStride();
+
+		// Process IndexBuffer
+		JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+		LoadIndices(model, primitive, ibo);
+
+		// Create and initialize the Mesh
+		auto jlmesh = meshMgr->LoadMeshFromData("Primitive", vbo, ibo);
+		return jlmesh;
+	}
+
+	JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh, MeshManager* meshMgr)
+	{
+		std::vector<float> positions, normals, texCoords, vertexData;
+		for (const auto& primitive : mesh.primitives)
+		{
+			LoadPositionAttribute(model, primitive, positions);
+			LoadNormalAttribute(model, primitive, normals);
+			LoadTexCoordAttribute(model, primitive, texCoords);
+		}
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+
+		// Create the shared VertexBuffer
+		JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+		vbo.Set(vertexData);
+
+		// Define the vertex attributes
+		std::set<JLEngine::VertexAttribute> attributes;
+		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
+		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
+		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
+
+		for (VertexAttribute attrib : attributes)
+		{
+			vbo.AddAttribute(attrib);
+		}
+		vbo.CalcStride();
+
+		// Step 2: Create a Mesh instance
+		auto jlmesh = meshMgr->CreateEmptyMesh("MeshWithMultiplePrimitives");
+		jlmesh->SetVertexBuffer(vbo);
+
+		// Step 3: Create separate index buffers for each primitive
+		for (size_t i = 0; i < mesh.primitives.size(); ++i)
+		{
+			const auto& primitive = mesh.primitives[i];
+
+			JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+			LoadIndices(model, primitive, ibo);
+			jlmesh->AddIndexBuffer(ibo);
+		}
+
+		return jlmesh;
+	}
+
+	JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr)
+	{
+		auto material = matMgr->CreateMaterial("matName");
+
+		return material;
 	}
 
 	void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
