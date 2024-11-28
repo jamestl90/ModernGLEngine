@@ -16,7 +16,7 @@ namespace JLEngine
     public:
         JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate);
         void run(std::function<void(double deltaTime)> logicUpdate,
-            std::function<void(Graphics& graphics)> render,
+            std::function<void(Graphics& graphics, double interpolationFactor)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
         Graphics*       GetGraphics()       const;
@@ -39,6 +39,7 @@ namespace JLEngine
 
         // Frame timing variables
         int m_maxFrameRate;
+        double m_maxFrameRateInterval;
         int m_fixedUpdateRate;
         double m_fixedUpdateInterval;
         double m_lastFrameTime;

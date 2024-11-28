@@ -10,13 +10,14 @@
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
 JLEngine::Mesh* cubeMesh;
+JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 JLEngine::Texture* texture;
 std::shared_ptr<JLEngine::ShaderProgram> meshShader;
 std::shared_ptr<JLEngine::ShaderProgram> basicLit;
 GLFWwindow* window;
 
-void gameRender(JLEngine::Graphics& graphics)
+void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 {
     // Render the scene
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -34,15 +35,19 @@ void gameRender(JLEngine::Graphics& graphics)
     shader->SetUniform("uProjection", projection);
     shader->SetUniform("uLightPos", glm::vec3(5.0f, 15.0f, 5.0f));
     shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f)); 
-    shader->SetUniform("uUseTexture", 0);
+    shader->SetUniform("uUseTexture", 0);    
+    shader->SetUniform("uTexture", 0);
     shader->SetUniform("uSolidColor", glm::vec4(1.8f, 0.5f, 0.2f, 1.0f));
 
-    graphics.RenderMesh(sphereMesh);
+    graphics.RenderMeshWithTexture(sphereMesh, texture);
 
-    shader->SetUniform("uModel", glm::translate(glm::vec3(-10.0f, 0.0f, 0.0f)));
+    shader->SetUniform("uModel", glm::translate(glm::vec3(-5.0f, 0.0f, 0.0f)));
     shader->SetUniform("uTexture", 0);
     shader->SetUniform("uUseTexture", 1);
     graphics.RenderMeshWithTexture(cubeMesh, texture);
+
+    shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)));
+    graphics.RenderMeshWithTexture(planeMesh, texture);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -58,6 +63,8 @@ void fixedUpdate(double fixedTimeDelta)
 void KeyboardCallback(int key, int scancode, int action, int mods)
 {
     //std::cout << key << " " << scancode << " " << action << " " << mods << std::endl;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE))
+        exit(1);
 }
 
 void MouseCallback(int button, int action, int mods)
@@ -76,7 +83,7 @@ void MouseMoveCallback(double x, double y)
 
 int main()
 {
-    JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 120);
+    JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 125);
 
     auto graphics = engine.GetGraphics();
     window = graphics->GetWindow()->GetGLFWwindow();
@@ -102,7 +109,8 @@ int main()
     basicLit = shaderMgr->BasicLitShader();
 
     //cubeMesh = JLEngine::LoadModel(std::string("../Assets/cube.glb"), graphics);
-    cubeMesh = JLEngine::Geometry::GenerateBox(graphics, "Box1", 1, 1, 1);
+    planeMesh = JLEngine::LoadModel(std::string("../Assets/plane.glb"), graphics);
+    cubeMesh = JLEngine::Geometry::GenerateBox(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphere(graphics, "Sphere1", 1.0f, 15, 15);
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);

@@ -31,16 +31,22 @@ namespace JLEngine
             return false;
         }
 
+        int major, minor, revision;
+        glfwGetVersion(&major, &minor, &revision);
+        std::cout << "GLFW Version: " << major << "." << minor << "." << revision << std::endl;
+
         glfwWindowHint(GLFW_SAMPLES, 4); // msaa samples
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
         glfwWindowHint(GLFW_DEPTH_BITS, 24);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+        glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+        //glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
         // Create a GLFW windowed mode window and its OpenGL context
         m_window = glfwCreateWindow(m_width, m_height, name, nullptr, nullptr);
-        if (!m_window) {
+        if (!m_window) 
+        {
             std::cerr << "Failed to create GLFW window!" << std::endl;
             glfwTerminate();
             return false;
@@ -50,7 +56,8 @@ namespace JLEngine
         glfwMakeContextCurrent(m_window);
 
         // Initialize GLAD (OpenGL function loader)
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) 
+        {
             std::cerr << "Failed to initialize OpenGL loader!" << std::endl;
             return false;
         }
@@ -58,9 +65,10 @@ namespace JLEngine
         std::cout << "OpenGL " << glGetString(GL_VERSION) << " initialized!" << std::endl;
 
         // Set the frame buffer size callback for resizing the window
-        glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height) {
+        glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height) 
+        {
             glViewport(0, 0, width, height);
-            });
+        });
 
         // Set up V-Sync (we can turn it off to allow uncapped rendering if needed)
         glfwSwapInterval(1);  // Enable V-Sync by default, set to 0 for uncapped
@@ -91,5 +99,10 @@ namespace JLEngine
     void Window::PollEvents()
     {
         glfwPollEvents();
+    }
+
+    void Window::WaitEventsTimeout(double timeout)
+    {
+        glfwWaitEventsTimeout(timeout);
     }
 }

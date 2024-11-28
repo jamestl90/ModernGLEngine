@@ -20,6 +20,7 @@ namespace JLEngine
         bool ShouldClose() const;
         void SwapBuffers();
         void PollEvents();
+        void WaitEventsTimeout(double timeout);
 
         GLFWwindow* GetGLFWwindow() { return m_window; }
 
