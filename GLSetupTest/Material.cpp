@@ -2,7 +2,7 @@
 
 namespace JLEngine
 {
-    Material::Material() : 
+    Material::Material(uint32 handle, const std::string& name) : Resource(handle, name),
         baseColorFactor(1.0f, 1.0f, 1.0f, 1.0f), // Default white color
         metallicFactor(1.0f),                   // Fully metallic
         roughnessFactor(1.0f),                  // Fully rough

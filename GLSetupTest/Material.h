@@ -5,15 +5,18 @@
 #include <glm/glm.hpp>
 #include <memory>
 
+#include "Types.h"
+#include "Resource.h"
+
 namespace JLEngine
 {
     class Texture; 
 
-    class Material
+    class Material : Resource
     {
     public:
         // Default constructor
-        Material();
+        Material(uint32 handle, const std::string& name);
 
         // Properties for PBR Metallic-Roughness workflow
         glm::vec4 baseColorFactor;            // Base color (RGBA)
