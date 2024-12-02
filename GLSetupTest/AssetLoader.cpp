@@ -80,6 +80,7 @@ namespace JLEngine
             }
             if (!gltfNode.matrix.empty())
             {
+                node->useMatrix = true;
                 node->localMatrix = glm::mat4(
                     gltfNode.matrix[0], gltfNode.matrix[1], gltfNode.matrix[2], gltfNode.matrix[3],
                     gltfNode.matrix[4], gltfNode.matrix[5], gltfNode.matrix[6], gltfNode.matrix[7],
@@ -101,9 +102,10 @@ namespace JLEngine
             }
             else
             {
+                node->useMatrix = false;
                 node->translation = glm::vec3(0.0f);
                 node->scale = glm::vec3(1.0f);
-                node->rotation = glm::quat();
+                node->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
             }
 
             // Attach meshes
@@ -152,18 +154,24 @@ namespace JLEngine
         }
 
         // Create a root node to encompass the scene
-        auto rootNode = std::make_shared<Node>("Root");
-        for (const auto& scene : model.scenes)
-        {
-            for (int rootIndex : scene.nodes)
-            {
-                rootNode->AddChild(nodeMap[rootIndex]);
-            }
-        }
+        //auto rootNode = std::make_shared<Node>("Root");
+        //rootNode->localMatrix = glm::mat4(1.0f);
+        //rootNode->translation = glm::vec3(0.0f);
+        //rootNode->scale = glm::vec3(1.0f);
+        //rootNode->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        //rootNode->useMatrix = true;
+        //
+        //for (const auto& scene : model.scenes)
+        //{
+        //    for (int rootIndex : scene.nodes)
+        //    {
+        //        rootNode->AddChild(nodeMap[rootIndex]);
+        //    }
+        //}
 
         //PrintNodeHierarchy(rootNode.get());
 
-        return rootNode; // Return raw pointer as per your current implementation
+        return nodeMap[0]; // Return raw pointer as per your current implementation
     }
 
 	std::vector<Mesh*> AssetLoader::loadMeshes(tinygltf::Model& model)
@@ -174,12 +182,14 @@ namespace JLEngine
 		{
 			if (mesh.primitives.size() == 1)
 			{
-				auto jlmesh = PrimitiveFromMesh(model, mesh.primitives[0], m_meshManager);
+                auto name = mesh.name + "_Primitive0";
+				auto jlmesh = PrimitiveFromMesh(model, name, mesh.primitives[0], m_meshManager);
 				meshes.push_back(jlmesh);
 			}
 			else if (mesh.primitives.size() > 1)
 			{
-				auto jlmesh = MergePrimitivesToMesh(model, mesh, m_meshManager);
+                auto name = mesh.name;
+				auto jlmesh = MergePrimitivesToMesh(model, name, mesh, m_meshManager);
 				meshes.push_back(jlmesh);
 			}
 		}

@@ -16,6 +16,7 @@ JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 JLEngine::Node* duckScene;
+JLEngine::Node* fishScene;
 JLEngine::Texture* texture;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
@@ -55,10 +56,14 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 
     graphics.RenderNodeHierarchy(duckScene, [shader](JLEngine::Node* node)
     {
-        glm::mat4 modelMatrix = node->GetGlobalTransform();
-        GLint location = glGetUniformLocation(shader->GetProgramId(), "uModel");
-        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-        //shader->SetUniform("uModel", modelMatrix);
+        glm::mat4 modelMatrix = glm::translate(glm::vec3(5.0f, 0.0f, 0.0f)) * node->GetGlobalTransform();
+        shader->SetUniform("uModel", modelMatrix);
+    });
+
+    graphics.RenderNodeHierarchy(fishScene, [shader](JLEngine::Node* node)
+    {
+        glm::mat4 modelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 5.0f)) * node->GetGlobalTransform();
+        shader->SetUniform("uModel", modelMatrix);
     });
 }
 
@@ -124,6 +129,8 @@ int main()
     planeMesh = JLEngine::LoadModelGLB(std::string("../Assets/plane.glb"), graphics);
     auto aduckScene = engine.GetAssetLoader()->LoadGLB("../Assets/Duck.glb");
     duckScene = aduckScene.get();
+    auto afishScene = engine.GetAssetLoader()->LoadGLB("../Assets/BarramundiFish.glb");
+    fishScene = afishScene.get();
     cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
 

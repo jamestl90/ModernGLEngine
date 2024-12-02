@@ -18,6 +18,7 @@ namespace JLEngine
         Mesh,       // Node with a mesh
         Camera,     // Node with a camera
         Light,      // Node with a light
+        SceneRoot
     };
 
     // Node class representing a single entity in a scene graph
@@ -26,7 +27,7 @@ namespace JLEngine
     public:
         // Constructor
         Node(const std::string& name = "", NodeTag nodeTag = NodeTag::Mesh)
-            : name(name), parent(nullptr), tag(nodeTag), translation(0.0f), rotation(1.0f, 1.0f, 1.0f, 1.0f), scale(1.0f), meshes(0) {}
+            : name(name), parent(nullptr), tag(nodeTag), useMatrix(false), translation(0.0f), rotation(1.0f, 1.0f, 1.0f, 1.0f), scale(1.0f), meshes(0) {}
 
         std::string name;
         NodeTag tag;
@@ -36,7 +37,7 @@ namespace JLEngine
         glm::vec3 scale;             
 
         glm::mat4 localMatrix;
-        std::vector<double> gltfMatrix;
+        bool useMatrix;
 
         std::vector<Mesh*> meshes;
         std::vector<std::shared_ptr<Node>> children;
@@ -68,12 +69,9 @@ namespace JLEngine
         {
             return tag;
         }
-
-    private:
-
         glm::mat4 GetLocalTransform() const
         {
-            if (gltfMatrix.size() > 0)
+            if (useMatrix)
             {
                 return localMatrix;
             }
@@ -82,6 +80,9 @@ namespace JLEngine
             glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), scale);
             return translationMatrix * rotationMatrix * scaleMatrix;
         }
+    private:
+
+        
     };
 
     void PrintNodeHierarchy(const Node* node, int depth = 0);

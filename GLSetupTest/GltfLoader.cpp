@@ -76,7 +76,7 @@ namespace JLEngine
 		return jlmesh;
 	}
 
-	JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, const tinygltf::Primitive& primitive, MeshManager* meshMgr)
+	JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Primitive& primitive, MeshManager* meshMgr)
 	{
 		// Create a VertexBuffer
 		JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
@@ -107,11 +107,11 @@ namespace JLEngine
 		LoadIndices(model, primitive, ibo);
 
 		// Create and initialize the Mesh
-		auto jlmesh = meshMgr->LoadMeshFromData("Primitive", vbo, ibo);
+		auto jlmesh = meshMgr->LoadMeshFromData(name, vbo, ibo);
 		return jlmesh;
 	}
 
-	JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh, MeshManager* meshMgr)
+	JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Mesh& mesh, MeshManager* meshMgr)
 	{
 		std::vector<float> positions, normals, texCoords, vertexData;
 		for (const auto& primitive : mesh.primitives)
@@ -139,7 +139,7 @@ namespace JLEngine
 		vbo.CalcStride();
 
 		// Step 2: Create a Mesh instance
-		auto jlmesh = meshMgr->CreateEmptyMesh("MeshWithMultiplePrimitives");
+		auto jlmesh = meshMgr->CreateEmptyMesh(name);
 		jlmesh->SetVertexBuffer(vbo);
 
 		// Step 3: Create separate index buffers for each primitive
@@ -158,7 +158,7 @@ namespace JLEngine
 	JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr, TextureManager* textureMgr)
 	{
 		auto material = matMgr->CreateMaterial(gltfMaterial.name);
-
+		int texId = 0;
 		if (gltfMaterial.values.find("baseColorFactor") != gltfMaterial.values.end())
 		{
 			const auto& factor = gltfMaterial.values.at("baseColorFactor").ColorFactor();
@@ -173,7 +173,8 @@ namespace JLEngine
 		if (gltfMaterial.values.find("baseColorTexture") != gltfMaterial.values.end())
 		{
 			int textureIndex = gltfMaterial.values.at("baseColorTexture").TextureIndex();
-			material->baseColorTexture = LoadTexture(model, textureIndex, textureMgr);
+			auto texName = gltfMaterial.name + std::to_string(texId++);
+			material->baseColorTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 		}
 
 		// Metallic and roughness factors
@@ -199,28 +200,32 @@ namespace JLEngine
 		if (gltfMaterial.values.find("metallicRoughnessTexture") != gltfMaterial.values.end())
 		{
 			int textureIndex = gltfMaterial.values.at("metallicRoughnessTexture").TextureIndex();
-			material->metallicRoughnessTexture = LoadTexture(model, textureIndex, textureMgr);
+			auto texName = gltfMaterial.name + std::to_string(texId++);
+			material->metallicRoughnessTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 		}
 
 		// Normal map
 		if (gltfMaterial.additionalValues.find("normalTexture") != gltfMaterial.additionalValues.end())
 		{
 			int textureIndex = gltfMaterial.additionalValues.at("normalTexture").TextureIndex();
-			material->normalTexture = LoadTexture(model, textureIndex, textureMgr);
+			auto texName = gltfMaterial.name + std::to_string(texId++);
+			material->normalTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 		}
 
 		// Occlusion map
 		if (gltfMaterial.additionalValues.find("occlusionTexture") != gltfMaterial.additionalValues.end())
 		{
 			int textureIndex = gltfMaterial.additionalValues.at("occlusionTexture").TextureIndex();
-			material->occlusionTexture = LoadTexture(model, textureIndex, textureMgr);
+			auto texName = gltfMaterial.name + std::to_string(texId++);
+			material->occlusionTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 		}
 
 		// Emissive map
 		if (gltfMaterial.additionalValues.find("emissiveTexture") != gltfMaterial.additionalValues.end())
 		{
 			int textureIndex = gltfMaterial.additionalValues.at("emissiveTexture").TextureIndex();
-			material->emissiveTexture = LoadTexture(model, textureIndex, textureMgr);
+			auto texName = gltfMaterial.name + std::to_string(texId++);
+			material->emissiveTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 		}
 
 		// Emissive factor
@@ -258,7 +263,8 @@ namespace JLEngine
 				if (textureValue.Has("index"))
 				{
 					int textureIndex = textureValue.Get("index").Get<int>();
-					material->diffuseTexture = LoadTexture(model, textureIndex, textureMgr);
+					auto texName = gltfMaterial.name + std::to_string(texId++);
+					material->diffuseTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 				}
 			}
 
@@ -274,14 +280,15 @@ namespace JLEngine
 				if (textureValue.Has("index"))
 				{
 					int textureIndex = textureValue.Get("index").Get<int>();
-					material->specularGlossinessTexture = LoadTexture(model, textureIndex, textureMgr);
+					auto texName = gltfMaterial.name + std::to_string(texId++);
+					material->specularGlossinessTexture = LoadTexture(model, texName, textureIndex, textureMgr);
 				}
 			}
 		}
 		return material;
 	}
 
-	JLEngine::Texture* LoadTexture(const tinygltf::Model& model, int textureIndex, TextureManager* textureMgr)
+	JLEngine::Texture* LoadTexture(const tinygltf::Model& model, std::string& name, int textureIndex, TextureManager* textureMgr)
 	{
 		if (textureIndex < 0 || textureIndex >= model.textures.size())
 			return nullptr;
@@ -289,13 +296,13 @@ namespace JLEngine
 		const auto& texture = model.textures[textureIndex];
 		const auto& imageData = model.images[texture.source];
 
-		const std::string& name = texture.name.empty() ? "UnnamedTexture" : texture.name; 
+		const std::string& finalName = name + (texture.name.empty() ? "UnnamedTexture" : texture.name);
 		uint32 width = static_cast<uint32>(imageData.width);
 		uint32 height = static_cast<uint32>(imageData.height);
 		int channels = imageData.component;
 		std::vector<unsigned char> data = imageData.image; // Raw pixel data
 
-		auto jltexture = textureMgr->CreateTextureFromData(texture.name, width, height, channels, data);
+		auto jltexture = textureMgr->CreateTextureFromData(finalName, width, height, channels, data);
 
 		return jltexture;
 	}
