@@ -9,7 +9,7 @@
 
 namespace JLEngine
 {
-	Mesh* Geometry::GenerateSphere(Graphics* graphics, string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments)
+	Mesh* Geometry::GenerateSphereMesh(Graphics* graphics, string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments)
 	{
         std::vector<float> vertices;
         std::vector<unsigned int> indices;
@@ -94,7 +94,7 @@ namespace JLEngine
         return mesh;
 	}
 
-    Mesh* Geometry::GenerateBox(Graphics* graphics, std::string name, float width, float length, float height) 
+    Mesh* Geometry::GenerateBoxMesh(Graphics* graphics, std::string name, float width, float length, float height)
     {
         std::vector<glm::vec3> positions;
         std::vector<glm::vec3> normals;

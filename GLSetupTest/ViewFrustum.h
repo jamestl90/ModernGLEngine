@@ -6,7 +6,7 @@
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtx/compatibility.hpp>
-#include "Primitives.h"
+#include "CollisionShapes.h"
 #include "Window.h"
 
 #include <iostream>

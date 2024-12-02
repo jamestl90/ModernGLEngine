@@ -11,10 +11,11 @@
 #include "Texture.h"
 #include "VertexBuffers.h"
 #include "ViewFrustum.h"
-#include "Primitives.h"
+#include "CollisionShapes.h"
 #include "Types.h"
 #include "Transform3.h"
 #include "RenderTarget.h"
+#include "Node.h"
 
 #define BUFFER_OFFSET(i) ((char*)NULL + (i))
 
@@ -126,11 +127,6 @@ namespace JLEngine
 
 		void SetCullFace(uint32 face);
 
-		// Material
-		
-		void CreateMaterial(Material* mat);
-		void DisposeMaterial(Material* mat);
-
 		// Texture 
 		
 		bool CreateRenderTarget(RenderTarget* target);
@@ -140,10 +136,10 @@ namespace JLEngine
 
 		void CreateTexture(Texture* texture);
 		void CreateTextures(uint32 count, uint32& id);
-		void BindTexture(uint32 type, uint32 id);
+		void BindTexture(uint32 target, uint32 id);
 		void DisposeTexture(uint32 count, uint32* textures);
 
-		void SetActiveTexture(uint32 type);
+		void SetActiveTexture(uint32 texunit);
 
 		// Buffer objects
 		
@@ -194,6 +190,7 @@ namespace JLEngine
 		void RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId = -1);
 		void EndPrimitiveDraw();
 
+		void RenderNodeHierarchy(Node* root, std::function<void(Node*)> uniformCallback);
 		void RenderMesh(Mesh* mesh);
 		void RenderMeshWithTexture(Mesh* mesh, Texture* texture);
 		void DrawArrayBuffer(uint32 drawMode, uint32 first, uint32 count);
@@ -207,6 +204,7 @@ namespace JLEngine
 	private:
 
 		void CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 indices[], uint32 indSize, uint32 ids[]);
+		void CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 ids[]);
 
 		string m_shaderInfo;
 		string m_versionInfo;
@@ -223,6 +221,10 @@ namespace JLEngine
 		uint32 m_coneGeom[4];
 		uint32 m_octahedronGeom[4];
 		uint32 m_defaultShader;
+
+		uint32 m_activeShaderProgram;
+		uint32 m_activeTextureUnit;      
+		std::vector<GLuint> m_boundTextures;
 
 		glm::vec4 m_clearColour;
 

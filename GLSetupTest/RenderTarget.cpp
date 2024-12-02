@@ -4,12 +4,13 @@
 
 namespace JLEngine
 {
-	RenderTarget::RenderTarget(uint32 handle, string& name, string& path, int numSources)
-		: Resource(handle, path + name), m_fbo(-1), m_dbo(-1), m_sources(nullptr), m_numSources(numSources),
-		m_height(0), m_width(0), m_useDepth(false), m_useWindowSize(false), m_drawBuffers(nullptr)
+	RenderTarget::RenderTarget(uint32 handle, const string& name, uint32 numSources)
+		: Resource(handle, name), m_fbo(0), m_dbo(0), m_numSources(numSources),
+		m_height(0), m_width(0), m_useDepth(false), m_useWindowSize(false), m_graphics(nullptr)
 	{
-		m_sources = new uint32[numSources];
-		m_drawBuffers = new uint32[numSources];
+		m_attributes.Create(numSources);
+		m_sources.Create(numSources);
+		m_drawBuffers.Create(numSources);
 
 		for (uint32 i = 0; i < m_numSources; i++)
 		{
@@ -20,12 +21,9 @@ namespace JLEngine
 	RenderTarget::~RenderTarget()
 	{
 		UnloadFromGraphics();
-	
-		if (m_drawBuffers != nullptr) delete[] m_drawBuffers;
-		if (m_sources != nullptr) delete[] m_sources;
 	}
 
-	void RenderTarget::Init( Graphics* graphics )
+	void RenderTarget::UploadToGPU( Graphics* graphics )
 	{
 		m_graphics = graphics;
 
@@ -62,15 +60,24 @@ namespace JLEngine
 	{
 		m_numSources = numSources;
 
-		if (m_sources != nullptr) delete[] m_sources;
-		m_sources = new uint32[m_numSources];
-
-		if (m_drawBuffers != nullptr) delete[] m_drawBuffers;
-		m_drawBuffers = new uint32[m_numSources];
+		m_sources.Create(m_numSources);
+		m_drawBuffers.Create(m_numSources);
 
 		for (uint32 i = 0; i < m_numSources; i++)
 		{
 			m_drawBuffers[i] = GL_TEXTURE0 + i;
+		}
+	}
+
+	void RenderTarget::SetTextureAttribute(uint32 index, const TextureAttribute& attributes)
+	{
+		if (index < m_attributes.Size())
+		{
+			m_attributes[index] = attributes;
+		}
+		else
+		{
+			std::cerr << "RenderTarget::SetTextureAttributes: Index out of range!" << std::endl;
 		}
 	}
 

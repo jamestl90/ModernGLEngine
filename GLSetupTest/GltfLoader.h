@@ -7,6 +7,7 @@
 #include "Graphics.h"
 #include "MeshManager.h"
 #include "MaterialManager.h"
+#include "TextureManager.h"
 
 namespace JLEngine
 {
@@ -15,8 +16,12 @@ namespace JLEngine
     
     JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, const tinygltf::Primitive& primitive, MeshManager* meshMgr);
     JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh, MeshManager* meshMgr);
-    JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr);
-    
+    JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr, TextureManager* textureMgr);
+    JLEngine::Texture* LoadTexture(const tinygltf::Model& model, int textureIndex, TextureManager* textureMgr);
+
+    // Function to extract a vec4 from a tinygltf::Value
+    glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue = glm::vec4(1.0f));
+    glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue = glm::vec3(1.0f));
 
     void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
         std::vector<float>& vertexData);

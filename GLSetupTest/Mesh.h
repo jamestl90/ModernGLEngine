@@ -2,7 +2,7 @@
 #define MESH_H
 
 #include "Types.h"
-#include "Primitives.h"
+#include "CollisionShapes.h"
 #include "VertexBuffers.h"
 #include "Resource.h"
 #include "Material.h"
@@ -21,17 +21,18 @@ namespace JLEngine
 		void UnloadFromGraphics();
 
 		void SetVao(uint32 id) { m_vao = id; }
-		uint32 GetVaoId() { return m_vao; }
+		uint32 GetVaoId() const { return m_vao; }
 		void SetVertexBuffer(VertexBuffer& vbo);
 		VertexBuffer& GetVertexBuffer();
 
 		void AddIndexBuffer(IndexBuffer& ibo);
 		void SetHasIndices(bool hasIndices) { m_hasIndices = hasIndices; }
-		bool HasIndices() { return m_hasIndices; }
+		bool HasIndices() const { return m_hasIndices; }
 		IndexBuffer& GetIndexBuffer();
 		IndexBuffer& GetIndexBufferAt(int idx);
 		std::vector<IndexBuffer>& GetIndexBuffers() { return m_ibos; }
 
+		std::vector<Material*>& GetMaterials() { return m_materials; }
 		Material* GetMaterialAt(int idx) { return m_materials[idx]; }
 		void AddMaterial(Material* material) { m_materials.push_back(material); }
 

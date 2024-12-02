@@ -4,11 +4,13 @@
 #include "FileHelpers.h"
 
 #include <set>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace JLEngine
 {
 	Graphics::Graphics(Window* window) 
-		: m_drawAABB(false), m_shaderInfo(""), m_versionInfo(""), m_vendorInfo(""), m_extensionInfo(""), m_rendererInfo(""), m_window(window), m_usingMSAA(false)
+		: m_drawAABB(false), m_shaderInfo(""), m_versionInfo(""), m_activeTextureUnit(0), m_activeShaderProgram(0),
+		m_vendorInfo(""), m_extensionInfo(""), m_rendererInfo(""), m_window(window), m_usingMSAA(false)
 	{
 		float fov = 40.0f;
 		float nearDist = 0.1f;
@@ -47,6 +49,10 @@ namespace JLEngine
 			str = glGetStringi(GL_EXTENSIONS, i);
 			m_extensionInfo += string((char*)str) + "\n";
 		}
+
+		GLint maxUnits;
+		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxUnits);
+		m_boundTextures = std::vector<uint32>(maxUnits);
 	}
 
 	Graphics::~Graphics()
@@ -245,7 +251,7 @@ namespace JLEngine
 			GLuint shaderId = glCreateShader(s.GetType());
 			s.SetShaderId(shaderId);
 
-			auto shaderFile = shaderTexts[i];
+			auto& shaderFile = shaderTexts[i];
 
 			const char* cStr = shaderFile.c_str();
 			glShaderSource(shaderId, 1, &cStr, NULL);
@@ -410,7 +416,7 @@ namespace JLEngine
 
 	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat4& mat)
 	{
-		glUniformMatrix4fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+		glUniformMatrix4fv(location, count, transpose ? GL_TRUE : GL_FALSE, glm::value_ptr(mat));
 	}
 
 	uint32 Graphics::CreateVertexArray()
@@ -498,7 +504,11 @@ namespace JLEngine
 
 	void Graphics::BindShader(uint32 programId)
 	{
-		glUseProgram(programId);
+		if (m_activeShaderProgram != programId)
+		{
+			glUseProgram(programId);
+			m_activeShaderProgram = programId;
+		}
 	}
 
 	void Graphics::UnbindShader()
@@ -511,14 +521,22 @@ namespace JLEngine
 		glGenTextures(count, &id);
 	}
 
-	void Graphics::BindTexture( uint32 type, uint32 id )
+	void Graphics::BindTexture( uint32 target, uint32 id )
 	{
-		glBindTexture(type, id);
+		if (m_boundTextures[m_activeTextureUnit] != id)
+		{
+			glBindTexture(target, id);
+			m_boundTextures[m_activeTextureUnit] = id;
+		}
 	}
 
-	void Graphics::SetActiveTexture( uint32 type )
+	void Graphics::SetActiveTexture( uint32 texunit )
 	{
-		glActiveTexture(type);
+		if (m_activeTextureUnit != texunit)
+		{
+			glActiveTexture(texunit);
+			m_activeTextureUnit = texunit;
+		}
 	}
 
 	void Graphics::CreateVertexBuffer( VertexBuffer& vbo )
@@ -583,16 +601,6 @@ namespace JLEngine
 		glDeleteBuffers(1, &vaoID);
 	}
 
-	void Graphics::CreateMaterial( Material* mat )
-	{
-
-	}
-
-	void Graphics::DisposeMaterial( Material* mat )
-	{
-
-	}
-
 	void Graphics::CreateTexture( Texture* texture )
 	{
 		GLuint image;
@@ -640,6 +648,34 @@ namespace JLEngine
 	void Graphics::SwapBuffers()
 	{
 		m_window->SwapBuffers();
+	}
+
+	void Graphics::RenderNodeHierarchy(Node* root, std::function<void(Node*)> uniformCallback)
+	{
+		if (!root) 
+		{
+			return; // Safety check for null root
+		}
+
+		// If the current node has meshes, process them
+		for (Mesh* mesh : root->meshes) 
+		{
+			if (mesh) 
+			{
+				uniformCallback(root);
+
+				auto mat = mesh->GetMaterialAt(0);
+				auto tex = mat->baseColorTexture;
+
+				RenderMeshWithTexture(mesh, tex);
+			}
+		}
+
+		// Recursively render all child nodes
+		for (const auto& child : root->children) 
+		{
+			RenderNodeHierarchy(child.get(), uniformCallback);
+		}
 	}
 
 	void Graphics::RenderMesh(Mesh* mesh)
@@ -696,7 +732,7 @@ namespace JLEngine
 
 		if (mesh->HasIndices())
 		{
-			auto ibo = mesh->GetIndexBuffer();
+			auto& ibo = mesh->GetIndexBuffer();
 			GLsizei size = (GLsizei)ibo.Size();
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
 			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
@@ -818,25 +854,35 @@ namespace JLEngine
 
 	bool Graphics::CreateRenderTarget( RenderTarget* target )
 	{
+		if (target->GetWidth() == 0 || target->GetHeight() == 0)
+		{
+			std::cerr << "Graphics: Invalid render target dimensions!" << std::endl;
+			return false;
+		}
+
 		GLuint fbo;
 		glGenFramebuffers(1, &fbo);
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 		target->SetFrameBufferId(fbo);
 
+		auto& attributes = target->GetTextureAttributes();
+
 		for (uint32 i = 0; i < target->GetNumSources(); i++)
 		{
 			GLuint tex;
-			glActiveTexture(GL_TEXTURE0 + i);
 			glGenTextures(1, &tex);
 			glBindTexture(GL_TEXTURE_2D, tex);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, target->GetWidth(), target->GetHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+			auto& attrib = attributes[i];
+
+			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, target->GetWidth(), target->GetHeight(), 0, attrib.format, attrib.dataType, nullptr);
 			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, tex, 0);
 			target->SetSourceId(i, tex);
 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, attrib.minFilter);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, attrib.magFilter);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, attrib.wrapS);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, attrib.wrapT);
 		}
 
 		if (target->UseDepth())
@@ -849,13 +895,31 @@ namespace JLEngine
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 		}
 
-		glDrawBuffers(target->GetNumSources(), target->GetDrawBuffers());
+		glDrawBuffers(target->GetNumSources(), target->GetDrawBuffers().data());
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
 			std::cout << "Graphics: Frame buffer has errors" << std::endl;
+			glDeleteFramebuffers(1, &fbo);
+			for (uint32 i = 0; i < target->GetNumSources(); i++)
+			{
+				GLuint tex = target->GetSourceId(i);
+				glDeleteTextures(1, &tex);
+			}
+			if (target->UseDepth())
+			{
+				GLuint depth = target->GetDepthBufferId();
+				glDeleteRenderbuffers(1, &depth);
+			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			return false;
 		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
 		return true;
 	}
 
@@ -863,7 +927,7 @@ namespace JLEngine
 	{
 		GLuint fboId = target->GetFrameBufferId();
 		
-		glDeleteTextures(target->GetNumSources(), target->GetSources());
+		glDeleteTextures(target->GetNumSources(), target->GetSources().data());
 		glDeleteFramebuffers(1, &fboId);
 
 		if (target->UseDepth())
@@ -918,6 +982,27 @@ namespace JLEngine
 			5, 1, 4
 		};
 
+		GLfloat fullScreenQuad[] =
+		{
+			// position				// texture coordinates
+			-1.0f, -1.0f, 0.0f,		0.0f, 0.0f,
+			1.0f, -1.0f, 0.0f,		1.0f, 0.0f,
+			1.0f,  1.0f, 0.0f,		1.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f,		0.0f, 0.0f,
+			1.0f, 1.0f, 0.0f,	    1.0f, 1.0f,
+			-1.0f,  1.0f, 0.0f,		0.0f, 1.0f
+		};
+		VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+		vbo.InsertAt(0, fullScreenQuad, 36);
+		auto posAttri = VertexAttribute(POSITION, 0, 3);
+		auto uvAttri = VertexAttribute(TEX_COORD_2D, 12, 2);
+		vbo.AddAttribute(posAttri);
+		vbo.AddAttribute(uvAttri);
+		vbo.CalcStride();
+		uint32 vao;
+		CreateVertexArray(1, vao);
+		CreateVertexBuffer(vbo);
+
 		CreatePrimitiveBuffers(octahedronVerts, sizeof(octahedronVerts), octahedronInds, sizeof(octahedronInds), m_octahedronGeom);
 		CreatePrimitiveBuffers(coneVerts, sizeof(coneVerts), coneInds, sizeof(coneInds), m_coneGeom);
 	}
@@ -936,6 +1021,16 @@ namespace JLEngine
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indSize, indices, GL_STATIC_DRAW);
 		ids[3] = indSize / sizeof(uint32);
 		glBindVertexArray(0);
+	}
+
+	void Graphics::CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 ids[])
+	{
+		glGenVertexArrays(1, &ids[0]);
+		glBindVertexArray(ids[0]);
+		glGenBuffers(1, &ids[1]);
+		glBindBuffer(GL_ARRAY_BUFFER, ids[1]);
+		glBufferData(GL_ARRAY_BUFFER, vertSize, vertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
 	}
 
 	void Graphics::SetBlendFunc( uint32 first, uint32 second )

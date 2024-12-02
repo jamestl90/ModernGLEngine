@@ -7,7 +7,7 @@ namespace JLEngine
 
     }
 
-    ShaderProgram* ShaderManager::LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
+    ShaderProgram* ShaderManager::CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
     {
         return Add(name, [&]()
             {
@@ -23,7 +23,7 @@ namespace JLEngine
             });
     }
 
-    ShaderProgram* ShaderManager::LoadShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
+    ShaderProgram* ShaderManager::CreateShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
     {
         return Add(name, [&]()
             {
@@ -92,7 +92,7 @@ namespace JLEngine
                 }
             )";
 
-            m_basicLit = LoadShaderFromSource("BasicLitShader", vertexShaderCode, fragmentShaderCode);
+            m_basicLit = CreateShaderFromSource("BasicLitShader", vertexShaderCode, fragmentShaderCode);
             m_basicLit->CacheUniformLocation("uModel");
             m_basicLit->CacheUniformLocation("uView");
             m_basicLit->CacheUniformLocation("uProjection");
@@ -143,7 +143,7 @@ namespace JLEngine
                 }
             )";
 
-            m_basicUnlit = LoadShaderFromSource("BasicUnlitShader", unlitVertexShaderCode, unlitFragmentShaderCode);
+            m_basicUnlit = CreateShaderFromSource("BasicUnlitShader", unlitVertexShaderCode, unlitFragmentShaderCode);
             m_basicUnlit->CacheUniformLocation("uModel");
             m_basicUnlit->CacheUniformLocation("uView");
             m_basicUnlit->CacheUniformLocation("uProjection");
@@ -180,7 +180,7 @@ namespace JLEngine
                 }
             )";
 
-            m_solidColor = LoadShaderFromSource("SolidColorShader", solidColorVertexShaderCode, solidColorFragmentShaderCode);
+            m_solidColor = CreateShaderFromSource("SolidColorShader", solidColorVertexShaderCode, solidColorFragmentShaderCode);
             m_solidColor->CacheUniformLocation("uModel");
             m_solidColor->CacheUniformLocation("uView");
             m_solidColor->CacheUniformLocation("uProjection");

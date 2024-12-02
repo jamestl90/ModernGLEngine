@@ -155,11 +155,178 @@ namespace JLEngine
 		return jlmesh;
 	}
 
-	JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr)
+	JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr, TextureManager* textureMgr)
 	{
-		auto material = matMgr->CreateMaterial("matName");
+		auto material = matMgr->CreateMaterial(gltfMaterial.name);
 
+		if (gltfMaterial.values.find("baseColorFactor") != gltfMaterial.values.end())
+		{
+			const auto& factor = gltfMaterial.values.at("baseColorFactor").ColorFactor();
+			material->baseColorFactor = glm::vec4(factor[0], factor[1], factor[2], factor[3]);
+		}
+		else
+		{
+			material->baseColorFactor = glm::vec4(1.0f); 
+		}
+
+		// Base color texture
+		if (gltfMaterial.values.find("baseColorTexture") != gltfMaterial.values.end())
+		{
+			int textureIndex = gltfMaterial.values.at("baseColorTexture").TextureIndex();
+			material->baseColorTexture = LoadTexture(model, textureIndex, textureMgr);
+		}
+
+		// Metallic and roughness factors
+		if (gltfMaterial.values.find("metallicFactor") != gltfMaterial.values.end())
+		{
+			material->metallicFactor = static_cast<float>(gltfMaterial.values.at("metallicFactor").Factor());
+		}
+		else
+		{
+			material->metallicFactor = 1.0f; 
+		}
+
+		if (gltfMaterial.values.find("roughnessFactor") != gltfMaterial.values.end())
+		{
+			material->roughnessFactor = static_cast<float>(gltfMaterial.values.at("roughnessFactor").Factor());
+		}
+		else
+		{
+			material->roughnessFactor = 1.0f; 
+		}
+
+		// Metallic-roughness texture
+		if (gltfMaterial.values.find("metallicRoughnessTexture") != gltfMaterial.values.end())
+		{
+			int textureIndex = gltfMaterial.values.at("metallicRoughnessTexture").TextureIndex();
+			material->metallicRoughnessTexture = LoadTexture(model, textureIndex, textureMgr);
+		}
+
+		// Normal map
+		if (gltfMaterial.additionalValues.find("normalTexture") != gltfMaterial.additionalValues.end())
+		{
+			int textureIndex = gltfMaterial.additionalValues.at("normalTexture").TextureIndex();
+			material->normalTexture = LoadTexture(model, textureIndex, textureMgr);
+		}
+
+		// Occlusion map
+		if (gltfMaterial.additionalValues.find("occlusionTexture") != gltfMaterial.additionalValues.end())
+		{
+			int textureIndex = gltfMaterial.additionalValues.at("occlusionTexture").TextureIndex();
+			material->occlusionTexture = LoadTexture(model, textureIndex, textureMgr);
+		}
+
+		// Emissive map
+		if (gltfMaterial.additionalValues.find("emissiveTexture") != gltfMaterial.additionalValues.end())
+		{
+			int textureIndex = gltfMaterial.additionalValues.at("emissiveTexture").TextureIndex();
+			material->emissiveTexture = LoadTexture(model, textureIndex, textureMgr);
+		}
+
+		// Emissive factor
+		if (gltfMaterial.additionalValues.find("emissiveFactor") != gltfMaterial.additionalValues.end())
+		{
+			const auto& factor = gltfMaterial.additionalValues.at("emissiveFactor").ColorFactor();
+			material->emissiveFactor = glm::vec3(factor[0], factor[1], factor[2]);
+		}
+		else
+		{
+			material->emissiveFactor = glm::vec3(0.0f); 
+		}
+
+		// Alpha properties
+		material->alphaMode = gltfMaterial.alphaMode;
+		material->alphaCutoff = static_cast<float>(gltfMaterial.alphaCutoff);
+		material->doubleSided = gltfMaterial.doubleSided;
+
+		// Specular-glossiness workflow
+		if (gltfMaterial.extensions.find("KHR_materials_pbrSpecularGlossiness") != gltfMaterial.extensions.end())
+		{
+			material->usesSpecularGlossinessWorkflow = true;
+
+			const auto& extension = gltfMaterial.extensions.at("KHR_materials_pbrSpecularGlossiness");
+
+			if (extension.Has("diffuseFactor"))
+			{
+				const auto& factor = extension.Get("diffuseFactor");
+				material->diffuseFactor = GetVec4FromValue(factor, glm::vec4(1.0f));
+			}
+
+			if (extension.Has("diffuseTexture"))
+			{
+				const tinygltf::Value& textureValue = extension.Get("diffuseTexture");
+				if (textureValue.Has("index"))
+				{
+					int textureIndex = textureValue.Get("index").Get<int>();
+					material->diffuseTexture = LoadTexture(model, textureIndex, textureMgr);
+				}
+			}
+
+			if (extension.Has("specularFactor"))
+			{
+				const tinygltf::Value& factor = extension.Get("specularFactor");
+				material->specularFactor = GetVec3FromValue(factor, glm::vec3(1.0f));
+			}
+
+			if (extension.Has("specularGlossinessTexture"))
+			{
+				const tinygltf::Value& textureValue = extension.Get("specularGlossinessTexture");
+				if (textureValue.Has("index"))
+				{
+					int textureIndex = textureValue.Get("index").Get<int>();
+					material->specularGlossinessTexture = LoadTexture(model, textureIndex, textureMgr);
+				}
+			}
+		}
 		return material;
+	}
+
+	JLEngine::Texture* LoadTexture(const tinygltf::Model& model, int textureIndex, TextureManager* textureMgr)
+	{
+		if (textureIndex < 0 || textureIndex >= model.textures.size())
+			return nullptr;
+
+		const auto& texture = model.textures[textureIndex];
+		const auto& imageData = model.images[texture.source];
+
+		const std::string& name = texture.name.empty() ? "UnnamedTexture" : texture.name; 
+		uint32 width = static_cast<uint32>(imageData.width);
+		uint32 height = static_cast<uint32>(imageData.height);
+		int channels = imageData.component;
+		std::vector<unsigned char> data = imageData.image; // Raw pixel data
+
+		auto jltexture = textureMgr->CreateTextureFromData(texture.name, width, height, channels, data);
+
+		return jltexture;
+	}
+
+
+	// Function to extract a vec4 from a tinygltf::Value
+	glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue)
+	{
+		if (!value.IsArray() || value.ArrayLen() != 4)
+		{
+			return defaultValue; // Return default if the value is not a valid vec4
+		}
+
+		return glm::vec4(
+			static_cast<float>(value.Get(0).IsNumber() ? value.Get(0).Get<double>() : defaultValue.x),
+			static_cast<float>(value.Get(1).IsNumber() ? value.Get(1).Get<double>() : defaultValue.y),
+			static_cast<float>(value.Get(2).IsNumber() ? value.Get(2).Get<double>() : defaultValue.z),
+			static_cast<float>(value.Get(3).IsNumber() ? value.Get(3).Get<double>() : defaultValue.w));
+	}
+
+	glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue)
+	{
+		if (!value.IsArray() || value.ArrayLen() != 3)
+		{
+			return defaultValue;
+		}
+
+		return glm::vec3(
+			static_cast<float>(value.Get(0).IsNumber() ? value.Get(0).Get<double>() : defaultValue.x),
+			static_cast<float>(value.Get(1).IsNumber() ? value.Get(1).Get<double>() : defaultValue.y),
+			static_cast<float>(value.Get(2).IsNumber() ? value.Get(2).Get<double>() : defaultValue.z));
 	}
 
 	void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,

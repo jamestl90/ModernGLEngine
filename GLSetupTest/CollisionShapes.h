@@ -1,5 +1,5 @@
-#ifndef PRIMITIVES_H
-#define PRIMITIVES_H
+#ifndef COLLISION_SHAPES_H
+#define COLLISION_SHAPES_H
 
 #include "Types.h"
 

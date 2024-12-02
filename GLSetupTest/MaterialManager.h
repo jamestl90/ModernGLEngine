@@ -12,7 +12,7 @@ namespace JLEngine
 	class MaterialManager : ResourceManager<Material>
 	{
 	public:
-		MaterialManager(Graphics* graphics) : m_graphics(graphics) {}
+		MaterialManager(Graphics* graphics);
 
 		Material* CreateMaterial(const std::string& name) 
 		{
@@ -24,8 +24,12 @@ namespace JLEngine
 				});
 		}
 
+		Material* GetDefaultMaterial() { return m_defaultMat; }
+
 	private:
 		Graphics* m_graphics;
+
+		Material* m_defaultMat;
 	};
 }
 

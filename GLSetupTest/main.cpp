@@ -1,10 +1,13 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "JLEngine.h"
 #include "FlyCamera.h"
 #include "GltfLoader.h"
 #include "Mesh.h"
+#include "Node.h"
 #include "Geometry.h"
 
 JLEngine::FlyCamera* flyCamera;
@@ -12,6 +15,7 @@ JLEngine::Input* input;
 JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
+JLEngine::Node* duckScene;
 JLEngine::Texture* texture;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
@@ -48,6 +52,14 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 
     shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)));
     graphics.RenderMeshWithTexture(planeMesh, texture);
+
+    graphics.RenderNodeHierarchy(duckScene, [shader](JLEngine::Node* node)
+    {
+        glm::mat4 modelMatrix = node->GetGlobalTransform();
+        GLint location = glGetUniformLocation(shader->GetProgramId(), "uModel");
+        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+        //shader->SetUniform("uModel", modelMatrix);
+    });
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -96,7 +108,7 @@ int main()
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
 
-    texture = textureMgr->LoadTextureFromFile("DefaulTexture", "../Assets/floor_default_grid.png");
+    texture = textureMgr->CreateTextureFromFile("DefaulTexture", "../Assets/floor_default_grid.png");
 
     //meshShader = shaderMgr->LoadShaderFromFile("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
     //meshShader.get()->CacheUniformLocation("uModel");
@@ -110,8 +122,10 @@ int main()
 
     //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
     planeMesh = JLEngine::LoadModelGLB(std::string("../Assets/plane.glb"), graphics);
-    cubeMesh = JLEngine::Geometry::GenerateBox(graphics, "Box1", 2.0f, 2.0f, 2.0f);
-    sphereMesh = JLEngine::Geometry::GenerateSphere(graphics, "Sphere1", 1.0f, 15, 15);
+    auto aduckScene = engine.GetAssetLoader()->LoadGLB("../Assets/Duck.glb");
+    duckScene = aduckScene.get();
+    cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
+    sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 

@@ -16,8 +16,8 @@ namespace JLEngine
 	public:
         ShaderManager(Graphics* graphics);
 
-        ShaderProgram* LoadShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
-        ShaderProgram* LoadShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
+        ShaderProgram* CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
+        ShaderProgram* CreateShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
 
         ShaderProgram* BasicUnlitShader();
         ShaderProgram* BasicLitShader();

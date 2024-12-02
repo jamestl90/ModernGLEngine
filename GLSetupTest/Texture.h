@@ -21,6 +21,7 @@ namespace JLEngine
 
         // Initialize texture with raw data
         void InitFromData(const std::vector<unsigned char>& data, int width, int height, int channels, bool clamped, bool mipmaps);
+        void InitFromData(void* data, int width, int height, int channels, int dataType, bool clamped, bool mipmaps);
         void FreeData() { m_data.clear(); }
 
         // Upload texture data to GPU
@@ -33,7 +34,7 @@ namespace JLEngine
         
         uint32 GetFormat() const { return m_format; }
         uint32 GetInternalFormat() const { return m_internalFormat; }
-        bool IsClamped() { return m_clamped; }
+        bool IsClamped() const { return m_clamped; }
         uint32_t GetGPUID() const { return m_id; }
         int GetDataType() const { return m_dataType; }
         int GetWidth() const { return m_width; }

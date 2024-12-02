@@ -5,7 +5,7 @@ namespace JLEngine
 {
     // Load texture from file
 
-    Texture* TextureManager::LoadTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
+    Texture* TextureManager::CreateTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
     {
         return Add(name, [&]()
             {
@@ -29,7 +29,7 @@ namespace JLEngine
 
     // Load texture from raw data
 
-    Texture* TextureManager::LoadTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data, GLenum internalFormat, GLenum format, GLenum dataType, bool clamped, bool mipmaps)
+    Texture* TextureManager::CreateTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data, GLenum internalFormat, GLenum format, GLenum dataType, bool clamped, bool mipmaps)
     {
         return Add(name, [&]()
             {
@@ -37,6 +37,28 @@ namespace JLEngine
                 texture->SetFormat(internalFormat, format, dataType);
                 texture->SetClamped(clamped);
                 texture->EnableMipmaps(mipmaps);
+                texture->UploadToGPU(m_graphics, true);
+                return texture;
+            });
+    }
+
+    Texture* TextureManager::CreateTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data, bool clamped, bool mipmaps)
+    {
+        return Add(name, [&]()
+            {
+                auto texture = std::make_unique<Texture>(GenerateHandle(), name, width, height, data, channels);
+                texture->InitFromData(data, width, height, channels, GL_UNSIGNED_BYTE, clamped, mipmaps);
+                texture->UploadToGPU(m_graphics, true);
+                return texture;
+            });
+    }
+
+    Texture* TextureManager::CreateTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, vector<unsigned char>& data, bool clamped, bool mipmaps)
+    {
+        return Add(name, [&]()
+            {
+                auto texture = std::make_unique<Texture>(GenerateHandle(), name, width, height, data.data(), channels);
+                texture->InitFromData(data, width, height, channels, clamped, mipmaps);
                 texture->UploadToGPU(m_graphics, true);
                 return texture;
             });

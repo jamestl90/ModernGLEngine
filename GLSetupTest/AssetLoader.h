@@ -9,6 +9,7 @@
 #include "MaterialManager.h"
 #include "MeshManager.h"
 #include "Node.h"
+#include "Material.h"
 
 namespace JLEngine
 {
@@ -18,10 +19,11 @@ namespace JLEngine
 		AssetLoader(ShaderManager* shaderManager, MeshManager* meshManager, 
 			MaterialManager* materialManager, TextureManager* textureManager);
 
-		Node* LoadGLB(const std::string& glbFile);
+		std::shared_ptr<Node> LoadGLB(const std::string& glbFile);
 
 	protected:
 		std::vector<Mesh*> loadMeshes(tinygltf::Model& model);
+		std::vector<Material*> loadMaterials(tinygltf::Model& model);
 
 		ShaderManager* m_shaderManager;
 		MeshManager* m_meshManager;

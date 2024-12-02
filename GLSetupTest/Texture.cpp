@@ -77,6 +77,44 @@ namespace JLEngine
         }
     }
 
+    void Texture::InitFromData(void* data, int width, int height, int channels, int dataType, bool clamped, bool mipmaps)
+    {
+        auto uchardata = static_cast<unsigned char*>(data);
+        unsigned long long size = width * height * channels * sizeof(unsigned char);
+        m_data = std::vector<unsigned char>(uchardata, uchardata + size);
+        m_width = width;
+        m_height = height;
+        m_channels = channels;
+        m_clamped = clamped;
+        m_mipmaps = mipmaps;
+
+        // Determine the appropriate OpenGL format
+        switch (channels)
+        {
+        case 1:
+            m_format = GL_RED;
+            m_internalFormat = GL_R8;
+            break;
+        case 2:
+            m_format = GL_RG;
+            m_internalFormat = GL_RG8;
+            break;
+        case 3:
+            m_format = GL_RGB;
+            m_internalFormat = GL_RGB8;
+            break;
+        case 4:
+            m_format = GL_RGBA;
+            m_internalFormat = GL_RGBA8;
+            break;
+        default:
+            m_format = GL_RGBA;
+            m_internalFormat = GL_RGBA8;
+            std::cerr << "Unsupported channel count: " << channels << std::endl;
+            break;
+        }
+    }
+
     void Texture::UploadToGPU(Graphics* graphics, bool freeData)
     {
         m_graphics = graphics;

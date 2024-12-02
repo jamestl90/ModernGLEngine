@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <stdexcept>
 
 #include "Types.h"
 
@@ -129,6 +130,92 @@ namespace JLEngine
 	{
 		return &m_buffer[0];
 	}
+
+	template <class T>
+	class SmallArray
+	{
+	public:
+		SmallArray(T* data, uint32 size)
+			: m_data(data), m_size(size)
+		{
+			if (data == nullptr)
+			{
+				throw std::invalid_argument("SmallArray: data pointer cannot be null.");
+			}
+		}
+		
+		SmallArray(uint32 size)
+			: m_size(size), m_data(new T[size])
+		{
+		}
+
+		SmallArray() 
+			: m_size(0), m_data(nullptr)
+		{
+		}
+
+		~SmallArray()
+		{
+			delete[] m_data;
+		}
+
+		void Create(T* data, uint32 size)
+		{
+			if (m_data != nullptr)
+				delete[] m_data;
+
+			m_size = size;
+			m_data = data;
+		}
+
+		void Create(uint32 size)
+		{
+			if (m_data != nullptr)
+				delete[] m_data;
+
+			m_size = size;
+			m_data = new T[m_size];
+		}
+
+		void Insert(T value, uint32 idx)
+		{
+			if (idx >= m_size)
+			{
+				throw std::out_of_range("Index out of bounds");
+			}
+			m_data[idx] = value;
+		}
+
+		// Getter for size
+		uint32 Size() const { return m_size; }
+
+		// Access operator for convenience
+		T& operator[](uint32_t idx)
+		{
+			if (idx >= m_size)
+			{
+				throw std::out_of_range("Index out of bounds");
+			}
+			return m_data[idx];
+		}
+
+		const T& operator[](uint32_t idx) const
+		{
+			if (idx >= m_size)
+			{
+				throw std::out_of_range("Index out of bounds");
+			}
+			return m_data[idx];
+		}
+
+		T* data() { return m_data; }
+
+		const T* data() const { return m_data; }
+
+	protected:
+		T* m_data = nullptr;
+		uint32 m_size = 0;
+	};
 }
 
 #endif
