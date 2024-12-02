@@ -29,6 +29,12 @@ namespace JLEngine
 			const std::vector<float>& texCoords,
 			std::vector<float>& vertexData);
 
+		static void GenerateInterleavedVertexData(const std::vector<float>& positions,
+			const std::vector<float>& normals,
+			const std::vector<float>& texCoords,
+			const std::vector<float>& tangents,
+			std::vector<float>& vertexData);
+
 		static std::vector<glm::vec3> CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32>& indices);
 	};
 

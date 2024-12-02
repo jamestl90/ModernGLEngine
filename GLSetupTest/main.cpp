@@ -43,7 +43,6 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
     shader->SetUniform("uUseTexture", 0);    
     shader->SetUniform("uTexture", 0);
     shader->SetUniform("uSolidColor", glm::vec4(1.8f, 0.5f, 0.2f, 1.0f));
-
     graphics.RenderMeshWithTexture(sphereMesh, texture);
 
     shader->SetUniform("uModel", glm::translate(glm::vec3(-5.0f, 0.0f, 0.0f)));
@@ -62,7 +61,7 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 
     graphics.RenderNodeHierarchy(fishScene, [shader](JLEngine::Node* node)
     {
-        glm::mat4 modelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 5.0f)) * node->GetGlobalTransform();
+        glm::mat4 modelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 3.0f)) * node->GetGlobalTransform();
         shader->SetUniform("uModel", modelMatrix);
     });
 }

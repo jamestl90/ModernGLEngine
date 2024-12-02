@@ -876,7 +876,8 @@ namespace JLEngine
 
 			auto& attrib = attributes[i];
 
-			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, target->GetWidth(), target->GetHeight(), 0, attrib.format, attrib.dataType, nullptr);
+			glTexStorage2D(GL_TEXTURE_2D, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
+			// glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, attrib.internalFormat, target->GetWidth(), target->GetHeight(), GL_TRUE);
 			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, tex, 0);
 			target->SetSourceId(i, tex);
 
@@ -892,6 +893,7 @@ namespace JLEngine
 			glGenRenderbuffers(1, &depth);
 			glBindRenderbuffer(GL_RENDERBUFFER, depth);
 			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight());
+			// glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight()); // 4x MSAA
 			target->SetDepthBufferId(depth);
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 		}
@@ -900,7 +902,20 @@ namespace JLEngine
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			std::cout << "Graphics: Frame buffer has errors" << std::endl;
+			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			std::cerr << "Framebuffer not complete: ";
+			switch (status) 
+			{
+				case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED"; break;
+				case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
+				case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
+				case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
+				case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
+				case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED"; break;
+				default: std::cerr << "Unknown Error"; break;
+			}
+			std::cerr << std::endl;
+
 			glDeleteFramebuffers(1, &fbo);
 			for (uint32 i = 0; i < target->GetNumSources(); i++)
 			{

@@ -232,6 +232,60 @@ namespace JLEngine
         return smoothNormals;
     }
 
+    void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
+        const std::vector<float>& normals,
+        const std::vector<float>& texCoords,
+        const std::vector<float>& tangents,
+        std::vector<float>& vertexData)
+    {
+        size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
+
+        // Resize the interleaved array
+        vertexData.resize(vertexCount * (3 + 3 + 2 + 3)); // 3 for position, 3 for normal, 2 for texCoords, 3 for tangents
+
+        for (size_t i = 0; i < vertexCount; ++i) {
+            // Interleave position
+            vertexData[i * 11 + 0] = positions[i * 3 + 0];
+            vertexData[i * 11 + 1] = positions[i * 3 + 1];
+            vertexData[i * 11 + 2] = positions[i * 3 + 2];
+
+            // Interleave normal (if available)
+            if (!normals.empty()) {
+                vertexData[i * 11 + 3] = normals[i * 3 + 0];
+                vertexData[i * 11 + 4] = normals[i * 3 + 1];
+                vertexData[i * 11 + 5] = normals[i * 3 + 2];
+            }
+            else {
+                vertexData[i * 11 + 3] = 0.0f;
+                vertexData[i * 11 + 4] = 0.0f;
+                vertexData[i * 11 + 5] = 1.0f; // Default normal
+            }
+
+            // Interleave texture coordinates (if available)
+            if (!texCoords.empty()) {
+                vertexData[i * 11 + 6] = texCoords[i * 2 + 0];
+                vertexData[i * 11 + 7] = texCoords[i * 2 + 1];
+            }
+            else {
+                vertexData[i * 11 + 6] = 0.0f;
+                vertexData[i * 11 + 7] = 0.0f; // Default UV
+            }
+
+            // Interleave tangent (if available)
+            if (!tangents.empty()) {
+                vertexData[i * 11 + 8] = tangents[i * 3 + 0];
+                vertexData[i * 11 + 9] = tangents[i * 3 + 1];
+                vertexData[i * 11 + 10] = tangents[i * 3 + 2];
+            }
+            else {
+                vertexData[i * 11 + 8] = 1.0f;
+                vertexData[i * 11 + 9] = 0.0f;
+                vertexData[i * 11 + 10] = 0.0f; // Default tangent
+            }
+        }
+    }
+
+
     uint32 Polygon::AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
         int lastTriCount, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, 
         glm::vec3 p4, glm::vec3 normal, glm::vec2 uvBotLeft, glm::vec2 uvOffset, bool flip)

@@ -83,11 +83,13 @@ namespace JLEngine
 		std::vector<float> positions;
 		std::vector<float> normals;
 		std::vector<float> texCoords;
+		std::vector<float> tangents;
 		std::vector<float> vertexData;
 
 		LoadPositionAttribute(model, primitive, positions);
 		LoadNormalAttribute(model, primitive, normals);
 		LoadTexCoordAttribute(model, primitive, texCoords);
+		//LoadTangentAttribute(model, primitive, tangents);
 		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
 		vbo.Set(vertexData);
 
@@ -95,6 +97,10 @@ namespace JLEngine
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
+		if (!tangents.empty()) 
+		{
+			//attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 3)); // Tangents as vec3
+		}
 
 		for (VertexAttribute attrib : attributes)
 		{
@@ -307,7 +313,6 @@ namespace JLEngine
 		return jltexture;
 	}
 
-
 	// Function to extract a vec4 from a tinygltf::Value
 	glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue)
 	{
@@ -449,6 +454,43 @@ namespace JLEngine
 		else 
 		{
 			std::cerr << "Warning: TEXCOORD_0 attribute not found in primitive!" << std::endl;
+		}
+	}
+
+	void LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData)
+	{
+		const auto& tangentAttr = primitive.attributes.find("TANGENT");
+		if (tangentAttr != primitive.attributes.end())
+		{
+			const tinygltf::Accessor& tangentAccessor = model.accessors[tangentAttr->second];
+			const tinygltf::BufferView& tangentBufferView = model.bufferViews[tangentAccessor.bufferView];
+			const tinygltf::Buffer& tangentBuffer = model.buffers[tangentBufferView.buffer];
+
+			// Validate component type
+			if (tangentAccessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
+			{
+				std::cerr << "Error: Unsupported TANGENT component type: " << tangentAccessor.componentType << std::endl;
+				return;
+			}
+
+			// Validate buffer bounds
+			size_t requiredSize = tangentBufferView.byteOffset + tangentAccessor.byteOffset +
+				tangentAccessor.count * 3 * sizeof(float); // Assuming vec3 tangents
+			if (requiredSize > tangentBuffer.data.size())
+			{
+				std::cerr << "Error: Tangent accessor exceeds buffer bounds!" << std::endl;
+				return;
+			}
+
+			const float* tangents = reinterpret_cast<const float*>(
+				&tangentBuffer.data[tangentBufferView.byteOffset + tangentAccessor.byteOffset]);
+
+			size_t count = tangentAccessor.count * 3; // Assuming vec3 tangents
+			tangentData.insert(tangentData.end(), tangents, tangents + count);
+		}
+		else
+		{
+			std::cerr << "Warning: TANGENT attribute not found in primitive. Continuing without tangents." << std::endl;
 		}
 	}
 

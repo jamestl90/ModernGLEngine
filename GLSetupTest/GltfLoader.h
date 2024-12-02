@@ -29,6 +29,8 @@ namespace JLEngine
         std::vector<float>& vertexData);
     void LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
         std::vector<float>& vertexData);
+    void LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+        std::vector<float>& tangentData);
     void LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, JLEngine::IndexBuffer& ibo);
 }
 
