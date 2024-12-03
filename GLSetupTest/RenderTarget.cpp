@@ -36,13 +36,28 @@ namespace JLEngine
 		m_graphics->CreateRenderTarget(this);
 	}
 
-	void RenderTarget::Bind()
+	void RenderTarget::BindTexture(int texIndex, int texUnit)
+	{
+		if (texIndex < 0 || texIndex >= (int)GetNumSources())
+		{
+			std::cerr << "RenderTarget: Invalid texture index!" << std::endl;
+			return;
+		}
+		GLuint textureId = m_sources[texIndex];
+		if (textureId != 0) 
+		{
+			glActiveTexture(GL_TEXTURE0 + texUnit);
+			glBindTexture(GL_TEXTURE_2D, textureId);
+		}
+	}
+
+	void RenderTarget::BindTextures()
 	{
 		for (uint32 i = 0; i < m_numSources; i++)
 		{
 			uint32 activeTex = GL_TEXTURE0 + i;
-			m_graphics->SetActiveTexture(activeTex);
-			m_graphics->BindTexture(GL_TEXTURE_2D, m_sources[i]);
+			glActiveTexture(activeTex);
+			glBindTexture(GL_TEXTURE_2D, m_sources[i]);
 		}
 	}
 
@@ -51,8 +66,8 @@ namespace JLEngine
 		for (uint32 i = 0; i < m_numSources; i++)
 		{
 			uint32 activeTex = GL_TEXTURE0 + i;
-			m_graphics->SetActiveTexture(activeTex);
-			m_graphics->BindTexture(GL_TEXTURE_2D, 0);
+			glActiveTexture(activeTex);
+			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 	}
 

@@ -31,7 +31,7 @@ namespace JLEngine
 
 		const uint32 GetFrameBufferId() const { return m_fbo; }
 		const uint32 GetDepthBufferId() const { return m_dbo; }
-		const uint32 GetSourceId(int index) { return m_sources[index]; }
+		int GetSourceId(int index) { return m_sources[index]; }
 		const uint32 GetNumSources() const { return m_numSources; }
 		const SmallArray<uint32>& GetSources() { return m_sources; }
 		const SmallArray<uint32>& GetDrawBuffers() { return m_drawBuffers; }
@@ -52,7 +52,8 @@ namespace JLEngine
 		void UploadToGPU(Graphics* graphics);
 		void UnloadFromGraphics();
 
-		void Bind();	
+		void BindTexture(int texIndex, int texUnit);
+		void BindTextures();
 		void Unbind();
 
 	private:

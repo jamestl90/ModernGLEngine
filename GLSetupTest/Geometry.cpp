@@ -239,48 +239,30 @@ namespace JLEngine
         std::vector<float>& vertexData)
     {
         size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
+        bool hasTexCoords = !texCoords.empty();
+        bool hasTangents = !tangents.empty();
 
-        // Resize the interleaved array
-        vertexData.resize(vertexCount * (3 + 3 + 2 + 3)); // 3 for position, 3 for normal, 2 for texCoords, 3 for tangents
+        vertexData.clear();
+        vertexData.reserve(vertexCount * (3 + 3 + (hasTexCoords ? 2 : 0) + (hasTangents ? 3 : 0)));
 
-        for (size_t i = 0; i < vertexCount; ++i) {
-            // Interleave position
-            vertexData[i * 11 + 0] = positions[i * 3 + 0];
-            vertexData[i * 11 + 1] = positions[i * 3 + 1];
-            vertexData[i * 11 + 2] = positions[i * 3 + 2];
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            // Add position (vec3)
+            vertexData.insert(vertexData.end(), positions.begin() + i * 3, positions.begin() + (i + 1) * 3);
 
-            // Interleave normal (if available)
-            if (!normals.empty()) {
-                vertexData[i * 11 + 3] = normals[i * 3 + 0];
-                vertexData[i * 11 + 4] = normals[i * 3 + 1];
-                vertexData[i * 11 + 5] = normals[i * 3 + 2];
-            }
-            else {
-                vertexData[i * 11 + 3] = 0.0f;
-                vertexData[i * 11 + 4] = 0.0f;
-                vertexData[i * 11 + 5] = 1.0f; // Default normal
+            // Add normal (vec3)
+            vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
+
+            // Add texCoords (vec2) if available
+            if (hasTexCoords)
+            {
+                vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
             }
 
-            // Interleave texture coordinates (if available)
-            if (!texCoords.empty()) {
-                vertexData[i * 11 + 6] = texCoords[i * 2 + 0];
-                vertexData[i * 11 + 7] = texCoords[i * 2 + 1];
-            }
-            else {
-                vertexData[i * 11 + 6] = 0.0f;
-                vertexData[i * 11 + 7] = 0.0f; // Default UV
-            }
-
-            // Interleave tangent (if available)
-            if (!tangents.empty()) {
-                vertexData[i * 11 + 8] = tangents[i * 3 + 0];
-                vertexData[i * 11 + 9] = tangents[i * 3 + 1];
-                vertexData[i * 11 + 10] = tangents[i * 3 + 2];
-            }
-            else {
-                vertexData[i * 11 + 8] = 1.0f;
-                vertexData[i * 11 + 9] = 0.0f;
-                vertexData[i * 11 + 10] = 0.0f; // Default tangent
+            // Add tangent (vec3) if available
+            if (hasTangents)
+            {
+                vertexData.insert(vertexData.end(), tangents.begin() + i * 3, tangents.begin() + (i + 1) * 3);
             }
         }
     }

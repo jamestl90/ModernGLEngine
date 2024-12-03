@@ -39,13 +39,13 @@ namespace JLEngine
 
 		void CacheUniformLocation(const std::string& name);
 
-		int GetUniformLocation(const std::string& name) const;
+		int GetUniformLocation(const std::string& name);
 
-		void SetUniform(const std::string& name, const glm::mat4& matrix) const;
-		void SetUniform(const std::string& name, const glm::vec4& vector) const;
-		void SetUniform(const std::string& name, const glm::vec3& vector) const;
-
-		void SetUniform(const std::string& name, uint32 value) const;
+		void SetUniform(const std::string& name, const glm::mat4& matrix);
+		void SetUniform(const std::string& name, const glm::vec4& vector);
+		void SetUniform(const std::string& name, const glm::vec3& vector);
+		void SetUniformf(const std::string& name, float value);
+		void SetUniformi(const std::string& name, uint32 value);
 
 		void UnloadFromGraphics();
 

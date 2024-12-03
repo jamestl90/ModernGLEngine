@@ -145,7 +145,7 @@ namespace JLEngine
 		}
 		
 		SmallArray(uint32 size)
-			: m_size(size), m_data(new T[size])
+			: m_size(size), m_data(new T[size]{})
 		{
 		}
 
@@ -174,7 +174,7 @@ namespace JLEngine
 				delete[] m_data;
 
 			m_size = size;
-			m_data = new T[m_size];
+			m_data = new T[m_size]{};
 		}
 
 		void Insert(T value, uint32 idx)

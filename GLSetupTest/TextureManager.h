@@ -24,10 +24,6 @@ namespace JLEngine
         Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data,
             GLenum internalFormat, GLenum format, GLenum dataType, bool clamped = false, bool mipmaps = false);
 
-        // Load texture from raw data
-        Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, void* data,
-            bool clamped = false, bool mipmaps = false);
-
         Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32_t height, int channels, vector<unsigned char>& data,
             bool clamped = false, bool mipmaps = false);
 

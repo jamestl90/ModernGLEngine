@@ -89,17 +89,25 @@ namespace JLEngine
 		LoadPositionAttribute(model, primitive, positions);
 		LoadNormalAttribute(model, primitive, normals);
 		LoadTexCoordAttribute(model, primitive, texCoords);
-		//LoadTangentAttribute(model, primitive, tangents);
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+		bool hasTangents = LoadTangentAttribute(model, primitive, tangents);
+		if (hasTangents)
+		{
+			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, vertexData);
+		}
+		else
+		{
+			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+		}
+		
 		vbo.Set(vertexData);
 
 		std::set<JLEngine::VertexAttribute> attributes;
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
-		if (!tangents.empty()) 
+		if (hasTangents)
 		{
-			//attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 3)); // Tangents as vec3
+			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 3)); // Tangents as vec3
 		}
 
 		for (VertexAttribute attrib : attributes)
@@ -119,14 +127,32 @@ namespace JLEngine
 
 	JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Mesh& mesh, MeshManager* meshMgr)
 	{
-		std::vector<float> positions, normals, texCoords, vertexData;
+		std::vector<float> positions, normals, texCoords, tangents, vertexData;
+		bool hasTangents = false;
+
+		// Load attributes for all primitives
 		for (const auto& primitive : mesh.primitives)
 		{
 			LoadPositionAttribute(model, primitive, positions);
 			LoadNormalAttribute(model, primitive, normals);
 			LoadTexCoordAttribute(model, primitive, texCoords);
+
+			if (LoadTangentAttribute(model, primitive, tangents)) 
+			{
+				hasTangents = true;
+			}
 		}
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+
+		// Generate interleaved vertex data based on whether tangents are available
+		if (hasTangents) 
+		{
+			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, vertexData);
+		}
+		else 
+		{
+			std::cerr << "Warning: Tangents not found in some or all primitives. Generating vertex data without tangents." << std::endl;
+			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
+		}
 
 		// Create the shared VertexBuffer
 		JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
@@ -137,18 +163,22 @@ namespace JLEngine
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
+		if (hasTangents) 
+		{
+			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 3)); // Tangents as vec3
+		}
 
-		for (VertexAttribute attrib : attributes)
+		for (auto attrib : attributes) 
 		{
 			vbo.AddAttribute(attrib);
 		}
 		vbo.CalcStride();
 
-		// Step 2: Create a Mesh instance
+		// Create an empty Mesh instance
 		auto jlmesh = meshMgr->CreateEmptyMesh(name);
 		jlmesh->SetVertexBuffer(vbo);
 
-		// Step 3: Create separate index buffers for each primitive
+		// Create separate index buffers for each primitive
 		for (size_t i = 0; i < mesh.primitives.size(); ++i)
 		{
 			const auto& primitive = mesh.primitives[i];
@@ -457,7 +487,7 @@ namespace JLEngine
 		}
 	}
 
-	void LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData)
+	bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData)
 	{
 		const auto& tangentAttr = primitive.attributes.find("TANGENT");
 		if (tangentAttr != primitive.attributes.end())
@@ -470,7 +500,7 @@ namespace JLEngine
 			if (tangentAccessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
 			{
 				std::cerr << "Error: Unsupported TANGENT component type: " << tangentAccessor.componentType << std::endl;
-				return;
+				return false;
 			}
 
 			// Validate buffer bounds
@@ -479,7 +509,7 @@ namespace JLEngine
 			if (requiredSize > tangentBuffer.data.size())
 			{
 				std::cerr << "Error: Tangent accessor exceeds buffer bounds!" << std::endl;
-				return;
+				return false;
 			}
 
 			const float* tangents = reinterpret_cast<const float*>(
@@ -490,8 +520,10 @@ namespace JLEngine
 		}
 		else
 		{
-			std::cerr << "Warning: TANGENT attribute not found in primitive. Continuing without tangents." << std::endl;
+			return false;
+			//std::cerr << "Warning: TANGENT attribute not found in primitive. Continuing without tangents." << std::endl;
 		}
+		return true;
 	}
 
 	// Function to load indices

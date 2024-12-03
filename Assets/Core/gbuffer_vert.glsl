@@ -17,7 +17,8 @@ uniform mat4 u_Model;     // Model matrix
 uniform mat4 u_View;      // View matrix
 uniform mat4 u_Projection;// Projection matrix
 
-void main() {
+void main() 
+{
     // Calculate world-space positions and normals
     v_FragPos = vec3(u_Model * vec4(a_Position, 1.0));
     v_Normal = mat3(transpose(inverse(u_Model))) * a_Normal; // Transform normal to world space

@@ -2,6 +2,7 @@
 #include "Mesh.h"
 #include "TextureReader.h"
 #include "FileHelpers.h"
+#include "RenderTarget.h"
 
 #include <set>
 #include <glm/gtc/type_ptr.hpp>
@@ -531,11 +532,30 @@ namespace JLEngine
 		}
 	}
 
+	void Graphics::BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit) 
+	{
+		if (texture == nullptr) return;
+		auto texId = texture->GetGPUID();
+		if (texId != 0)
+		{
+			shader->SetUniformi(flagName, GL_TRUE);
+			glActiveTexture(GL_TEXTURE0 + textureUnit);
+			glBindTexture(GL_TEXTURE_2D, texId);
+			shader->SetUniformi(uniformName, textureUnit);
+		}
+		else 
+		{
+			shader->SetUniformi(flagName, GL_FALSE);
+			glActiveTexture(GL_TEXTURE0 + textureUnit);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+	}
+
 	void Graphics::SetActiveTexture( uint32 texunit )
 	{
 		if (m_activeTextureUnit != texunit)
 		{
-			glActiveTexture(texunit);
+			glActiveTexture(GL_TEXTURE0 + texunit);
 			m_activeTextureUnit = texunit;
 		}
 	}
@@ -614,6 +634,11 @@ namespace JLEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		}
+		else
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		}
 		glTexImage2D(GL_TEXTURE_2D, 0, texture->GetInternalFormat(), texture->GetWidth(), texture->GetHeight(), 0, texture->GetFormat(), texture->GetDataType(), texture->GetData().data());
 		texture->SetGPUID(image);
 	}
@@ -683,17 +708,9 @@ namespace JLEngine
 	{
 		if (mesh == nullptr) return;
 
-		//if (m_drawAABB)
-		//{
-		//	AABB meshAABB = mesh->GetAABB();
-		//
-		//	DrawAABB(meshAABB);
-		//}
-
 		GLuint vaoId = mesh->GetVaoId();
 
 		glBindVertexArray(vaoId);
-		glBindTexture(GL_TEXTURE_2D, 0);
 
 		if (mesh->HasIndices())
 		{

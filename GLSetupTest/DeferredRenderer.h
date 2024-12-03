@@ -14,31 +14,42 @@
 
 namespace JLEngine
 {
-    class DeferredRenderer {
+    class DeferredRenderer 
+    {
     public:
-        DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, int width, int height);
+        DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, 
+            int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
         void Initialize();
         void GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void Resize(int width, int height);
+        void DebugGBuffer(int debugMode);
 
     private:
         void SetupGBuffer();
         void TraverseSceneGraph(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void SetUniformsForGBuffer(Mesh* mesh, Material* mat);
+
+        void InitScreenSpaceTriangle();
+        void RenderScreenSpaceTriangle();
 
         Graphics* m_graphics;
         ShaderManager* m_shaderManager;
         RenderTargetManager* m_rtManager;
 
         int m_width, m_height;
+        std::string m_assetFolder;
 
         // Framebuffers and G-buffer
-        RenderTarget* m_gBuffer;
+        RenderTarget* m_gBufferTarget;
 
-        // Default geometry shader
         ShaderProgram* m_gBufferShader;
+        ShaderProgram* m_gBufferDebugShader;
+
+        GLuint m_triangleVAO;
+        GLuint m_triangleVBO;
     };
 }
 

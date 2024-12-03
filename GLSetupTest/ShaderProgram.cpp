@@ -85,20 +85,28 @@ namespace JLEngine
 		m_uniformLocations[name] = location;
 	}
 
-	int ShaderProgram::GetUniformLocation(const std::string& name) const
+	int ShaderProgram::GetUniformLocation(const std::string& name)
 	{
 		// Retrieve the cached location
 		auto it = m_uniformLocations.find(name);
-		if (it != m_uniformLocations.end()) {
+		if (it != m_uniformLocations.end()) 
+		{
 			return it->second;
 		}
-		else {
-			std::cerr << "Error: Uniform '" << name << "' not cached!" << std::endl;
-			return -1;
+		else 
+		{
+			GLint location = glGetUniformLocation(m_programId, name.c_str());
+			if (location == -1)
+			{
+				std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
+				return -1;
+			}
+			m_uniformLocations[name] = location;
+			return location;
 		}
 	}
 
-	void ShaderProgram::SetUniform(const std::string& name, const glm::mat4& matrix) const
+	void ShaderProgram::SetUniform(const std::string& name, const glm::mat4& matrix)
 	{
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
@@ -107,7 +115,7 @@ namespace JLEngine
 		}
 	}
 
-	void ShaderProgram::SetUniform(const std::string& name, const glm::vec3& vector) const
+	void ShaderProgram::SetUniform(const std::string& name, const glm::vec3& vector)
 	{
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
@@ -116,7 +124,16 @@ namespace JLEngine
 		}
 	}
 
-	void ShaderProgram::SetUniform(const std::string& name, const glm::vec4& vector) const
+	void ShaderProgram::SetUniformf(const std::string& name, float value) 
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetUniform(location, value);
+		}
+	}
+
+	void ShaderProgram::SetUniform(const std::string& name, const glm::vec4& vector)
 	{
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
@@ -125,7 +142,7 @@ namespace JLEngine
 		}
 	}
 
-	void ShaderProgram::SetUniform(const std::string& name, uint32 value) const
+	void ShaderProgram::SetUniformi(const std::string& name, uint32 value)
 	{
 		GLint location = GetUniformLocation(name);
 		if (location != -1)

@@ -137,6 +137,8 @@ namespace JLEngine
 		void CreateTexture(Texture* texture);
 		void CreateTextures(uint32 count, uint32& id);
 		void BindTexture(uint32 target, uint32 id);
+		void BindTexture(ShaderProgram* shader, const std::string& uniformName,
+			const std::string& flagName, Texture* texture, int textureUnit);
 		void DisposeTexture(uint32 count, uint32* textures);
 
 		void SetActiveTexture(uint32 texunit);

@@ -39,7 +39,7 @@ namespace JLEngine
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true) 
         {
             xoffset *= MouseSensitivity;
-            yoffset *= MouseSensitivity * -1.0f;
+            yoffset *= MouseSensitivity;
 
             Yaw += xoffset;
             Pitch += yoffset;
@@ -80,7 +80,6 @@ namespace JLEngine
             if (key == GLFW_KEY_D)
                 Position += Right * velocity;
         }
-
 
         Window* m_window;
         Input* m_input;

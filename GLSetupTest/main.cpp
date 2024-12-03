@@ -9,6 +9,7 @@
 #include "Mesh.h"
 #include "Node.h"
 #include "Geometry.h"
+#include "DeferredRenderer.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
@@ -20,50 +21,58 @@ JLEngine::Node* fishScene;
 JLEngine::Texture* texture;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
+JLEngine::DeferredRenderer* m_defRenderer;
 GLFWwindow* window;
 
 void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 {
     // Render the scene
-    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glm::mat4 view = flyCamera->GetViewMatrix();
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
     glm::mat4 vp = projection * view; 
     glm::mat4 mvpA = vp * glm::translate(glm::vec3(5.0f, 0.0f, 0.0f));
 
-    auto shader = basicLit;
-    graphics.BindShader(shader->GetProgramId());
-    shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)));
-    shader->SetUniform("uView", view);
-    shader->SetUniform("uProjection", projection);
-    shader->SetUniform("uLightPos", glm::vec3(5.0f, 15.0f, 5.0f));
-    shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f)); 
-    shader->SetUniform("uUseTexture", 0);    
-    shader->SetUniform("uTexture", 0);
-    shader->SetUniform("uSolidColor", glm::vec4(1.8f, 0.5f, 0.2f, 1.0f));
-    graphics.RenderMeshWithTexture(sphereMesh, texture);
+    //auto shader = basicLit;
+    //graphics.BindShader(shader->GetProgramId());
+    //shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)));
+    //shader->SetUniform("uView", view);
+    //shader->SetUniform("uProjection", projection);
+    //shader->SetUniform("uLightPos", glm::vec3(5.0f, 15.0f, 5.0f));
+    //shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f)); 
+    //shader->SetUniformi("uUseTexture", 0);
+    //shader->SetUniformi("uTexture", 0);
+    //shader->SetUniform("uSolidColor", glm::vec4(1.8f, 0.5f, 0.2f, 1.0f));
+    //graphics.RenderMeshWithTexture(sphereMesh, texture);
+    //
+    //shader->SetUniform("uModel", glm::translate(glm::vec3(-5.0f, 0.0f, 0.0f)));
+    //shader->SetUniformi("uTexture", 0);
+    //shader->SetUniformi("uUseTexture", 1);
+    //graphics.RenderMeshWithTexture(cubeMesh, texture);
+    //
+    //shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)));
+    //graphics.RenderMeshWithTexture(planeMesh, texture);
 
-    shader->SetUniform("uModel", glm::translate(glm::vec3(-5.0f, 0.0f, 0.0f)));
-    shader->SetUniform("uTexture", 0);
-    shader->SetUniform("uUseTexture", 1);
-    graphics.RenderMeshWithTexture(cubeMesh, texture);
+    //graphics.RenderNodeHierarchy(duckScene, [shader](JLEngine::Node* node)
+    //{
+    //    glm::mat4 modelMatrix = glm::translate(glm::vec3(5.0f, 0.0f, 0.0f)) * node->GetGlobalTransform();
+    //    shader->SetUniform("uModel", modelMatrix);
+    //});
+    //
+    //graphics.RenderNodeHierarchy(fishScene, [shader](JLEngine::Node* node)
+    //{
+    //    glm::mat4 modelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 3.0f)) * node->GetGlobalTransform();
+    //    shader->SetUniform("uModel", modelMatrix);
+    //});
 
-    shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)));
-    graphics.RenderMeshWithTexture(planeMesh, texture);
+    m_defRenderer->GBufferPass(duckScene, view, projection);
 
-    graphics.RenderNodeHierarchy(duckScene, [shader](JLEngine::Node* node)
+    for (int mode = 0; mode < 6; ++mode) 
     {
-        glm::mat4 modelMatrix = glm::translate(glm::vec3(5.0f, 0.0f, 0.0f)) * node->GetGlobalTransform();
-        shader->SetUniform("uModel", modelMatrix);
-    });
-
-    graphics.RenderNodeHierarchy(fishScene, [shader](JLEngine::Node* node)
-    {
-        glm::mat4 modelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 3.0f)) * node->GetGlobalTransform();
-        shader->SetUniform("uModel", modelMatrix);
-    });
+        m_defRenderer->DebugGBuffer(mode);
+    }
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -97,8 +106,9 @@ void MouseMoveCallback(double x, double y)
     flyCamera->ProcessMouseMovement(static_cast<float>(deltaX), static_cast<float>(deltaY));
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    std::string assetFolder = argv[1];
     JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 125);
 
     auto graphics = engine.GetGraphics();
@@ -112,7 +122,7 @@ int main()
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
 
-    texture = textureMgr->CreateTextureFromFile("DefaulTexture", "../Assets/floor_default_grid.png");
+    texture = textureMgr->CreateTextureFromFile("DefaulTexture", assetFolder + "floor_default_grid.png");
 
     //meshShader = shaderMgr->LoadShaderFromFile("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
     //meshShader.get()->CacheUniformLocation("uModel");
@@ -125,13 +135,16 @@ int main()
     basicLit = shaderMgr->BasicLitShader();
 
     //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
-    planeMesh = JLEngine::LoadModelGLB(std::string("../Assets/plane.glb"), graphics);
-    auto aduckScene = engine.GetAssetLoader()->LoadGLB("../Assets/Duck.glb");
+    planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
+    auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb");
     duckScene = aduckScene.get();
-    auto afishScene = engine.GetAssetLoader()->LoadGLB("../Assets/BarramundiFish.glb");
+    auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb");
     fishScene = afishScene.get();
     cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
+
+    m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetRenderTargetManager(), engine.GetShaderManager(), 1280, 720, assetFolder);
+    m_defRenderer->Initialize();
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
