@@ -12,7 +12,6 @@
 #include "RenderTargetManager.h"
 #include "ShaderStorageManager.h"
 #include "VertexBuffers.h"
-//#include "LightManager.h"
 
 namespace JLEngine
 {
@@ -24,13 +23,14 @@ namespace JLEngine
         ~DeferredRenderer();
 
         void Initialize();
-        void GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void Resize(int width, int height);
         void DebugGBuffer(int debugMode);
-        void Render();
-        void UpdateLightInfo(Node* node);
+        void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer);
+
+        void TestLightPass(const glm::vec3& eyePos);
 
     private:
+        void GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         void TraverseSceneGraph(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
@@ -52,6 +52,7 @@ namespace JLEngine
 
         ShaderProgram* m_gBufferShader;
         ShaderProgram* m_gBufferDebugShader;
+        ShaderProgram* m_lightingTestShader;
 
         VertexBuffer m_triangleVertexBuffer;
         GLuint m_triangleVAO;

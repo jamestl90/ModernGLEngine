@@ -20,6 +20,7 @@ namespace JLEngine
         auto finalAssetPath = m_assetFolder + "Core/";
         m_gBufferDebugShader = m_shaderManager->CreateShaderFromFile("DebugGBuffer", "gbuffer_debug_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
         m_gBufferShader = m_shaderManager->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
+        m_lightingTestShader = m_shaderManager->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
 
         InitScreenSpaceTriangle();
     }
@@ -207,6 +208,53 @@ namespace JLEngine
         m_graphics->SetViewport(0, 0, m_width, m_height);
     }
 
+    void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer)
+    {
+        GBufferPass(sceneRoot, viewMatrix, projMatrix);
+
+        if (debugGBuffer)
+        {
+            for (int mode = 0; mode < 6; ++mode)
+            {
+                DebugGBuffer(mode);
+            }
+        }
+        else
+        {
+            TestLightPass(eyePos);
+        }
+    }
+
+    void DeferredRenderer::TestLightPass(const glm::vec3& eyePos)
+    {
+        glm::vec3 lightDir(0.0f, 0.0f, 1.0f);
+
+        m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
+        m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
+        m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        m_graphics->BindShader(m_lightingTestShader->GetProgramId());
+        m_graphics->SetViewport(0, 0, m_width, m_height);
+
+        m_gBufferTarget->BindTexture(0, 0);
+        m_lightingTestShader->SetUniformi("gAlbedoAO", 0);
+
+        m_gBufferTarget->BindTexture(1, 1);
+        m_lightingTestShader->SetUniformi("gNormals", 1);
+
+        m_gBufferTarget->BindTexture(2, 2);
+        m_lightingTestShader->SetUniformi("gMetallicRoughness", 2);
+
+        m_gBufferTarget->BindTexture(3, 3);
+        m_lightingTestShader->SetUniformi("gEmissive", 3);
+
+        m_lightingTestShader->SetUniform("lightDirection", glm::vec3(0.5f, -1.0f, -0.5f));
+        m_lightingTestShader->SetUniform("lightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
+        m_lightingTestShader->SetUniform("cameraPos", eyePos);
+
+        RenderScreenSpaceTriangle();
+    }
+
     void DeferredRenderer::RenderScreenSpaceTriangle() 
     {
         m_graphics->BindVertexArray(m_triangleVAO);
@@ -225,5 +273,7 @@ namespace JLEngine
         // Recreate the G-buffer to match the new dimensions
         m_rtManager->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer
         SetupGBuffer();
+
+        std::cout << "DeferredRenderer resized to: " << m_width << "x" << m_height << std::endl;
     }
 }

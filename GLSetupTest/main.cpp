@@ -16,14 +16,14 @@ JLEngine::Input* input;
 JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
-JLEngine::Node* duckScene;
-JLEngine::Node* fishScene;
 JLEngine::Node* sceneRoot;
 JLEngine::Texture* texture;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
 JLEngine::DeferredRenderer* m_defRenderer;
 GLFWwindow* window;
+
+bool debugGBuffer = false;
 
 void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 {
@@ -68,12 +68,7 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
     //    shader->SetUniform("uModel", modelMatrix);
     //});
 
-    m_defRenderer->GBufferPass(sceneRoot, view, projection);
-
-    for (int mode = 0; mode < 6; ++mode) 
-    {
-        m_defRenderer->DebugGBuffer(mode);
-    }
+    m_defRenderer->Render(sceneRoot, flyCamera->GetPosition(), view, projection, debugGBuffer);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -92,6 +87,11 @@ void KeyboardCallback(int key, int scancode, int action, int mods)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE))
     {
         glfwSetWindowShouldClose(window, 1);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_G))
+    {
+        debugGBuffer = !debugGBuffer;
     }
 }
 
@@ -117,7 +117,7 @@ void WindowResizeCallback(int width, int height)
 int main(int argc, char* argv[])
 {
     std::string assetFolder = argv[1];
-    JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 125);
+    JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 120);
 
     auto graphics = engine.GetGraphics();
     window = graphics->GetWindow()->GetGLFWwindow();
@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
     //meshShader.get()->CacheUniformLocation("uProjection");
     //meshShader.get()->CacheUniformLocation("uLightPos");
     //meshShader.get()->CacheUniformLocation("uLightColor");
-    //meshShader.get()->CacheUniformLocation("uTexture");ddddddddddddddddddddd
+    //meshShader.get()->CacheUniformLocation("uTexture");
 
     basicLit = shaderMgr->BasicLitShader();
 
@@ -153,13 +153,12 @@ int main(int argc, char* argv[])
     auto planeNode = std::make_unique<JLEngine::Node>("Plane", JLEngine::NodeTag::Mesh);
     planeNode->meshes.push_back(planeMesh);
     auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb");
-    duckScene = aduckScene.get();    
     auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb");
-    fishScene = afishScene.get();
-    fishScene->translation += glm::vec3(5, 0, 0);
+    afishScene->translation += glm::vec3(5, 0, 0);
+    afishScene->scale = glm::vec3(3.0f, 3.0f, 3.0f);
     cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
-
+    
     sceneRoot->AddChild(std::move(aduckScene));
     sceneRoot->AddChild(std::move(afishScene));
     sceneRoot->AddChild(std::move(planeNode));
@@ -171,7 +170,7 @@ int main(int argc, char* argv[])
         1280, 720, assetFolder);
     m_defRenderer->Initialize();
 
-    flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
+    flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
     graphics->DumpInfo();
 

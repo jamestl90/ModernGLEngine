@@ -148,7 +148,26 @@ namespace JLEngine
 	{
 		GLint compileStatus;
 
-		glGetShaderiv(id, compileCheck ? GL_LINK_STATUS : GL_COMPILE_STATUS, &compileStatus);
+		glGetShaderiv(id, GL_LINK_STATUS, &compileStatus);
+
+		if (compileStatus == GL_FALSE)
+		{
+			int maxLength;
+
+			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
+
+			GLchar* infoLog = new char[maxLength];
+
+			glGetShaderInfoLog(id, maxLength, &maxLength, infoLog);
+
+			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
+
+			delete[] infoLog;
+
+			return false;
+		}
+
+		glGetShaderiv(id, GL_COMPILE_STATUS, &compileStatus);
 
 		if (compileStatus == GL_FALSE)
 		{
