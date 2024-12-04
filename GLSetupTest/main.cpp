@@ -109,6 +109,11 @@ void MouseMoveCallback(double x, double y)
     flyCamera->ProcessMouseMovement(static_cast<float>(deltaX), static_cast<float>(deltaY));
 }
 
+void WindowResizeCallback(int width, int height)
+{
+    m_defRenderer->Resize(width, height);
+}
+
 int main(int argc, char* argv[])
 {
     std::string assetFolder = argv[1];
@@ -124,6 +129,7 @@ int main(int argc, char* argv[])
     input->SetKeyboardCallback(KeyboardCallback);
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
+    graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
 
     texture = textureMgr->CreateTextureFromFile("DefaulTexture", assetFolder + "floor_default_grid.png");
 
@@ -133,7 +139,7 @@ int main(int argc, char* argv[])
     //meshShader.get()->CacheUniformLocation("uProjection");
     //meshShader.get()->CacheUniformLocation("uLightPos");
     //meshShader.get()->CacheUniformLocation("uLightColor");
-    //meshShader.get()->CacheUniformLocation("uTexture");
+    //meshShader.get()->CacheUniformLocation("uTexture");ddddddddddddddddddddd
 
     basicLit = shaderMgr->BasicLitShader();
 
@@ -168,8 +174,6 @@ int main(int argc, char* argv[])
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
     graphics->DumpInfo();
-
-    textureMgr->Clear();
 
     engine.run(gameLogicUpdate, gameRender, fixedUpdate);
 

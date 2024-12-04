@@ -216,11 +216,14 @@ namespace JLEngine
 
     void DeferredRenderer::Resize(int width, int height) 
     {
+        if (width == m_width && height == m_height)
+            return; // No need to resize if dimensions are unchanged
+
         m_width = width;
         m_height = height;
 
-        m_gBufferTarget->UnloadFromGraphics();
-
+        // Recreate the G-buffer to match the new dimensions
+        m_rtManager->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer
         SetupGBuffer();
     }
 }

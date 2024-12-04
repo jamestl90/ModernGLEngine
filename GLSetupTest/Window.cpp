@@ -26,9 +26,9 @@ namespace JLEngine
     bool Window::init(const char* name)
     {
         // Initialize GLFW
-        if (!glfwInit()) {
-            std::cerr << "GLFW initialization failed!" << std::endl;
-            return false;
+        if (!glfwInit()) 
+        {
+            throw std::runtime_error("Failed to initialize GLFW");
         }
 
         int major, minor, revision;
@@ -49,7 +49,7 @@ namespace JLEngine
         {
             std::cerr << "Failed to create GLFW window!" << std::endl;
             glfwTerminate();
-            return false;
+            throw std::runtime_error("Failed to create window");
         }
 
         // Make the OpenGL context current
@@ -58,8 +58,7 @@ namespace JLEngine
         // Initialize GLAD (OpenGL function loader)
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) 
         {
-            std::cerr << "Failed to initialize OpenGL loader!" << std::endl;
-            return false;
+            throw std::runtime_error("Failed to create OpenGL");
         }
 
         std::cout << "OpenGL " << glGetString(GL_VERSION) << " initialized!" << std::endl;
@@ -70,39 +69,40 @@ namespace JLEngine
             glViewport(0, 0, width, height);
         });
 
+        glfwSetWindowUserPointer(m_window, this);
+        glfwSetFramebufferSizeCallback(m_window, FramebufferResizeCallback);
+
         // Set up V-Sync (we can turn it off to allow uncapped rendering if needed)
         glfwSwapInterval(1);  // Enable V-Sync by default, set to 0 for uncapped
 
         return true;
     }
 
-    int Window::GetWidth() const
+    int Window::GetWidth() const { return m_width; }
+    int Window::GetHeight() const { return m_height; }
+    bool Window::ShouldClose() const { return glfwWindowShouldClose(m_window); }
+    void Window::SwapBuffers() { glfwSwapBuffers(m_window); }
+    void Window::PollEvents() { glfwPollEvents(); }
+    void Window::WaitEventsTimeout(double timeout) { glfwWaitEventsTimeout(timeout); }
+
+    void Window::SetResizeCallback(std::function<void(int, int)> callback)
     {
-        return m_width;
+        m_resizeCallback = callback;
     }
 
-    int Window::GetHeight() const
+    void Window::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
     {
-        return m_height;
-    }
+        auto* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        win->m_width = width;
+        win->m_height = height;
 
-    bool Window::ShouldClose() const
-    {
-        return glfwWindowShouldClose(m_window);
-    }
+        // Update the OpenGL viewport
+        glViewport(0, 0, width, height);
 
-    void Window::SwapBuffers()
-    {
-        glfwSwapBuffers(m_window);
-    }
-
-    void Window::PollEvents()
-    {
-        glfwPollEvents();
-    }
-
-    void Window::WaitEventsTimeout(double timeout)
-    {
-        glfwWaitEventsTimeout(timeout);
+        // Call the user-defined resize callback
+        if (win->m_resizeCallback)
+        {
+            win->m_resizeCallback(width, height);
+        }
     }
 }

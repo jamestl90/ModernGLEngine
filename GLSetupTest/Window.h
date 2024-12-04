@@ -24,9 +24,14 @@ namespace JLEngine
 
         GLFWwindow* GetGLFWwindow() { return m_window; }
 
+        void SetResizeCallback(std::function<void(int, int)> callback);
+
     private:
         GLFWwindow* m_window;
         int m_width, m_height;
+
+        std::function<void(int, int)> m_resizeCallback;
+        static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
     };
 }
 #endif
