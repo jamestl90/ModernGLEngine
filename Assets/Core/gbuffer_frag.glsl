@@ -37,16 +37,20 @@ uniform vec3 emissiveFactor = vec3(0.0);          // Emissive factor
 const float DEFAULT_AO = 1.0;                    // Default ambient occlusion
 
 // Get material properties
-vec4 getBaseColor() {
-    if (useBaseColorTexture) {
+vec4 getBaseColor() 
+{
+    if (useBaseColorTexture) 
+    {
         vec4 textureColor = texture(baseColorTexture, v_TexCoords);
         return baseColorFactor * textureColor;
     }
     return baseColorFactor;
 }
 
-vec2 getMetallicRoughness() {
-    if (useMetallicRoughnessTexture) {
+vec2 getMetallicRoughness() 
+{
+    if (useMetallicRoughnessTexture) 
+    {
         vec4 texValue = texture(metallicRoughnessTexture, v_TexCoords);
         float metallic = texValue.b * metallicFactor;   // Metallic is in the B channel
         float roughness = texValue.g * roughnessFactor; // Roughness is in the G channel
@@ -55,8 +59,10 @@ vec2 getMetallicRoughness() {
     return vec2(metallicFactor, roughnessFactor);
 }
 
-vec3 getNormal() {
-    if (useNormalTexture) {
+vec3 getNormal() 
+{
+    if (useNormalTexture) 
+    {
         vec3 normalTex = texture(normalTexture, v_TexCoords).rgb;
         normalTex = normalTex * 2.0 - 1.0; // Map to range [-1, 1]
         mat3 TBN = mat3(normalize(v_Tangent), normalize(v_Bitangent), normalize(v_Normal));
@@ -65,23 +71,27 @@ vec3 getNormal() {
     return normalize(v_Normal); // Use interpolated normal if no normal map
 }
 
-float getAmbientOcclusion() {
-    if (useOcclusionTexture) {
+float getAmbientOcclusion() 
+{
+    if (useOcclusionTexture) 
+    {
         return texture(occlusionTexture, v_TexCoords).r;
     }
     return DEFAULT_AO; // Default AO value
 }
 
-vec3 getEmissive() {
-    if (useEmissiveTexture) {
+vec3 getEmissive() 
+{
+    if (useEmissiveTexture) 
+    {
         vec3 emissiveTexColor = texture(emissiveTexture, v_TexCoords).rgb;
         return emissiveFactor * emissiveTexColor;
     }
     return emissiveFactor;
 }
 
-void main() {
-    
+void main() 
+{
     // Retrieve material properties
     vec4 baseColor = getBaseColor();
     vec2 metallicRoughness = getMetallicRoughness();

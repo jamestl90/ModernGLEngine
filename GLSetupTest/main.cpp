@@ -18,6 +18,7 @@ JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 JLEngine::Node* duckScene;
 JLEngine::Node* fishScene;
+JLEngine::Node* sceneRoot;
 JLEngine::Texture* texture;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
@@ -67,7 +68,7 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
     //    shader->SetUniform("uModel", modelMatrix);
     //});
 
-    m_defRenderer->GBufferPass(duckScene, view, projection);
+    m_defRenderer->GBufferPass(sceneRoot, view, projection);
 
     for (int mode = 0; mode < 6; ++mode) 
     {
@@ -134,14 +135,20 @@ int main(int argc, char* argv[])
 
     basicLit = shaderMgr->BasicLitShader();
 
+    sceneRoot = new JLEngine::Node("SceneRoot", JLEngine::NodeTag::SceneRoot);
+
     //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
     planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
     auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb");
-    duckScene = aduckScene.get();
+    duckScene = aduckScene.get();    
     auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb");
     fishScene = afishScene.get();
+    fishScene->translation += glm::vec3(5, 0, 0);
     cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
+
+    sceneRoot->AddChild(aduckScene);
+    sceneRoot->AddChild(afishScene);
 
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetRenderTargetManager(), engine.GetShaderManager(), 1280, 720, assetFolder);
     m_defRenderer->Initialize();

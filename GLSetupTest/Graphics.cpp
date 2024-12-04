@@ -534,13 +534,11 @@ namespace JLEngine
 
 	void Graphics::BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit) 
 	{
-		if (texture == nullptr) return;
-		auto texId = texture->GetGPUID();
-		if (texId != 0)
+		if (texture && texture->GetGPUID() != 0)
 		{
 			shader->SetUniformi(flagName, GL_TRUE);
 			glActiveTexture(GL_TEXTURE0 + textureUnit);
-			glBindTexture(GL_TEXTURE_2D, texId);
+			glBindTexture(GL_TEXTURE_2D, texture->GetGPUID());
 			shader->SetUniformi(uniformName, textureUnit);
 		}
 		else 

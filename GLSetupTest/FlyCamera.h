@@ -39,7 +39,7 @@ namespace JLEngine
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true) 
         {
             xoffset *= MouseSensitivity;
-            yoffset *= MouseSensitivity;
+            yoffset *= MouseSensitivity * -1.0f;
 
             Yaw += xoffset;
             Pitch += yoffset;

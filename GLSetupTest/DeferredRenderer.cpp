@@ -140,7 +140,7 @@ namespace JLEngine
     void DeferredRenderer::DebugGBuffer(int debugMode) 
     {
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_graphics->BindShader(m_gBufferDebugShader->GetProgramId());
@@ -158,7 +158,7 @@ namespace JLEngine
             int x = (mode % cols) * viewportWidth;
             int y = (mode / cols) * viewportHeight;
 
-            glViewport(x, y, viewportWidth, viewportHeight);
+            m_graphics->SetViewport(x, y, viewportWidth, viewportHeight);
 
             // Set the debug mode
             m_gBufferDebugShader->SetUniformi("debugMode", mode);
@@ -195,12 +195,10 @@ namespace JLEngine
                 break;
             }
 
-            // Render the screen-space triangle for the current debug mode
             RenderScreenSpaceTriangle();
         }
 
-        // Restore the full-screen viewport
-        glViewport(0, 0, m_width, m_height);
+        m_graphics->SetViewport(0, 0, m_width, m_height);
     }
 
     void DeferredRenderer::RenderScreenSpaceTriangle() 
