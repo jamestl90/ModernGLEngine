@@ -9,6 +9,7 @@
 
 namespace JLEngine
 {
+	enum class DepthType;
 	class RenderTarget;
 	class Graphics;
 	struct TextureAttribute;
@@ -17,13 +18,12 @@ namespace JLEngine
 	{
 	public:
 		RenderTargetManager(Graphics* graphics) : m_graphics(graphics) {}
-		~RenderTargetManager();
 
 		RenderTarget* CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib,
-			bool depth, uint32 numSources);
+			JLEngine::DepthType depthType, uint32 numSources);
 
 		RenderTarget* CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs,
-			bool depth, uint32 numSources);
+			JLEngine::DepthType depthType, uint32 numSources);
 
 	protected:
 		Graphics* m_graphics;

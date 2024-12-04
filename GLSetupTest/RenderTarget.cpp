@@ -6,7 +6,7 @@ namespace JLEngine
 {
 	RenderTarget::RenderTarget(uint32 handle, const string& name, uint32 numSources)
 		: Resource(handle, name), m_fbo(0), m_dbo(0), m_numSources(numSources),
-		m_height(0), m_width(0), m_useDepth(false), m_useWindowSize(false), m_graphics(nullptr)
+		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
 	{
 		m_attributes.Create(numSources);
 		m_sources.Create(numSources);
@@ -36,6 +36,12 @@ namespace JLEngine
 		m_graphics->CreateRenderTarget(this);
 	}
 
+	void RenderTarget::BindDepthTexture(int texUnit)
+	{
+		glActiveTexture(GL_TEXTURE0 + texUnit);
+		glBindTexture(GL_TEXTURE_2D, m_dbo);
+	}
+
 	void RenderTarget::BindTexture(int texIndex, int texUnit)
 	{
 		if (texIndex < 0 || texIndex >= (int)GetNumSources())
@@ -61,7 +67,7 @@ namespace JLEngine
 		}
 	}
 
-	void RenderTarget::Unbind()
+	void RenderTarget::Unbind() const
 	{
 		for (uint32 i = 0; i < m_numSources; i++)
 		{

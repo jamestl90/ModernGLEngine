@@ -146,6 +146,10 @@
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="JLEngine.cpp" />
+    <ClCompile Include="Light.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Material.cpp">
       <SubType>
@@ -171,6 +175,14 @@
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="ShaderManager.cpp" />
     <ClCompile Include="ShaderProgram.cpp" />
+    <ClCompile Include="ShaderStorageBuffer.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="ShaderStorageManager.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Singleton.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TextureManager.cpp" />
@@ -197,6 +209,10 @@
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="JLEngine.h" />
+    <ClInclude Include="Light.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Material.h">
       <SubType>
       </SubType>
@@ -222,6 +238,14 @@
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShaderManager.h" />
     <ClInclude Include="ShaderProgram.h" />
+    <ClInclude Include="ShaderStorageBuffer.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="ShaderStorageManager.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Singleton.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TextureManager.h" />

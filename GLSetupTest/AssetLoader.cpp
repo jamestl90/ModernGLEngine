@@ -12,7 +12,7 @@ namespace JLEngine
     {
 
     }
-    std::shared_ptr<Node> AssetLoader::LoadGLB(const std::string& glbFile)
+    std::unique_ptr<Node> AssetLoader::LoadGLB(const std::string& glbFile)
     {
 		tinygltf::TinyGLTF loader;
 		tinygltf::Model model;
@@ -30,13 +30,13 @@ namespace JLEngine
 		auto materials = loadMaterials(model);
 
         // Map to store GLTF node indices to scene nodes
-        std::unordered_map<int, std::shared_ptr<Node>> nodeMap;
+        std::unordered_map<int, std::unique_ptr<Node>> nodeMap;
 
         // Create all nodes first
         for (size_t i = 0; i < model.nodes.size(); ++i)
         {
             const auto& gltfNode = model.nodes[i];
-            auto node = std::make_shared<Node>(gltfNode.name);
+            auto node = std::make_unique<Node>(gltfNode.name);
 
             if (gltfNode.mesh >= 0) 
             {
@@ -48,7 +48,7 @@ namespace JLEngine
             }
             else if (gltfNode.light >= 0)
             {
-                node->SetTag(NodeTag::Light); // Parent or group node
+                node->SetTag(NodeTag::Light); 
             }
             else
             {
@@ -107,7 +107,7 @@ namespace JLEngine
                 node->scale = glm::vec3(1.0f);
                 node->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
             }
-
+            
             // Attach meshes
             if (gltfNode.mesh >= 0 && gltfNode.mesh < meshes.size())
             {
@@ -137,7 +137,7 @@ namespace JLEngine
                 }
             }
 
-            nodeMap[(int)i] = node;
+            nodeMap[(int)i] = std::move(node);
         }
 
         // Establish parent-child relationships
@@ -149,29 +149,13 @@ namespace JLEngine
             for (int childIndex : gltfNode.children)
             {
                 auto& childNode = nodeMap[childIndex];
-                parentNode->AddChild(childNode);
+                parentNode->AddChild(std::move(childNode));
             }
         }
 
-        // Create a root node to encompass the scene
-        //auto rootNode = std::make_shared<Node>("Root");
-        //rootNode->localMatrix = glm::mat4(1.0f);
-        //rootNode->translation = glm::vec3(0.0f);
-        //rootNode->scale = glm::vec3(1.0f);
-        //rootNode->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-        //rootNode->useMatrix = true;
-        //
-        //for (const auto& scene : model.scenes)
-        //{
-        //    for (int rootIndex : scene.nodes)
-        //    {
-        //        rootNode->AddChild(nodeMap[rootIndex]);
-        //    }
-        //}
-
         //PrintNodeHierarchy(rootNode.get());
 
-        return nodeMap[0]; // Return raw pointer as per your current implementation
+        return std::move(nodeMap[0]); // Return raw pointer as per your current implementation
     }
 
 	std::vector<Mesh*> AssetLoader::loadMeshes(tinygltf::Model& model)
@@ -188,7 +172,7 @@ namespace JLEngine
 			}
 			else if (mesh.primitives.size() > 1)
 			{
-                auto name = mesh.name;
+                std::string name = mesh.name;
 				auto jlmesh = MergePrimitivesToMesh(model, name, mesh, m_meshManager);
 				meshes.push_back(jlmesh);
 			}

@@ -57,9 +57,9 @@ namespace JLEngine
 
         void Clear()
         {
-            for (auto& [name, resource] : m_resources)
+            for (auto it = m_resources.begin(); it != m_resources.end(); ++it)
             {
-                m_freeHandles.push(resource->GetHandle());
+                m_freeHandles.push(it->second->GetHandle()); 
             }
             m_resources.clear();
         }

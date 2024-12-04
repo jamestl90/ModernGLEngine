@@ -574,8 +574,8 @@ namespace JLEngine
 		{
 			VertexAttribute attrib = *it;
 
-			glEnableVertexAttribArray(attrib.m_type);
-			glVertexAttribPointer(attrib.m_type, attrib.m_count, vbo.DataType(), GL_FALSE, vbo.GetStride() * size_f, BUFFER_OFFSET(attrib.m_offset));
+			glEnableVertexAttribArray(i);
+			glVertexAttribPointer(i, attrib.m_count, vbo.DataType(), GL_FALSE, vbo.GetStride() * size_f, BUFFER_OFFSET(attrib.m_offset));
 			i++;
 		}
 	}
@@ -862,6 +862,13 @@ namespace JLEngine
 		glDeleteBuffers(1, &id);
 	}
 
+	void Graphics::DisposeVertexBuffer(GLuint vao, VertexBuffer& vbo)
+	{
+		glDeleteVertexArrays(1, &vao);
+		GLuint id = vbo.GetId();
+		glDeleteBuffers(1, &id);
+	}
+
 	void Graphics::DisposeIndexBuffer( IndexBuffer& ibo )
 	{
 		GLuint id = ibo.GetId();
@@ -902,15 +909,27 @@ namespace JLEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, attrib.wrapT);
 		}
 
-		if (target->UseDepth())
+		GLuint depth;
+		if (target->DepthType() == DepthType::Renderbuffer)
 		{
-			GLuint depth;
 			glGenRenderbuffers(1, &depth);
 			glBindRenderbuffer(GL_RENDERBUFFER, depth);
 			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight());
 			// glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight()); // 4x MSAA
-			target->SetDepthBufferId(depth);
+			target->SetDepthId(depth);
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			glGenTextures(1, &depth);
+			glBindTexture(GL_TEXTURE_2D, depth);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, target->GetWidth(), target->GetHeight(), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			target->SetDepthId(depth);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
 		}
 
 		glDrawBuffers(target->GetNumSources(), target->GetDrawBuffers().data());
@@ -937,10 +956,15 @@ namespace JLEngine
 				GLuint tex = target->GetSourceId(i);
 				glDeleteTextures(1, &tex);
 			}
-			if (target->UseDepth())
+			if (target->DepthType() == DepthType::Renderbuffer)
 			{
-				GLuint depth = target->GetDepthBufferId();
-				glDeleteRenderbuffers(1, &depth);
+				GLuint dboId = target->GetDepthBufferId();
+				glDeleteRenderbuffers(1, &dboId);
+			}
+			else if (target->DepthType() == DepthType::Texture)
+			{
+				GLuint dboId = target->GetDepthBufferId();
+				glDeleteTextures(1, &dboId);
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -961,10 +985,15 @@ namespace JLEngine
 		glDeleteTextures(target->GetNumSources(), target->GetSources().data());
 		glDeleteFramebuffers(1, &fboId);
 
-		if (target->UseDepth())
+		if (target->DepthType() == DepthType::Renderbuffer)
 		{
 			GLuint dboId = target->GetDepthBufferId();
 			glDeleteRenderbuffers(1, &dboId);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			GLuint dboId = target->GetDepthBufferId();
+			glDeleteTextures(1, &dboId);
 		}
 	}
 

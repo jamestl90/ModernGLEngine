@@ -9,6 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Mesh.h"
+#include "Light.h"
 
 namespace JLEngine
 {
@@ -22,12 +23,12 @@ namespace JLEngine
     };
 
     // Node class representing a single entity in a scene graph
-    class Node
+    class Node 
     {
     public:
         // Constructor
         Node(const std::string& name = "", NodeTag nodeTag = NodeTag::Mesh)
-            : name(name), parent(nullptr), tag(nodeTag), useMatrix(false),
+            : name(name), tag(nodeTag), useMatrix(false),
             localMatrix(glm::mat4(1.0)), translation(0.0f),
             rotation(1.0f, 0.0f, 0.0f, 0.0f), scale(1.0f), meshes(0) 
         {
@@ -44,8 +45,9 @@ namespace JLEngine
         glm::mat4 localMatrix;
         bool useMatrix;
 
+        Light* m_lightData;
         std::vector<Mesh*> meshes;
-        std::vector<std::shared_ptr<Node>> children;
+        std::vector<std::unique_ptr<Node>> children;
 
         Node* parent;
 
@@ -80,13 +82,11 @@ namespace JLEngine
             }
         }
 
-        void AddChild(const std::shared_ptr<Node>& child)
+        void AddChild(std::unique_ptr<Node> child)
         {
-            child->parent = this;
-            children.push_back(child);
-
-            // Update transforms for the new child
+            child->parent = this;          
             child->UpdateTransforms(globalTransform);
+            children.push_back(std::move(child));
         }
 
         void SetTag(NodeTag newTag)

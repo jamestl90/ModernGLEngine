@@ -64,9 +64,8 @@ vec3 getNormal()
     if (useNormalTexture) 
     {
         vec3 normalTex = texture(normalTexture, v_TexCoords).rgb;
-        normalTex = normalTex * 2.0 - 1.0; // Map to range [-1, 1]
-        mat3 TBN = mat3(normalize(v_Tangent), normalize(v_Bitangent), normalize(v_Normal));
-        return normalize(TBN * normalTex); // Transform to world space
+        normalTex = normalTex * 2.0 - 1.0;
+        return normalize(normalTex); // Transform to world space
     }
     return normalize(v_Normal); // Use interpolated normal if no normal map
 }

@@ -21,6 +21,7 @@ namespace JLEngine
         m_shaderManager = std::make_unique<ShaderManager>(m_graphics.get());
         m_materialManager = std::make_unique<MaterialManager>(m_graphics.get());
         m_renderTargetManager = std::make_unique<RenderTargetManager>(m_graphics.get());
+        m_shaderStorageManager = std::make_unique<ShaderStorageManager>(m_graphics.get());
         m_meshManager = std::make_unique<MeshManager>(m_graphics.get());
 
         m_assetLoader = std::make_unique<AssetLoader>(
@@ -32,6 +33,11 @@ namespace JLEngine
 
         m_input->SetRawMouseMotion(true);
         setVsync(true);
+    }
+
+    JLEngineCore::~JLEngineCore()
+    {
+        
     }
 
     void JLEngineCore::logPerformanceMetrics()
@@ -144,5 +150,9 @@ namespace JLEngine
     AssetLoader* JLEngineCore::GetAssetLoader() const
     {
         return m_assetLoader.get();
+    }
+    ShaderStorageManager* JLEngineCore::GetShaderStorageManager() const
+    {
+        return m_shaderStorageManager.get();
     }
 }

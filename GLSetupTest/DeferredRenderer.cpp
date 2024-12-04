@@ -3,13 +3,14 @@
 
 namespace JLEngine
 {
-    DeferredRenderer::DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, int width, int height, const std::string& assetFolder)
-        : m_graphics(graphics), m_rtManager(rtManager), m_shaderManager(shaderManager), m_width(width), m_height(height),
+    DeferredRenderer::DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, ShaderStorageManager* shaderStorageManager, int width, int height, const std::string& assetFolder)
+        : m_graphics(graphics), m_rtManager(rtManager), m_shaderManager(shaderManager), m_triangleVAO(0), m_shaderStorageManager(shaderStorageManager),
+        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr) {}
 
     DeferredRenderer::~DeferredRenderer() 
     {
-
+        m_graphics->DisposeVertexBuffer(m_triangleVAO, m_triangleVertexBuffer);
     }
 
     void DeferredRenderer::Initialize() 
@@ -25,29 +26,30 @@ namespace JLEngine
 
     void DeferredRenderer::InitScreenSpaceTriangle() 
     {
-        const float triangleVertices[] = {
+        const float triangleVertices[] = 
+        {
             // Positions        // UVs
             -1.0f, -3.0f,       0.0f, 2.0f,  
              3.0f,  1.0f,       2.0f, 0.0f,  
             -1.0f,  1.0f,       0.0f, 0.0f   
         };
+        std::vector<float> triVerts;
+        triVerts.insert(triVerts.end(), std::begin(triangleVertices), std::end(triangleVertices));
 
-        // Generate and bind VAO/VBO
-        glGenVertexArrays(1, &m_triangleVAO);
-        glGenBuffers(1, &m_triangleVBO);
+        m_triangleVertexBuffer.SetDataType(GL_FLOAT);
+        m_triangleVertexBuffer.SetType(GL_ARRAY_BUFFER);
+        m_triangleVertexBuffer.SetDrawType(GL_STATIC_DRAW);
 
-        glBindVertexArray(m_triangleVAO);
+        VertexAttribute posAttri(JLEngine::POSITION, 0, 2);
+        VertexAttribute uvAttri(JLEngine::TEX_COORD_2D, 2 * sizeof(float), 2);
+        m_triangleVertexBuffer.AddAttribute(posAttri);
+        m_triangleVertexBuffer.AddAttribute(uvAttri);
+        m_triangleVertexBuffer.Set(triVerts);
+        m_triangleVertexBuffer.CalcStride();
 
-        glBindBuffer(GL_ARRAY_BUFFER, m_triangleVBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(triangleVertices), triangleVertices, GL_STATIC_DRAW);
-
-        glEnableVertexAttribArray(0); 
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-        glBindVertexArray(0); 
+        m_triangleVAO = m_graphics->CreateVertexArray();
+        m_graphics->CreateVertexBuffer(m_triangleVertexBuffer);
+        m_graphics->BindVertexArray(0);
     }
 
     void DeferredRenderer::SetupGBuffer() 
@@ -59,7 +61,7 @@ namespace JLEngine
         attributes[2] = { GL_RG8, GL_RG, GL_UNSIGNED_BYTE };      // Metallic (R) + Roughness (G)
         attributes[3] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };  // Emissive (RGB) + Reserved (A)
 
-        m_gBufferTarget = m_rtManager->CreateRenderTarget("GBufferTarget", m_width, m_height, attributes, true, attributes.Size());
+        m_gBufferTarget = m_rtManager->CreateRenderTarget("GBufferTarget", m_width, m_height, attributes, DepthType::Texture, attributes.Size());
     }
 
     void DeferredRenderer::GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -86,7 +88,7 @@ namespace JLEngine
         if (!node || node->children.empty() && node->GetTag() != NodeTag::Mesh) return;
 
         // Recursively traverse the scene graph
-        for (auto child : node->children) 
+        for (auto& child : node->children) 
         {
             TraverseSceneGraph(child.get(), viewMatrix, projMatrix);
         }
@@ -175,8 +177,7 @@ namespace JLEngine
                 m_gBufferDebugShader->SetUniformi("gNormals", 1);
                 break;
 
-            case 2: // Metallic
-            case 4: // Roughness (same texture, different channels)
+            case 2: // Metallic Roughness (same texture, different channels)
                 m_gBufferTarget->BindTexture(2, 2);
                 m_gBufferDebugShader->SetUniformi("gMetallicRoughness", 2);
                 break;
@@ -184,6 +185,11 @@ namespace JLEngine
             case 3: // AO (alpha channel of Albedo)
                 m_gBufferTarget->BindTexture(0, 0); // Albedo + AO texture
                 m_gBufferDebugShader->SetUniformi("gAlbedoAO", 0);
+                break;
+
+            case 4: 
+                m_gBufferTarget->BindDepthTexture(4); 
+                m_gBufferDebugShader->SetUniformi("gDepth", 4);
                 break;
 
             case 5: // Emissive
@@ -203,9 +209,9 @@ namespace JLEngine
 
     void DeferredRenderer::RenderScreenSpaceTriangle() 
     {
-        glBindVertexArray(m_triangleVAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3); // Draw 3 vertices (1 triangle)
-        glBindVertexArray(0);
+        m_graphics->BindVertexArray(m_triangleVAO);
+        m_graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
+        m_graphics->BindVertexArray(0);
     }
 
     void DeferredRenderer::Resize(int width, int height) 

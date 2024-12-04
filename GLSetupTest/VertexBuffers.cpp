@@ -39,12 +39,6 @@ namespace JLEngine
 		return size_f * (uint32)Size();
 	}
 
-	// note to self
-	// putting const at the end of the function means that the function doesn't
-	// allow any member variable to be changed
-	// This means that the return variable has to be const also!
-	// Not sure if this means that I can remove the const from the end of the function
-	// if it is at the front then?
 	const std::set<VertexAttribute>& VertexBuffer::GetAttributes() const
 	{
 		return m_attributes;
@@ -73,11 +67,13 @@ namespace JLEngine
 	{
 	}
 
-	GraphicsBuffer::GraphicsBuffer(int type, int data, int drawType ) : m_type(type), m_dataType(data), m_drawType(drawType)
+	GraphicsBuffer::GraphicsBuffer(int type, int data, int drawType ) 
+		: m_type(type), m_dataType(data), m_drawType(drawType), m_id(0)
 	{
 	}
 
-	GraphicsBuffer::GraphicsBuffer() : m_type(GL_ARRAY_BUFFER), m_dataType(GL_FLOAT), m_drawType(GL_STATIC_DRAW)
+	GraphicsBuffer::GraphicsBuffer() 
+		: m_type(GL_ARRAY_BUFFER), m_dataType(GL_FLOAT), m_drawType(GL_STATIC_DRAW), m_id(0)
 	{
 
 	}

@@ -19,7 +19,7 @@ namespace JLEngine
 		AssetLoader(ShaderManager* shaderManager, MeshManager* meshManager, 
 			MaterialManager* materialManager, TextureManager* textureManager);
 
-		std::shared_ptr<Node> LoadGLB(const std::string& glbFile);
+		std::unique_ptr<Node> LoadGLB(const std::string& glbFile);
 
 	protected:
 		std::vector<Mesh*> loadMeshes(tinygltf::Model& model);

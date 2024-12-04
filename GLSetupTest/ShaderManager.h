@@ -1,5 +1,5 @@
-#ifndef SHADERMANAGER_H
-#define SHADERMANAGER_H
+#ifndef SHADER_MANAGER_H
+#define SHADER_MANAGER_H
 
 #include <vector>
 

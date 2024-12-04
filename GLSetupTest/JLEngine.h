@@ -11,6 +11,7 @@
 #include "MeshManager.h"
 #include "MaterialManager.h"
 #include "RenderTargetManager.h"
+#include "ShaderStorageManager.h"
 #include "AssetLoader.h"
 
 namespace JLEngine
@@ -19,18 +20,20 @@ namespace JLEngine
     {
     public:
         JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate);
+        ~JLEngineCore();
         void run(std::function<void(double deltaTime)> logicUpdate,
             std::function<void(Graphics& graphics, double interpolationFactor)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
-        Graphics*            GetGraphics()            const;
-        ShaderManager*       GetShaderManager()       const;
-        TextureManager*      GetTextureManager()      const;
-        MeshManager*         GetMeshManager()         const;
-        MaterialManager*     GetMaterialManager()     const;
-        Input*               GetInput()               const;
-        RenderTargetManager* GetRenderTargetManager() const;
-        AssetLoader*         GetAssetLoader()         const;
+        Graphics*               GetGraphics()              const;
+        ShaderManager*          GetShaderManager()         const;
+        TextureManager*         GetTextureManager()        const;
+        MeshManager*            GetMeshManager()           const;
+        MaterialManager*        GetMaterialManager()       const;
+        Input*                  GetInput()                 const;
+        RenderTargetManager*    GetRenderTargetManager()   const;
+        AssetLoader*            GetAssetLoader()           const;
+        ShaderStorageManager*   GetShaderStorageManager()  const;
 
     private:
         void setFixedUpdateRate(int fps);
@@ -47,6 +50,7 @@ namespace JLEngine
         std::unique_ptr<MeshManager> m_meshManager;
         std::unique_ptr<MaterialManager> m_materialManager;
         std::unique_ptr<RenderTargetManager> m_renderTargetManager;
+        std::unique_ptr<ShaderStorageManager> m_shaderStorageManager;
         std::unique_ptr<AssetLoader> m_assetLoader;
 
         // Frame timing variables

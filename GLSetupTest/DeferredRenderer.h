@@ -10,6 +10,8 @@
 #include "Node.h"
 #include "ShaderManager.h"
 #include "RenderTargetManager.h"
+#include "ShaderStorageManager.h"
+#include "VertexBuffers.h"
 //#include "LightManager.h"
 
 namespace JLEngine
@@ -17,7 +19,7 @@ namespace JLEngine
     class DeferredRenderer 
     {
     public:
-        DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, 
+        DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, ShaderStorageManager* shaderStorageManager,
             int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
@@ -25,6 +27,8 @@ namespace JLEngine
         void GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void Resize(int width, int height);
         void DebugGBuffer(int debugMode);
+        void Render();
+        void UpdateLightInfo(Node* node);
 
     private:
         void SetupGBuffer();
@@ -38,6 +42,7 @@ namespace JLEngine
         Graphics* m_graphics;
         ShaderManager* m_shaderManager;
         RenderTargetManager* m_rtManager;
+        ShaderStorageManager* m_shaderStorageManager;
 
         int m_width, m_height;
         std::string m_assetFolder;
@@ -48,8 +53,8 @@ namespace JLEngine
         ShaderProgram* m_gBufferShader;
         ShaderProgram* m_gBufferDebugShader;
 
+        VertexBuffer m_triangleVertexBuffer;
         GLuint m_triangleVAO;
-        GLuint m_triangleVBO;
     };
 }
 

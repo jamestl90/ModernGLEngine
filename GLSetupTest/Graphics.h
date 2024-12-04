@@ -149,6 +149,7 @@ namespace JLEngine
 		void CreateIndexBuffer(IndexBuffer& ibo);
 
 		void DisposeVertexBuffer(VertexBuffer& vbo);
+		void DisposeVertexBuffer(GLuint vao, VertexBuffer& vbo);
 		void DisposeIndexBuffer(IndexBuffer& ibo);
 
 		void CreateMesh(Mesh* mesh);
