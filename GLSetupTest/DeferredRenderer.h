@@ -27,7 +27,7 @@ namespace JLEngine
         void DebugGBuffer(int debugMode);
         void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer);
 
-        void TestLightPass(const glm::vec3& eyePos);
+        void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
     private:
         void GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);

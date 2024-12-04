@@ -6,14 +6,36 @@ uniform sampler2D gAlbedoAO;
 uniform sampler2D gNormals;
 uniform sampler2D gMetallicRoughness;
 uniform sampler2D gEmissive;
+uniform sampler2D gDepth;
+
+uniform float u_Near;
+uniform float u_Far;
 
 uniform vec3 lightDirection; // Directional light direction (normalized)
 uniform vec3 lightColor;     // Directional light color
 uniform vec3 cameraPos;      // Camera position for view direction
 
+uniform mat4 u_ViewInverse;
+uniform mat4 u_ProjectionInverse;
+
 out vec4 FragColor;
 
 const vec3 ambientColor = vec3(0.03); // Low ambient lighting
+
+float LinearizeDepth(float depth) 
+{
+    float z = depth * 2.0 - 1.0; // Convert to NDC space
+    return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
+}
+
+vec3 ReconstructWorldPosition(vec2 texCoords, float depth) 
+{
+    vec4 ndcPos = vec4((texCoords * 2.0 - 1.0), depth * 2.0 - 1.0, 1.0);
+    vec4 viewPos = u_ProjectionInverse * ndcPos;
+    viewPos /= viewPos.w;
+    vec4 worldPos = u_ViewInverse * viewPos;
+    return worldPos.xyz;
+}
 
 // Fresnel-Schlick approximation for specular reflection
 vec3 fresnelSchlick(float cosTheta, vec3 F0) 
@@ -40,6 +62,10 @@ vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 li
 
 void main() 
 {
+    float depth = texture(gDepth, v_TexCoords).r;
+    float linearDepth = LinearizeDepth(depth);
+    vec3 worldPos = ReconstructWorldPosition(v_TexCoords, linearDepth);
+
     vec3 albedo = texture(gAlbedoAO, v_TexCoords).rgb;
     vec3 normal = normalize(texture(gNormals, v_TexCoords).rgb * 2.0 - 1.0); // Decode normal
     vec2 metallicRoughness = texture(gMetallicRoughness, v_TexCoords).rg;
@@ -47,7 +73,7 @@ void main()
     float roughness = metallicRoughness.g;
 
     vec3 lightDir = normalize(-lightDirection);
-    vec3 viewDir = normalize(cameraPos); 
+    vec3 viewDir = normalize(cameraPos - worldPos); 
 
     vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness);
 

@@ -72,6 +72,7 @@ namespace JLEngine
         m_graphics->Enable(GL_DEPTH_TEST);
         m_graphics->Disable(GL_BLEND);
         m_graphics->SetViewport(0, 0, m_width, m_height);
+        m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_graphics->BindShader(m_gBufferShader->GetProgramId());
@@ -221,11 +222,11 @@ namespace JLEngine
         }
         else
         {
-            TestLightPass(eyePos);
+            TestLightPass(eyePos, viewMatrix, projMatrix);
         }
     }
 
-    void DeferredRenderer::TestLightPass(const glm::vec3& eyePos)
+    void DeferredRenderer::TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         glm::vec3 lightDir(0.0f, 0.0f, 1.0f);
 
@@ -238,19 +239,24 @@ namespace JLEngine
 
         m_gBufferTarget->BindTexture(0, 0);
         m_lightingTestShader->SetUniformi("gAlbedoAO", 0);
-
         m_gBufferTarget->BindTexture(1, 1);
         m_lightingTestShader->SetUniformi("gNormals", 1);
-
         m_gBufferTarget->BindTexture(2, 2);
         m_lightingTestShader->SetUniformi("gMetallicRoughness", 2);
-
         m_gBufferTarget->BindTexture(3, 3);
         m_lightingTestShader->SetUniformi("gEmissive", 3);
+        m_gBufferTarget->BindDepthTexture(4);
+        m_gBufferDebugShader->SetUniformi("gDepth", 4);
 
         m_lightingTestShader->SetUniform("lightDirection", glm::vec3(0.5f, -1.0f, -0.5f));
         m_lightingTestShader->SetUniform("lightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
         m_lightingTestShader->SetUniform("cameraPos", eyePos);
+        m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
+        m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
+
+        auto frustum = m_graphics->GetViewFrustum();
+        m_lightingTestShader->SetUniformf("u_Near", frustum->GetNear());
+        m_lightingTestShader->SetUniformf("u_Far", frustum->GetNear());
 
         RenderScreenSpaceTriangle();
     }
