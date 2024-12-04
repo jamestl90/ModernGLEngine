@@ -70,7 +70,7 @@ namespace JLEngine
 
 		void Add(glm::vec3& val);
 
-		void AddAttribute(VertexAttribute& attrib);
+		void AddAttribute(const VertexAttribute& attrib);
 
 		void CalcStride();
 

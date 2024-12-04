@@ -64,8 +64,14 @@ vec3 getNormal()
     if (useNormalTexture) 
     {
         vec3 normalTex = texture(normalTexture, v_TexCoords).rgb;
-        normalTex = normalTex * 2.0 - 1.0;
-        return normalize(normalTex); // Transform to world space
+        normalTex = normalTex * 2.0 - 1.0; // Map [0, 1] to [-1, 1]
+
+        // Construct TBN matrix from interpolated data
+        mat3 TBN = mat3(normalize(v_Tangent), normalize(v_Bitangent), normalize(v_Normal));
+
+        // Transform the normal map's tangent-space normal to world space
+        vec3 worldNormal = normalize(TBN * normalTex);
+        return worldNormal;
     }
     return normalize(v_Normal); // Use interpolated normal if no normal map
 }

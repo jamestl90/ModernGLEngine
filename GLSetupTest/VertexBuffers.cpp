@@ -24,7 +24,7 @@ namespace JLEngine
 		m_buffer.push_back(val.z);
 	}
 
-	void VertexBuffer::AddAttribute( VertexAttribute& attrib)
+	void VertexBuffer::AddAttribute(const VertexAttribute& attrib)
 	{
 		m_attributes.insert(attrib);
 	}

@@ -165,7 +165,7 @@ namespace JLEngine
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
 		if (hasTangents) 
 		{
-			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 3)); // Tangents as vec3
+			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 4)); // Tangents as vec3
 		}
 
 		for (auto attrib : attributes) 
@@ -427,6 +427,13 @@ namespace JLEngine
 				return;
 			}
 
+			size_t stride = normalAccessor.ByteStride(model.bufferViews[normalAccessor.bufferView]);
+			if (stride != sizeof(float) * 3)
+			{
+				std::cerr << "Error: Unsupported NORMAL stride: " << stride << std::endl;
+				return;
+			}
+
 			// Validate buffer bounds
 			size_t requiredSize = normalBufferView.byteOffset + normalAccessor.byteOffset +
 				normalAccessor.count * 3 * sizeof(float);
@@ -466,6 +473,12 @@ namespace JLEngine
 				return;
 			}
 
+			size_t stride = texCoordAccessor.ByteStride(model.bufferViews[texCoordAccessor.bufferView]);
+			if (stride != sizeof(float) * 2)
+			{
+				std::cerr << "Error: Unsupported TEXCOORD_0 stride: " << stride << std::endl;
+			}
+
 			// Validate buffer bounds
 			size_t requiredSize = texCoordBufferView.byteOffset + texCoordAccessor.byteOffset +
 				texCoordAccessor.count * 2 * sizeof(float);
@@ -503,9 +516,16 @@ namespace JLEngine
 				return false;
 			}
 
+			size_t stride = tangentAccessor.ByteStride(model.bufferViews[tangentAccessor.bufferView]);
+			if (stride != sizeof(float) * 4)
+			{
+				std::cerr << "Error: Unsupported TANGENT stride: " << stride << std::endl;
+				return false;
+			}
+
 			// Validate buffer bounds
 			size_t requiredSize = tangentBufferView.byteOffset + tangentAccessor.byteOffset +
-				tangentAccessor.count * 3 * sizeof(float); // Assuming vec3 tangents
+				tangentAccessor.count * 4 * sizeof(float); // Assuming vec3 tangents
 			if (requiredSize > tangentBuffer.data.size())
 			{
 				std::cerr << "Error: Tangent accessor exceeds buffer bounds!" << std::endl;
@@ -515,7 +535,7 @@ namespace JLEngine
 			const float* tangents = reinterpret_cast<const float*>(
 				&tangentBuffer.data[tangentBufferView.byteOffset + tangentAccessor.byteOffset]);
 
-			size_t count = tangentAccessor.count * 3; // Assuming vec3 tangents
+			size_t count = tangentAccessor.count * 4; // Assuming vec3 tangents
 			tangentData.insert(tangentData.end(), tangents, tangents + count);
 		}
 		else
