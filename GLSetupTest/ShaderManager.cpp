@@ -2,7 +2,9 @@
 
 namespace JLEngine
 {
-    ShaderManager::ShaderManager(Graphics* graphics) : m_graphics(graphics), m_basicLit(nullptr), m_basicUnlit(nullptr), m_solidColor(nullptr)
+    ShaderManager::ShaderManager(Graphics* graphics) 
+        : m_graphics(graphics), m_basicLit(nullptr), m_basicUnlit(nullptr), 
+        m_solidColor(nullptr), m_hotReload(false), m_pollTimeSeconds(1.0f), m_accumTime(0.0f)
     {
 
     }
@@ -18,6 +20,14 @@ namespace JLEngine
                 program->AddShader(vertProgram);
                 program->AddShader(fragProgram);
                 program->UploadToGPU(m_graphics);
+
+                auto shaderPathVert = program->GetFilePath() + vertProgram.GetName();
+                auto currentTimestamp = std::filesystem::last_write_time(shaderPathVert);
+                m_shaderTimestamps[shaderPathVert] = currentTimestamp;
+
+                auto shaderPathFrag = program->GetFilePath() + fragProgram.GetName();
+                currentTimestamp = std::filesystem::last_write_time(shaderPathFrag);
+                m_shaderTimestamps[shaderPathFrag] = currentTimestamp;
 
                 return program;
             });
@@ -93,14 +103,6 @@ namespace JLEngine
             )";
 
             m_basicLit = CreateShaderFromSource("BasicLitShader", vertexShaderCode, fragmentShaderCode);
-            m_basicLit->CacheUniformLocation("uModel");
-            m_basicLit->CacheUniformLocation("uView");
-            m_basicLit->CacheUniformLocation("uProjection");
-            m_basicLit->CacheUniformLocation("uTexture");
-            m_basicLit->CacheUniformLocation("uLightPos");
-            m_basicLit->CacheUniformLocation("uLightColor");
-            m_basicLit->CacheUniformLocation("uUseTexture");
-            m_basicLit->CacheUniformLocation("uSolidColor");
         }
         return m_basicLit;
     }
@@ -144,12 +146,6 @@ namespace JLEngine
             )";
 
             m_basicUnlit = CreateShaderFromSource("BasicUnlitShader", unlitVertexShaderCode, unlitFragmentShaderCode);
-            m_basicUnlit->CacheUniformLocation("uModel");
-            m_basicUnlit->CacheUniformLocation("uView");
-            m_basicUnlit->CacheUniformLocation("uProjection");
-            m_basicUnlit->CacheUniformLocation("uTexture");
-            m_basicUnlit->CacheUniformLocation("uUseTexture");
-            m_basicUnlit->CacheUniformLocation("uSolidColor");
         }
         return m_basicUnlit;
     }
@@ -181,11 +177,47 @@ namespace JLEngine
             )";
 
             m_solidColor = CreateShaderFromSource("SolidColorShader", solidColorVertexShaderCode, solidColorFragmentShaderCode);
-            m_solidColor->CacheUniformLocation("uModel");
-            m_solidColor->CacheUniformLocation("uView");
-            m_solidColor->CacheUniformLocation("uProjection");
-            m_solidColor->CacheUniformLocation("uColor");
         }
         return m_solidColor;
+    }
+
+
+    void ShaderManager::PollForChanges(float deltaTime)
+    {
+        if (!m_hotReload) return;
+
+        m_accumTime += deltaTime;
+
+        if (m_accumTime > m_pollTimeSeconds)
+        {
+            //std::cout << "Polling!" << std::endl;
+            auto& resources = GetResources();
+            for (const auto& res : resources)
+            {
+                auto shaderProg = res.second.get();
+
+                if (shaderProg->GetFilePath().empty()) continue;
+
+                bool needsUpdate = false;
+                for (const auto& shader : shaderProg->GetShaders())
+                {
+                    auto shaderPath = shaderProg->GetFilePath() + shader.GetName();
+                    auto currentTimestamp = std::filesystem::last_write_time(shaderPath);
+                    if (m_shaderTimestamps[shaderPath] != currentTimestamp)
+                    {
+                        m_shaderTimestamps[shaderPath] = currentTimestamp;
+                        needsUpdate = true;                        
+                    }
+                }
+                if (needsUpdate) // if any shader in this program needs an update we will recreate all of them
+                {                    
+                    Shader vertShader = shaderProg->GetShader(GL_VERTEX_SHADER);
+                    Shader fragShader = shaderProg->GetShader(GL_FRAGMENT_SHADER);
+
+                    //auto newProgram = CreateShaderFromFile()
+                }
+            }
+            m_accumTime = 0;
+        }
     }
 }

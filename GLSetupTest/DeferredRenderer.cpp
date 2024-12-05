@@ -239,7 +239,7 @@ namespace JLEngine
 
         m_gBufferTarget->BindTexture(0, 0);
         m_lightingTestShader->SetUniformi("gAlbedoAO", 0);
-        m_gBufferTarget->BindTexture(1, 1);
+        m_gBufferTarget->BindTexture(1, 1); 
         m_lightingTestShader->SetUniformi("gNormals", 1);
         m_gBufferTarget->BindTexture(2, 2);
         m_lightingTestShader->SetUniformi("gMetallicRoughness", 2);

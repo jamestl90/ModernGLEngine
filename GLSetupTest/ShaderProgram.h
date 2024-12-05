@@ -31,13 +31,11 @@ namespace JLEngine
 
 		void AddShader(Shader& shader) { m_shaders.push_back(shader); }
 		void AddShader(Shader& shader, string source);
-		void GetShader(int type, Shader& shader);
+		Shader& GetShader(int type);
 		void GetShader(string name, Shader& shader);
 		const std::vector<Shader> GetShaders() { return m_shaders; }
 
 		const std::string GetFilePath() { return m_filename; }
-
-		void CacheUniformLocation(const std::string& name);
 
 		int GetUniformLocation(const std::string& name);
 
@@ -53,6 +51,7 @@ namespace JLEngine
 
 		std::vector<std::string> m_shaderTexts;
 		uint32 m_programId;
+		std::vector<std::string> m_activeUniforms;
 		std::string m_filename;
 		std::vector<Shader> m_shaders;
 		std::unordered_map<std::string, int> m_uniformLocations;

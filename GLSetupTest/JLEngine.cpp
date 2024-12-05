@@ -31,6 +31,7 @@ namespace JLEngine
             m_textureManager.get()
         );
 
+        m_shaderManager->SetHotReloading(true);
         m_input->SetRawMouseMotion(true);
         setVsync(true);
     }
@@ -96,7 +97,7 @@ namespace JLEngine
 
             // Fixed Update (runs at the fixed time step)
             while (m_accumulatedTime >= m_fixedUpdateInterval)
-            {
+            {                
                 fixedUpdate(m_fixedUpdateInterval); 
                 m_accumulatedTime -= m_fixedUpdateInterval; 
                 m_fixedUpdateCount++;
@@ -109,6 +110,7 @@ namespace JLEngine
             m_window->PollEvents();
 
             logPerformanceMetrics();
+            m_shaderManager->PollForChanges((float)m_deltaTime);
         }
     }
 

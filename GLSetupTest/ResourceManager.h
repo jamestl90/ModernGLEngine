@@ -76,6 +76,8 @@ namespace JLEngine
             return m_nextHandle++;
         }
 
+        const std::unordered_map<std::string, std::unique_ptr<T>>& GetResources() { return m_resources; }
+
     private:
         std::unordered_map<std::string, std::unique_ptr<T>> m_resources;
         std::stack<uint32> m_freeHandles;

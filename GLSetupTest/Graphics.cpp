@@ -16,7 +16,7 @@ namespace JLEngine
 	{
 		float fov = 40.0f;
 		float nearDist = 0.1f;
-		float farDist = 10000000.0f;
+		float farDist = 1000.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 
@@ -186,6 +186,25 @@ namespace JLEngine
 			return false;
 		}
 		return true;
+	}
+
+	std::vector<std::tuple<std::string, int>> Graphics::GetActiveUniforms(uint32 programId)
+	{
+		std::vector<std::tuple<std::string, int>> activeUniforms;
+		GLint nUniforms, maxLen;
+		glGetProgramiv(programId, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
+		glGetProgramiv(programId, GL_ACTIVE_UNIFORMS, &nUniforms);
+		GLchar* name = new GLchar[maxLen];
+		GLint size, location;
+		GLsizei written;
+		GLenum type;
+		for (int i = 0; i < nUniforms; i++)
+		{
+			glGetActiveUniform(programId, i, maxLen, &written, &size, &type, name);
+			location = glGetUniformLocation(programId, name);
+			activeUniforms.push_back({ name, location });
+		}
+		return activeUniforms;
 	}
 
 	void Graphics::PrintActiveUniforms( uint32 programId )

@@ -35,6 +35,13 @@ namespace JLEngine
 				m_shaderTexts.clear();
 			}
 
+			auto activeUniforms = m_graphics->GetActiveUniforms(m_programId);
+			for (auto& uniform : activeUniforms)
+			{
+				auto& name = std::get<0>(uniform);
+				auto& loc = std::get<1>(uniform);
+				m_uniformLocations[name] = loc;
+			}
 		}
 		catch (const std::exception& ex)
 		{
@@ -51,16 +58,16 @@ namespace JLEngine
 		m_shaders.push_back(shader); 
 	}
 
-	void ShaderProgram::GetShader(int type, Shader& shader)
+	Shader& ShaderProgram::GetShader(int type)
 	{
 		for (auto s : m_shaders)
 		{
 			if (s.GetType() == type)
 			{
-				shader = s;
-				break;
+				return s;
 			}
 		}
+		throw std::exception("No shader found");
 	}
 
 	void ShaderProgram::GetShader(string name, Shader& shader)
@@ -73,16 +80,6 @@ namespace JLEngine
 				break;
 			}
 		}
-	}
-
-	void ShaderProgram::CacheUniformLocation(const std::string& name)
-	{
-		GLint location = glGetUniformLocation(m_programId, name.c_str());
-		if (location == -1) 
-		{
-			std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
-		}
-		m_uniformLocations[name] = location;
 	}
 
 	int ShaderProgram::GetUniformLocation(const std::string& name)
@@ -98,7 +95,7 @@ namespace JLEngine
 			GLint location = glGetUniformLocation(m_programId, name.c_str());
 			if (location == -1)
 			{
-				std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
+				//std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
 				return -1;
 			}
 			m_uniformLocations[name] = location;

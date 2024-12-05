@@ -1,12 +1,14 @@
 #version 460 core
 
+#define DEBUG_OUTPUT = 0
+
 in vec2 v_TexCoords;
 
-uniform sampler2D gAlbedoAO;
-uniform sampler2D gNormals;
-uniform sampler2D gMetallicRoughness;
-uniform sampler2D gEmissive;
-uniform sampler2D gDepth;
+layout(binding = 0) uniform sampler2D gAlbedoAO;
+layout(binding = 1) uniform sampler2D gNormals;
+layout(binding = 2) uniform sampler2D gMetallicRoughness;
+layout(binding = 3) uniform sampler2D gEmissive;
+layout(binding = 4) uniform sampler2D gDepth;
 
 uniform float u_Near;
 uniform float u_Far;
@@ -73,11 +75,13 @@ void main()
     float roughness = metallicRoughness.g;
 
     vec3 lightDir = normalize(-lightDirection);
-    vec3 viewDir = normalize(cameraPos - worldPos); 
+    vec3 viewDir = normalize(cameraPos); 
 
     vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness);
 
-    lighting += ambientColor * albedo; 
-    lighting += texture(gEmissive, v_TexCoords).rgb;
+    vec3 emissive = texture(gEmissive, v_TexCoords).rgb;
+    emissive *= 0.0000001;
+
+    lighting += ambientColor * albedo + emissive; 
     FragColor = vec4(lighting, 1.0);
 }

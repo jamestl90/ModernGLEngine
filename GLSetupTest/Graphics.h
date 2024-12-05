@@ -83,7 +83,7 @@ namespace JLEngine
 		 void ClearColour(float x, float y, float z, float w);
 				
 		 // Shader
-
+		 std::vector<std::tuple<std::string, int>> GetActiveUniforms(uint32 programId);
 		 void PrintActiveUniforms(uint32 programId);
 		 bool ShaderCompileErrorCheck(uint32 id, bool compileCheck);
 
