@@ -759,7 +759,7 @@ namespace JLEngine
 		{
 			auto size = mesh->GetVertexBuffer().Size();
 			auto stride = mesh->GetVertexBuffer().GetStride();
-			GLsizei tris = size / stride;
+			GLsizei tris = (GLsizei)size / (GLsizei)stride;
 			glDrawArrays(GL_TRIANGLES, 0, tris);
 		}
 

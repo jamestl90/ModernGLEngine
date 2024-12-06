@@ -220,7 +220,7 @@ namespace JLEngine
 			bool hasIndices = LoadIndices(model, primitive, ibo);
 			if (hasIndices)
 			{ 
-				auto indices = ibo.GetBuffer();
+				auto& indices = ibo.GetBuffer();
 				for (auto& index : indices) {
 					index += (unsigned int)indexOffset;
 				}

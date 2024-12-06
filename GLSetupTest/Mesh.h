@@ -11,6 +11,21 @@ namespace JLEngine
 {
 	class Graphics;
 
+	class Batch
+	{
+	public:
+		Batch() {}
+
+
+	private:
+		
+
+		Material* m_material;
+		VertexBuffer m_vbo;
+		IndexBuffer m_ibo;
+		uint32 m_vao;
+	};
+
 	class Mesh : public Resource
 	{
 	public:

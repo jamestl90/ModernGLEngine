@@ -16,6 +16,7 @@ namespace JLEngine
 
         // Constructor for raw-data texture
         Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, void* data, int channels);
+        Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels);
 
         ~Texture();
 

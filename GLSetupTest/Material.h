@@ -12,7 +12,7 @@ namespace JLEngine
 {
     class Texture; 
 
-    class Material : Resource
+    class Material : public Resource
     {
     public:
         // Default constructor

@@ -24,6 +24,8 @@ namespace JLEngine
             return m_handle;
         }
 
+        void SetHandle(uint32 handle) { m_handle = handle; }
+
     protected:
         Resource(uint32_t handle, const std::string& name)
             : m_handle(handle), m_name(name)

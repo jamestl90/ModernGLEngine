@@ -1,5 +1,6 @@
 Model Loading
 
+Using tiny_gltf for loading scenes
 Engine supports 3 vertex formats { POS, NORMAL, UV, TANGENT } and { POS, NORMAL } and { POS, UV }
 For the former, tangents (x,y,z,w) are automatically generated if not present
 ex. Mesh has POS, NORMAL and UV then tangents will be generated from that data

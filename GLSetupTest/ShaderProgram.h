@@ -33,7 +33,7 @@ namespace JLEngine
 
 		void AddShader(Shader& shader) { m_shaders.push_back(shader); }
 		void AddShader(Shader& shader, string source);
-		Shader& GetShader(int type);
+		Shader GetShader(int type);
 		void GetShader(string name, Shader& shader);
 		const std::vector<Shader> GetShaders() { return m_shaders; }
 

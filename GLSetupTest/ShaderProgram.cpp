@@ -65,7 +65,7 @@ namespace JLEngine
 		m_shaders.push_back(shader); 
 	}
 
-	Shader& ShaderProgram::GetShader(int type)
+	Shader ShaderProgram::GetShader(int type)
 	{
 		for (auto s : m_shaders)
 		{

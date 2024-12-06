@@ -21,6 +21,13 @@ namespace JLEngine
         }
     }
 
+    Texture::Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels) : Resource(handle, name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
+        m_mipmaps(false), m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0)
+    {
+        if (!data.empty())
+            m_data.insert(m_data.end(), m_data.begin(), m_data.end());
+    }
+
     Texture::~Texture()
     {
         m_data.clear();
