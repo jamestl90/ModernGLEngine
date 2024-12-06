@@ -1,5 +1,7 @@
 #include "DeferredRenderer.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "Material.h"
+#include "Graphics.h"
 
 namespace JLEngine
 {
@@ -109,41 +111,11 @@ namespace JLEngine
         Mesh* mesh = node->meshes[0];
         if (!mesh) return; // Skip if mesh is null
 
-        Material* mat = mesh->GetMaterialAt(0);
-        if (!mat) return; // Skip if material is null
-
         glm::mat4 modelMatrix = node->GetGlobalTransform();
         m_gBufferShader->SetUniform("u_Model", modelMatrix);
 
-        if (mesh->GetIndexBuffers().size() > 1)
-        {
-            auto& mats = mesh->GetMaterials();
-            auto& ibos = mesh->GetIndexBuffers();
-
-            if (mats.size() != ibos.size()) 
-            {
-                std::cerr << "Error: Mismatch between number of materials and index buffers in mesh: "
-                    << mesh->GetName() << std::endl;
-                return;
-            }
-
-            m_graphics->BindVertexArray(mesh->GetVaoId());
-            for (int i = 0; i < (int)ibos.size(); i++)
-            {
-                auto mat = mats[i];
-                auto ibo = ibos[i];
-
-                SetUniformsForGBuffer(mat);
-                GLsizei size = (GLsizei)ibo.Size();
-                m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
-                m_graphics->DrawElementBuffer(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
-            }
-        }
-        else
-        {
-            SetUniformsForGBuffer(mat);
-            m_graphics->RenderMesh(mesh);
-        }
+        //SetUniformsForGBuffer(mat);
+        //m_graphics->RenderMesh(mesh);
     }
 
     void DeferredRenderer::SetUniformsForGBuffer(Material* mat)

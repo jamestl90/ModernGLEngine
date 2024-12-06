@@ -28,10 +28,11 @@ namespace JLEngine
     {
         m_defaultMat = CreateMaterial("DefaultMaterial");
     }
-    std::vector<std::shared_ptr<Node>> AssetLoader::LoadGLB(const std::string& glbFile)
+    std::shared_ptr<Node> AssetLoader::LoadGLB(const std::string& glbFile)
     {
-        auto glbLoader = new GLBLoader();
-        return std::vector<std::shared_ptr<Node>>();
+        auto glbLoader = new GLBLoader(m_graphics, this);
+        auto scene = glbLoader->LoadGLB(glbFile);
+        return scene;
     }
 
     Texture* AssetLoader::CreateTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
@@ -49,7 +50,7 @@ namespace JLEngine
                 }
 
                 // Create a new Texture object
-                auto texture = std::make_unique<Texture>(m_textureManager->GenerateHandle(), name, width, height, data.data(), channels);
+                auto texture = std::make_unique<Texture>(name, width, height, data.data(), channels);
                 texture->InitFromData(data, width, height, channels, clamped, mipmaps);
                 texture->UploadToGPU(m_graphics, true);
                 return texture;
@@ -61,7 +62,7 @@ namespace JLEngine
     {
         return m_textureManager->Add(name, [&]()
             {
-                auto texture = std::make_unique<Texture>(m_textureManager->GenerateHandle(), name, width, height, data, channels);
+                auto texture = std::make_unique<Texture>(name, width, height, data, channels);
                 texture->SetFormat(internalFormat, format, dataType);
                 texture->SetClamped(clamped);
                 texture->EnableMipmaps(mipmaps);
@@ -74,7 +75,7 @@ namespace JLEngine
     {
         return m_textureManager->Add(name, [&]()
             {
-                auto texture = std::make_unique<Texture>(m_textureManager->GenerateHandle(), name, width, height, data.data(), channels);
+                auto texture = std::make_unique<Texture>(name, width, height, data.data(), channels);
                 texture->InitFromData(data, width, height, channels, clamped, mipmaps);
                 texture->UploadToGPU(m_graphics, false);
                 return texture;
@@ -85,7 +86,7 @@ namespace JLEngine
     {
         return m_shaderManager->Add(name, [&]()
             {
-                auto program = std::make_unique<ShaderProgram>(m_shaderManager->GenerateHandle(), name, folderPath);
+                auto program = std::make_unique<ShaderProgram>(name, folderPath);
 
                 Shader vertProgram(GL_VERTEX_SHADER, vert);
                 Shader fragProgram(GL_FRAGMENT_SHADER, frag);
@@ -109,7 +110,7 @@ namespace JLEngine
     {
         return m_shaderManager->Add(name, [&]()
             {
-                auto program = std::make_unique<ShaderProgram>(m_shaderManager->GenerateHandle(), name);
+                auto program = std::make_unique<ShaderProgram>(name);
 
                 Shader vertProgram(GL_VERTEX_SHADER, "vert");
                 Shader fragProgram(GL_FRAGMENT_SHADER, "frag");
@@ -257,7 +258,7 @@ namespace JLEngine
     {
         return m_materialManager->Add(name, [&]()
             {
-                auto mat = std::make_unique<Material>(m_materialManager->GenerateHandle(), name);
+                auto mat = std::make_unique<Material>(name);
 
                 return mat;
             });
@@ -303,7 +304,7 @@ namespace JLEngine
     {
         return m_renderTargetManager->Add(name, [&]()
             {
-                auto renderTarget = std::make_unique<RenderTarget>(m_renderTargetManager->GenerateHandle(), name, numSources);
+                auto renderTarget = std::make_unique<RenderTarget>(name, numSources);
                 renderTarget->SetDepthType(depthType);
                 renderTarget->SetWidth(width);
                 renderTarget->SetHeight(height);
@@ -317,7 +318,7 @@ namespace JLEngine
     {
         return m_renderTargetManager->Add(name, [&]()
             {
-                auto renderTarget = std::make_unique<RenderTarget>(m_renderTargetManager->GenerateHandle(), name, numSources);
+                auto renderTarget = std::make_unique<RenderTarget>(name, numSources);
                 renderTarget->SetDepthType(depthType);
                 renderTarget->SetWidth(width);
                 renderTarget->SetHeight(height);
@@ -336,10 +337,9 @@ namespace JLEngine
     {
         return m_meshManager->Add(name, [&]()
             {
-                auto mesh = std::make_unique<Mesh>(m_meshManager->GenerateHandle(), name);
-                mesh->SetVertexBuffer(vbo);
-                mesh->AddIndexBuffer(ibo);
-                mesh->UploadToGPU(m_graphics, true);
+                auto mesh = std::make_unique<Mesh>(name);
+
+                mesh->UploadToGPU(m_graphics);
                 return mesh;
             });
     }
@@ -348,9 +348,9 @@ namespace JLEngine
     {
         return m_meshManager->Add(name, [&]()
             {
-                auto mesh = std::make_unique<Mesh>(m_meshManager->GenerateHandle(), name);
-                mesh->SetVertexBuffer(vbo);
-                mesh->UploadToGPU(m_graphics, true);
+                auto mesh = std::make_unique<Mesh>(name);
+
+                mesh->UploadToGPU(m_graphics);
                 return mesh;
             });
     }
@@ -359,13 +359,9 @@ namespace JLEngine
     {
         return m_meshManager->Add(name, [&]()
             {
-                auto mesh = std::make_unique<Mesh>(m_meshManager->GenerateHandle(), name);
-                mesh->SetVertexBuffer(vbo);
-                for (auto& ibo : ibos)
-                {
-                    mesh->AddIndexBuffer(ibo);
-                }
-                mesh->UploadToGPU(m_graphics, true);
+                auto mesh = std::make_unique<Mesh>(name);
+
+                mesh->UploadToGPU(m_graphics);
                 return mesh;
             });
     }
@@ -374,7 +370,7 @@ namespace JLEngine
     {
         return m_meshManager->Add(name, [&]()
             {
-                auto mesh = std::make_unique<Mesh>(m_meshManager->GenerateHandle(), name);
+                auto mesh = std::make_unique<Mesh>(name);
                 return mesh;
             });
     }
@@ -383,7 +379,7 @@ namespace JLEngine
     {
         return m_shaderStorageManager->Add(name, [&]()
             {
-                auto ssbo = std::make_unique<ShaderStorageBuffer>(m_shaderStorageManager->GenerateHandle(), name, size, m_graphics);
+                auto ssbo = std::make_unique<ShaderStorageBuffer>(name, size, m_graphics);
                 ssbo->Initialize(); // Custom initialization for the SSBO
                 return ssbo;
             });

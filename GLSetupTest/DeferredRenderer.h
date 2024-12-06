@@ -13,6 +13,8 @@
 
 namespace JLEngine
 {
+    class Material;
+
     class DeferredRenderer 
     {
     public:

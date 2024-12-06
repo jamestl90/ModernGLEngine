@@ -10,6 +10,7 @@
 #include "ResourceManager.h"
 #include "Buffer.h"
 #include "VertexBuffers.h"
+#include "Material.h"
 
 namespace JLEngine
 {
@@ -17,7 +18,6 @@ namespace JLEngine
 	class ShaderProgram;
 	class RenderTarget;
 	class ShaderStorageBuffer;
-	class Material;
 	class Mesh;
 	class Node;
 	class Graphics;
@@ -53,7 +53,7 @@ namespace JLEngine
 		ResourceManager<RenderTarget>* GetRenderTargetManager()   const { return m_renderTargetManager; }
 		ResourceManager<ShaderStorageBuffer>* GetShaderStorageManager()  const { return m_shaderStorageManager; }
 
-		std::vector<std::shared_ptr<Node>> LoadGLB(const std::string& glbFile);
+		std::shared_ptr<Node> LoadGLB(const std::string& glbFile);
 		void SetGlobalGenerationSettings(AssetGenerationSettings& settings) { m_settings = settings; }
 
 		// Texture Loading ///////////////////////////////////

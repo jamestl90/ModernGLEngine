@@ -3,6 +3,7 @@
 #include "TextureReader.h"
 #include "FileHelpers.h"
 #include "RenderTarget.h"
+#include "InstanceBuffer.h"
 
 #include <set>
 #include <glm/gtc/type_ptr.hpp>
@@ -596,8 +597,41 @@ namespace JLEngine
 		}
 	}
 
+	void Graphics::CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms)
+	{
+		if (instancedBO.Uploaded()) return;
+
+		GLuint bufferID;
+		glGenBuffers(1, &bufferID);
+		glBindBuffer(GL_ARRAY_BUFFER, bufferID);
+		glBufferData(GL_ARRAY_BUFFER, instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data(), 
+			instancedBO.IsStatic() ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
+		auto instanceCount = instanceTransforms.size();
+
+		instancedBO.SetGPUID(bufferID);
+		instancedBO.SetInstanceCount(instanceCount);
+
+		// Configure vertex attributes for the mat4 (split into 4 vec4 attributes)
+		for (int i = 0; i < 4; ++i) 
+		{
+			GLuint attribIndex = InstanceBuffer::INSTANCE_MATRIX_LOCATION + i; // Starting location for instance matrix attributes
+			glEnableVertexAttribArray(attribIndex);
+			glVertexAttribPointer(attribIndex, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4) * i));
+			glVertexAttribDivisor(attribIndex, 1); // Divisor 1 means per-instance data
+		}
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+
+	void Graphics::DisposeInstanceBuffer(InstanceBuffer& instancedBO)
+	{
+		GLuint id = instancedBO.GetGPUID();
+		glDeleteBuffers(1, &id);
+	}
+
 	void Graphics::CreateVertexBuffer( VertexBuffer& vbo )
 	{
+		if (vbo.Uploaded()) return;
+
 		uint32 id;
 		glGenBuffers(1, &id);
 		glBindBuffer(vbo.Type(), id);
@@ -620,6 +654,8 @@ namespace JLEngine
 
 	void Graphics::CreateIndexBuffer( IndexBuffer& ibo )
 	{
+		if (ibo.Uploaded()) return;
+
 		uint32 id;
 		glGenBuffers(1, &id);
 		glBindBuffer(ibo.Type(), id);
@@ -629,33 +665,12 @@ namespace JLEngine
 
 	void Graphics::CreateMesh( Mesh* mesh )
 	{
-		mesh->SetVao(CreateVertexArray());
-		CreateVertexBuffer(mesh->GetVertexBuffer());
-		if (mesh->HasIndices())
-		{
-			for (auto& ibo : mesh->GetIndexBuffers())
-			{
-				CreateIndexBuffer(ibo);
-			}
-		}
-		glBindVertexArray(0);
+
 	}
 
 	void Graphics::DisposeMesh( Mesh* mesh )
 	{
-		GLuint vaoID = mesh->GetVaoId();
-		GLuint vboID = mesh->GetVertexBuffer().GetId();
 
-		glDeleteBuffers(1, &vboID);
-		if (mesh->HasIndices())
-		{
-			for (auto& ibo : mesh->GetIndexBuffers())
-			{
-				GLuint iboID = ibo.GetId();
-				glDeleteBuffers(1, &iboID);
-			}
-		}
-		glDeleteBuffers(1, &vaoID);
 	}
 
 	void Graphics::CreateTexture( Texture* texture )
@@ -710,97 +725,6 @@ namespace JLEngine
 	void Graphics::SwapBuffers()
 	{
 		m_window->SwapBuffers();
-	}
-
-	void Graphics::RenderNodeHierarchy(Node* root, std::function<void(Node*)> uniformCallback)
-	{
-		if (!root) 
-		{
-			return; // Safety check for null root
-		}
-
-		// If the current node has meshes, process them
-		for (Mesh* mesh : root->meshes) 
-		{
-			if (mesh) 
-			{
-				uniformCallback(root);
-
-				auto mat = mesh->GetMaterialAt(0);
-				auto tex = mat->baseColorTexture;
-
-				RenderMeshWithTexture(mesh, tex);
-			}
-		}
-
-		// Recursively render all child nodes
-		for (const auto& child : root->children) 
-		{
-			RenderNodeHierarchy(child.get(), uniformCallback);
-		}
-	}
-
-	void Graphics::RenderMesh(Mesh* mesh)
-	{
-		if (mesh == nullptr) return;
-
-		GLuint vaoId = mesh->GetVaoId();
-
-		glBindVertexArray(vaoId);
-
-		if (mesh->HasIndices())
-		{
-			auto& ibo = mesh->GetIndexBuffer();
-			GLsizei size = (GLsizei)ibo.Size();
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
-			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
-		}
-		else
-		{
-			auto size = mesh->GetVertexBuffer().Size();
-			auto stride = mesh->GetVertexBuffer().GetStride();
-			GLsizei tris = (GLsizei)size / (GLsizei)stride;
-			glDrawArrays(GL_TRIANGLES, 0, tris);
-		}
-
-		glBindVertexArray(0);
-	}
-
-	void Graphics::RenderMeshWithTexture(Mesh* mesh, Texture* texture)
-	{
-		if (mesh == nullptr) return;
-		if (texture == nullptr) return;
-
-		GLuint vaoId = mesh->GetVaoId();
-
-		glBindVertexArray(vaoId);
-
-		auto texId = texture->GetGPUID();
-
-		if (!glIsTexture(texId)) 
-		{
-			std::cerr << "Error: Invalid texture ID." << std::endl;
-			glBindVertexArray(0);
-			return;
-		}
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texId);
-
-		if (mesh->HasIndices())
-		{
-			auto& ibo = mesh->GetIndexBuffer();
-			GLsizei size = (GLsizei)ibo.Size();
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
-			glDrawElements(GL_TRIANGLES, size, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
-		}
-		else
-		{
-			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)mesh->GetVertexBuffer().Size() / mesh->GetVertexBuffer().GetStride());
-		}
-
-		glBindVertexArray(0);
-		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	// immediate mode :(

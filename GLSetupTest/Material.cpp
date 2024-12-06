@@ -2,7 +2,7 @@
 
 namespace JLEngine
 {
-    Material::Material(uint32 handle, const std::string& name) : Resource(handle, name),
+    Material::Material(const std::string& name) : Resource(name),
         baseColorFactor(1.0f, 1.0f, 1.0f, 1.0f),
         metallicFactor(1.0f),                   
         roughnessFactor(1.0f),                  

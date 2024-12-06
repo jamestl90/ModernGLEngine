@@ -11,7 +11,7 @@ namespace JLEngine
     class ShaderStorageBuffer : public Resource 
     {
     public:
-        ShaderStorageBuffer(uint32 handle, const std::string& name, size_t size, Graphics* graphics);
+        ShaderStorageBuffer(const std::string& name, size_t size, Graphics* graphics);
         ~ShaderStorageBuffer();
 
         void Initialize();  // Allocate GPU memory

@@ -28,6 +28,7 @@ namespace JLEngine
 	class RenderTarget : public Resource
 	{
 	public:
+		RenderTarget(const string& name, uint32 numSources);
 		RenderTarget(uint32 handle, const string& name, uint32 numSources);
 
 		~RenderTarget();

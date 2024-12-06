@@ -16,7 +16,7 @@ namespace JLEngine
     {
     public:
         // Default constructor
-        Material(uint32 handle, const std::string& name);
+        Material(const std::string& name);
 
         // Properties for PBR Metallic-Roughness workflow
         glm::vec4 baseColorFactor;            // Base color (RGBA)

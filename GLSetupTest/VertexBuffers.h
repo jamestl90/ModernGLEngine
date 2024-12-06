@@ -13,6 +13,13 @@ using std::vector;
 
 namespace JLEngine
 {
+	//enum class VertexFormat
+	//{
+	//	POS_NORMAL,
+	//	POS_NORMAL_UV_TANGENT,
+	//	POS_UV
+	//};
+
 	class GraphicsBuffer 
 	{
 	public:
@@ -20,7 +27,7 @@ namespace JLEngine
 
 		GraphicsBuffer(int type, int data, int drawType);
 
-		void SetId(uint32& id) { m_id = id; }
+		void SetId(uint32& id) { m_id = id; m_uploadedToGPU = true; }
 
 		uint32 GetId() const { return m_id; }
 
@@ -36,11 +43,17 @@ namespace JLEngine
 
 		int DrawType() const { return m_drawType; }
 
+		bool Uploaded() { return m_uploadedToGPU; }
+
+		void SetUploaded(bool uploaded) { m_uploadedToGPU = uploaded; }
+
 	protected:
 
 		int m_type;
 		int m_dataType;
 		int m_drawType;
+
+		bool m_uploadedToGPU = false;
 
 		uint32 m_id;
 	};

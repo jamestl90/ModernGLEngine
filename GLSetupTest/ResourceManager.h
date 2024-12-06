@@ -2,20 +2,14 @@
 #define RESOURCEMANAGER_H
 
 #include <stack>
-#include <vector>
-#include <stdexcept>
-#include <string>
-#include <iostream>
 #include <unordered_map>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <stdexcept>
 
 #include "Types.h"
-
-using std::string;
-using std::vector;
-using std::stack;
 
 namespace JLEngine
 {
@@ -23,38 +17,47 @@ namespace JLEngine
     class ResourceManager
     {
     public:
+        T* Get(uint32 id)
+        {
+            std::scoped_lock lock(m_mutex);
+            auto it = m_resourcesById.find(id);
+            return (it != m_resourcesById.end()) ? it->second.get() : nullptr;
+        }
+
         T* Get(const std::string& name)
         {
             std::scoped_lock lock(m_mutex);
-            auto it = m_resources.find(name);
-            if (it != m_resources.end())
-            {
-                return it->second.get();
-            }
-            return nullptr;
+            auto it = m_nameToId.find(name);
+            return (it != m_nameToId.end()) ? Get(it->second) : nullptr;
         }
 
-        T* Add(const std::string& name, T* existingResource) 
+        uint32 Add(const std::string& name, T* existingResource)
         {
             std::scoped_lock lock(m_mutex);
-            if (m_resources.find(name) != m_resources.end()) {
-                return existingResource; // Resource already exists
+            if (m_nameToId.find(name) != m_nameToId.end())
+            {
+                return m_nameToId[name];
             }
 
-            // Assign a new handle
-            existingResource->SetHandle(GenerateHandle());
+            uint32 id = GenerateHandle();
+            existingResource->SetHandle(id);
 
-            auto uniqueResource = std::unique_ptr<T>(existingResource);
-            m_resources[name] = std::move(uniqueResource);
-            return existingResource;
+            m_resourcesById[id] = std::unique_ptr<T>(existingResource);
+            m_nameToId[name] = id;
+            m_idToName[id] = name; // Add reverse lookup
+
+            return id;
         }
 
         T* Add(const std::string& name, const std::function<std::unique_ptr<T>()>& loader)
         {
             std::scoped_lock lock(m_mutex);
-            if (m_resources.find(name) != m_resources.end())
+
+            auto nameToIdIt = m_nameToId.find(name);
+            if (nameToIdIt != m_nameToId.end())
             {
-                return m_resources[name].get();
+                uint32 id = nameToIdIt->second;
+                return m_resourcesById[id].get();
             }
 
             auto resource = loader();
@@ -63,58 +66,82 @@ namespace JLEngine
                 throw std::runtime_error("Failed to load resource: " + name);
             }
 
-            // Assign a new handle
-            resource->SetHandle(GenerateHandle());
+            uint32 id = GenerateHandle();
+            resource->SetHandle(id);
 
             T* rawPtr = resource.get();
-            m_resources[name] = std::move(resource);
+            m_resourcesById[id] = std::move(resource);
+            m_nameToId[name] = id;
+            m_idToName[id] = name; // Add reverse lookup
+
             return rawPtr;
+        }
+
+        void Remove(uint32 id)
+        {
+            std::scoped_lock lock(m_mutex);
+            auto it = m_resourcesById.find(id);
+            if (it != m_resourcesById.end())
+            {
+                auto nameIt = m_idToName.find(id);
+                if (nameIt != m_idToName.end())
+                {
+                    m_nameToId.erase(nameIt->second);
+                    m_idToName.erase(nameIt);
+                }
+
+                m_freeHandles.push(id);
+                m_resourcesById.erase(it);
+            }
         }
 
         void Remove(const std::string& name)
         {
             std::scoped_lock lock(m_mutex);
-            auto it = m_resources.find(name);
-            if (it != m_resources.end())
+            auto nameIt = m_nameToId.find(name);
+            if (nameIt != m_nameToId.end())
             {
-                m_freeHandles.push(it->second->GetHandle());
-                m_resources.erase(it);
+                m_idToName.erase(nameIt->second);
+                Remove(nameIt->second);
             }
         }
 
         void Clear()
         {
             std::scoped_lock lock(m_mutex);
-            for (auto& [name, resource] : m_resources)
+            for (auto& [id, resource] : m_resourcesById)
             {
-                m_freeHandles.push(resource->GetHandle());
+                m_freeHandles.push(id);
             }
-            m_resources.clear();
+            m_resourcesById.clear();
+            m_nameToId.clear();
+            m_idToName.clear();
         }
 
-        uint32 GenerateHandle()
+        const std::unordered_map<uint32, std::unique_ptr<T>>& GetResources() const
         {
             std::scoped_lock lock(m_mutex);
+            return m_resourcesById;
+        }
+
+    protected:
+        uint32 GenerateHandle()
+        {
             if (!m_freeHandles.empty())
             {
-                uint32_t handle = m_freeHandles.top();
+                uint32 handle = m_freeHandles.top();
                 m_freeHandles.pop();
                 return handle;
             }
             return m_nextHandle++;
         }
 
-        const std::unordered_map<std::string, std::unique_ptr<T>>& GetResources() const
-        {
-            std::scoped_lock lock(m_mutex);
-            return m_resources;
-        }
-    protected:
-
     private:
-        std::unordered_map<std::string, std::unique_ptr<T>> m_resources;
+        std::unordered_map<uint32, std::unique_ptr<T>> m_resourcesById;
+        std::unordered_map<std::string, uint32> m_nameToId;
+        std::unordered_map<uint32, std::string> m_idToName; // Reverse lookup
         std::stack<uint32> m_freeHandles;
-        uint32 m_nextHandle = 0;
+        uint32 m_nextHandle = 1;
         mutable std::mutex m_mutex;
     };
 }

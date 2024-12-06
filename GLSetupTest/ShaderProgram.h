@@ -19,9 +19,8 @@ namespace JLEngine
 	class ShaderProgram : public Resource
 	{
 	public:
-
-		ShaderProgram(uint32 handle, string name);
-		ShaderProgram(uint32 handle, string name, string path);
+		ShaderProgram(string name);
+		ShaderProgram(string name, string path);
 		~ShaderProgram();
 
 		void ReloadFromFile();

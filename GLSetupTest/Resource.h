@@ -31,6 +31,10 @@ namespace JLEngine
             : m_handle(handle), m_name(name)
         {}
 
+        Resource(const std::string& name)
+            : m_handle(0), m_name(name)
+        {}
+
         uint32_t m_handle;
         std::string m_name;
     };

@@ -9,6 +9,7 @@
 #include "Node.h"
 #include "Geometry.h"
 #include "DeferredRenderer.h"
+#include "Material.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
@@ -142,21 +143,19 @@ int main(int argc, char* argv[])
     //planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
     auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
     mat->baseColorTexture = texture;
-    planeMesh->AddMaterial(mat);
+    //planeMesh->AddMaterial(mat);
     auto planeNode = std::make_shared<JLEngine::Node>("Plane", JLEngine::NodeTag::Mesh);
     //planeNode->meshes.push_back(planeMesh);
-    auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb")[0];
-    auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb")[0];
-    afishScene->translation += glm::vec3(5, 0, 0);
-    afishScene->scale = glm::vec3(3.0f, 3.0f, 3.0f);
-    cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
-    sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
+    //auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb");
+    //auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb");
+    //afishScene->translation += glm::vec3(5, 0, 0);
+    //afishScene->scale = glm::vec3(3.0f, 3.0f, 3.0f);
+    //cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
+    //sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
     
     auto test = engine.GetAssetLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
-    for (auto item : test)
-    {
-        sceneRoot->AddChild(item);
-    }
+    sceneRoot->AddChild(test);
+
     //sceneRoot->AddChild(std::move(aduckScene));
     //sceneRoot->AddChild(std::move(afishScene));
     //sceneRoot->AddChild(planeNode);

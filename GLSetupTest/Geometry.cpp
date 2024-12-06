@@ -91,11 +91,8 @@ namespace JLEngine
         JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
         ibo.Set(indices);
 
-        auto mesh = new Mesh(0, name);
-        mesh->SetVertexBuffer(vbo);
-        mesh->AddIndexBuffer(ibo);
-        graphics->CreateMesh(mesh);
-        return mesh;
+        throw std::exception("Need to create a new mesh here");
+        return nullptr;
 	}
 
     Mesh* Geometry::GenerateBoxMesh(Graphics* graphics, std::string name, float width, float length, float height)
@@ -146,12 +143,7 @@ namespace JLEngine
         ibo.Set(indices);
 
         // Build the Mesh
-        auto mesh = new Mesh(0, name);
-        mesh->SetVertexBuffer(vbo);
-        mesh->AddIndexBuffer(ibo);
-        graphics->CreateMesh(mesh);
-
-        return mesh;
+        throw std::exception("Need to create a new mesh here");
     }
 
     void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
@@ -194,71 +186,96 @@ namespace JLEngine
         }
     }
 
-    void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
-        const std::vector<float>& normals,
-        const std::vector<float>& texCoords,
-        const std::vector<float>& tangents,
-        std::vector<float>& vertexData)
+    void Geometry::GenerateInterleavedVertexData(std::vector<float>& positions,
+        std::vector<float>& normals,
+        std::vector<float>& texCoords,
+        std::vector<float>& tangents,
+        std::vector<float>& vertexData,
+        const std::string& attributesKey)
     {
         size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
-        if (positions.size() % 3 != 0) {
+        if (positions.size() % 3 != 0)
+        {
             std::cerr << "Error: Positions array size is not a multiple of 3." << std::endl;
             return;
         }
 
-        // Check for optional attributes
+        // Determine required attributes from attributesKey
+        bool requiresNormals = attributesKey.find("NORMAL") != std::string::npos;
+        bool requiresTexCoords = attributesKey.find("TEXCOORD_0") != std::string::npos;
+        bool requiresTangents = attributesKey.find("TANGENT") != std::string::npos;
+
+        // Generate normals if missing and required
+        if (requiresNormals && normals.empty())
+        {
+            std::cout << "Generating normals..." << std::endl;
+            normals = Geometry::CalculateFlatNormals(positions);
+        }
+
+        // Generate tangents if missing and required (requires UVs and normals)
+        if (requiresTangents && tangents.empty())
+        {
+            if (!texCoords.empty() && !normals.empty())
+            {
+                std::cout << "Generating tangents..." << std::endl;
+                tangents = CalculateTangents(positions, normals, texCoords);
+            }
+            else if (requiresTangents)
+            {
+                std::cerr << "Warning: Cannot generate tangents without UVs and normals. Tangents will remain empty." << std::endl;
+            }
+        }
+
+        // Check sizes of all attributes
+        bool hasNormals = normals.size() == vertexCount * 3;
         bool hasTexCoords = texCoords.size() == vertexCount * 2;
         bool hasTangents = tangents.size() == vertexCount * 4;
-        bool hasNormals = normals.size() == vertexCount * 3;
 
-        // Log any mismatches
-        if (!hasNormals && !normals.empty()) {
-            std::cerr << "Warning: Normals array size mismatch. Ignoring normals." << std::endl;
-        }
-        if (!hasTexCoords && !texCoords.empty()) {
-            std::cerr << "Warning: TexCoords array size mismatch. Ignoring texCoords." << std::endl;
-        }
-        if (!hasTangents && !tangents.empty()) {
-            std::cerr << "Warning: Tangents array size mismatch. Ignoring tangents." << std::endl;
-        }
+        // Calculate vertex size dynamically
+        size_t vertexSize = 3; // Positions are always included
+        if (requiresNormals) vertexSize += 3;
+        if (requiresTexCoords) vertexSize += 2;
+        if (requiresTangents) vertexSize += 4;
 
-        // Reserve memory for interleaved vertex data
-        size_t vertexSize = 3 + (hasNormals ? 3 : 0) + (hasTexCoords ? 2 : 0) + (hasTangents ? 3 : 0);
         vertexData.clear();
         vertexData.reserve(vertexCount * vertexSize);
 
         // Default values for missing attributes
-        std::array<float, 3> defaultNormal = { 0.0f, 0.0f, 1.0f };
-        std::array<float, 3> defaultTangent = { 1.0f, 0.0f, 0.0f };
-        std::array<float, 2> defaultTexCoord = { 0.0f, 0.0f };
+        const float defaultNormal[3] = { 0.0f, 0.0f, 1.0f };
+        const float defaultTexCoord[2] = { 0.0f, 0.0f };
+        const float defaultTangent[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
 
+        // Interleave vertex data
         for (size_t i = 0; i < vertexCount; ++i)
         {
             // Add position (vec3)
             vertexData.insert(vertexData.end(), positions.begin() + i * 3, positions.begin() + (i + 1) * 3);
 
-            // Add normal (vec3)
-            if (hasNormals) {
-                vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
-            }
-            else {
-                vertexData.insert(vertexData.end(), defaultNormal.begin(), defaultNormal.end());
-            }
-
-            // Add texCoords (vec2)
-            if (hasTexCoords) {
-                vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
-            }
-            else {
-                vertexData.insert(vertexData.end(), defaultTexCoord.begin(), defaultTexCoord.end());
+            // Add normal (vec3) if required
+            if (requiresNormals)
+            {
+                if (hasNormals)
+                    vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
+                else
+                    vertexData.insert(vertexData.end(), defaultNormal, defaultNormal + 3);
             }
 
-            // Add tangent (vec3)
-            if (hasTangents) {
-                vertexData.insert(vertexData.end(), tangents.begin() + i * 4, tangents.begin() + (i + 1) * 4);
+            // Add texCoords (vec2) if required
+            if (requiresTexCoords)
+            {
+                if (hasTexCoords)
+                    vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
+                else
+                    vertexData.insert(vertexData.end(), defaultTexCoord, defaultTexCoord + 2);
             }
-            else {
-                vertexData.insert(vertexData.end(), defaultTangent.begin(), defaultTangent.end());
+
+            // Add tangent (vec4) if required
+            if (requiresTangents)
+            {
+                if (hasTangents)
+                    vertexData.insert(vertexData.end(), tangents.begin() + i * 4, tangents.begin() + (i + 1) * 4);
+                else
+                    vertexData.insert(vertexData.end(), defaultTangent, defaultTangent + 4);
             }
         }
     }

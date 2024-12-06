@@ -1,86 +1,60 @@
 #include "Mesh.h"
 #include "Graphics.h"
+#include "Batch.h"
 
 namespace JLEngine
 {
-	Mesh::Mesh(uint32 handle, const string& name)
-		: Resource(handle, name), m_vao(0), m_graphics(nullptr), m_hasIndices(false)
+	Mesh::Mesh(const string& name)
+		: Resource(name), m_graphics(nullptr)
 	{
+	}
+
+	Mesh::Mesh(uint32 handle, const string& name)
+		: Resource(handle, name), m_graphics(nullptr)
+	{
+
 	}
 
 	Mesh::~Mesh()
 	{
-		UnloadFromGraphics();
-
-		m_vbo.Clear();
-
-		if (m_ibos.size() > 0)
-		{
-			for (auto& ibo : m_ibos)
-			{
-				ibo.Clear();
-			}
-			m_ibos.clear();
-		}
-	}
-
-	AABB Mesh::CalculateAABB()
-	{
-		std::pair<glm::vec3, glm::vec3> maxMin;
-
-		maxMin = findMaxMinPair(m_vbo);
-
-		m_aabb.max = maxMin.first;
-		m_aabb.min = maxMin.second;
-
-		return m_aabb;
+		UnloadFromGPU();
 	}
 
 	void Mesh::UploadToGPU(Graphics* graphics, bool freeData)
 	{
+		if (!graphics || m_batches.empty()) 
+		{
+			std::cerr << "Failed to upload Mesh '" << GetName() << "' to GPU: Graphics or batches are invalid.\n";
+			return;
+		}
+
 		m_graphics = graphics;
 
-		m_graphics->CreateMesh(this);
-
-		if (m_ibos.size() != 0)
+		for (auto& batch : m_batches) 
 		{
-			m_vbo.Clear();
+			if (!batch->IsValid()) {
+				std::cerr << "Invalid batch found in Mesh '" << GetName() << "' during upload.\n";
+				continue;
+			}
+
+			m_graphics->CreateVertexBuffer(*batch->GetVertexBuffer().get());
+			m_graphics->CreateIndexBuffer(*batch->GetIndexBuffer().get());
+			if (batch->HasInstanceBuffer()) {
+				batch->GetInstanceBuffer()->UploadToGPU(m_graphics, {}); 
+			}
 		}
 
-		if (m_vbo.GetBuffer().size() > 50.0f)
-		{
-			CalculateAABB();
+		if (freeData) {
+			// Release CPU-side resources if requested
+			m_batches.clear();
 		}
 	}
 
-	void Mesh::SetVertexBuffer( VertexBuffer& vbo )
+	void Mesh::UnloadFromGPU()
 	{
-		m_vbo = vbo;
-	}
-
-	VertexBuffer& Mesh::GetVertexBuffer()
-	{
-		return m_vbo;
-	}
-
-	void Mesh::AddIndexBuffer( IndexBuffer& ibo )
-	{
-		m_ibos.push_back(ibo);
-		m_hasIndices = true;
-	}
-
-	IndexBuffer& Mesh::GetIndexBuffer()
-	{
-		return m_ibos[0];
-	}
-
-	IndexBuffer& Mesh::GetIndexBufferAt(int idx)
-	{
-		return m_ibos[idx];
-	}
-
-	void Mesh::UnloadFromGraphics()
-	{
-		m_graphics->DisposeMesh(this);
+		if (m_graphics)
+		{
+			m_graphics->DisposeMesh(this);
+		}
 	}
 }

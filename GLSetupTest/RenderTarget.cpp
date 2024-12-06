@@ -4,6 +4,20 @@
 
 namespace JLEngine
 {
+	RenderTarget::RenderTarget(const string& name, uint32 numSources)
+		: Resource(name), m_fbo(0), m_dbo(0), m_numSources(numSources),
+		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
+	{
+		m_attributes.Create(numSources);
+		m_sources.Create(numSources);
+		m_drawBuffers.Create(numSources);
+
+		for (uint32 i = 0; i < m_numSources; i++)
+		{
+			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
+		}
+	}
+
 	RenderTarget::RenderTarget(uint32 handle, const string& name, uint32 numSources)
 		: Resource(handle, name), m_fbo(0), m_dbo(0), m_numSources(numSources),
 		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)

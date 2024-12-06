@@ -8,9 +8,16 @@ namespace JLEngine
     {
     }
 
+    Texture::Texture(const std::string& name, const std::string& filename)
+        : Resource(name), m_filename(filename), m_clamped(false), m_mipmaps(false),
+        m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0), m_channels(0)
+
+    {
+    }
+
     // Constructor for raw-data texture
-    Texture::Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, void* data, int channels)
-        : Resource(handle, name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
+    Texture::Texture(const std::string& name, uint32_t width, uint32_t height, void* data, int channels)
+        : Resource(name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
         m_mipmaps(false), m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0)
     {
         if (data)
@@ -21,7 +28,8 @@ namespace JLEngine
         }
     }
 
-    Texture::Texture(uint32_t handle, const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels) : Resource(handle, name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
+    Texture::Texture(const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels) 
+        : Resource(name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
         m_mipmaps(false), m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0)
     {
         if (!data.empty())

@@ -136,6 +136,10 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Batch.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="DeferredRenderer.cpp">
       <SubType>
       </SubType>
@@ -150,6 +154,10 @@
     </ClCompile>
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="InstanceBuffer.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="JLEngine.cpp" />
     <ClCompile Include="Light.cpp">
       <SubType>
@@ -186,6 +194,10 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="Batch.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="DeferredRenderer.h">
       <SubType>
@@ -201,6 +213,10 @@
     </ClInclude>
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="InstanceBuffer.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="JLEngine.h" />
     <ClInclude Include="Light.h">
       <SubType>

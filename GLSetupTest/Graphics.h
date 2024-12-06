@@ -29,6 +29,7 @@ namespace JLEngine
 	class RenderTarget;
 	class TextureReader;
 	class Material;
+	class InstanceBuffer;
 
 	struct PrimitiveType
 	{
@@ -133,21 +134,20 @@ namespace JLEngine
 		void DisposeRenderTarget(RenderTarget* target);
 
 		void DisposeTexture(Texture* texture);
-
 		void CreateTexture(Texture* texture);
 		void CreateTextures(uint32 count, uint32& id);
 		void BindTexture(uint32 target, uint32 id);
 		void BindTexture(ShaderProgram* shader, const std::string& uniformName,
 			const std::string& flagName, Texture* texture, int textureUnit);
 		void DisposeTexture(uint32 count, uint32* textures);
-
 		void SetActiveTexture(uint32 texunit);
 
 		// Buffer objects
 		
+		void CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms);
+		void DisposeInstanceBuffer(InstanceBuffer& instancedBO);
 		void CreateVertexBuffer(VertexBuffer& vbo);
 		void CreateIndexBuffer(IndexBuffer& ibo);
-
 		void DisposeVertexBuffer(VertexBuffer& vbo);
 		void DisposeVertexBuffer(GLuint vao, VertexBuffer& vbo);
 		void DisposeIndexBuffer(IndexBuffer& ibo);
@@ -193,9 +193,6 @@ namespace JLEngine
 		void RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId = -1);
 		void EndPrimitiveDraw();
 
-		void RenderNodeHierarchy(Node* root, std::function<void(Node*)> uniformCallback);
-		void RenderMesh(Mesh* mesh);
-		void RenderMeshWithTexture(Mesh* mesh, Texture* texture);
 		void DrawArrayBuffer(uint32 drawMode, uint32 first, uint32 count);
 		void DrawElementBuffer(uint32 drawMode, int32 count, uint32 dataType, void* offset);
 		void DrawBuffers(uint32 count, uint32* targets);

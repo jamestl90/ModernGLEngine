@@ -4,13 +4,13 @@
 
 namespace JLEngine
 {
-	ShaderProgram::ShaderProgram(uint32 handle, string name)
-		: Resource(handle, name), m_graphics(nullptr), m_programId(-1)
+	ShaderProgram::ShaderProgram(string name)
+		: Resource(name), m_graphics(nullptr), m_programId(-1)
 	{
 	}
 
-	ShaderProgram::ShaderProgram(uint32 handle, string name, string path)
-		: Resource(handle, name), m_graphics(nullptr), m_filename(path), m_programId(-1)
+	ShaderProgram::ShaderProgram(string name, string path)
+		: Resource(name), m_graphics(nullptr), m_filename(path), m_programId(-1)
 	{
 	}
 
