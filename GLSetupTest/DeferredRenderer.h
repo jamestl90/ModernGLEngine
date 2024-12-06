@@ -34,7 +34,7 @@ namespace JLEngine
         void SetupGBuffer();
         void TraverseSceneGraph(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void SetUniformsForGBuffer(Mesh* mesh, Material* mat);
+        void SetUniformsForGBuffer(Material* mat);
 
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();

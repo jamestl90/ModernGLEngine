@@ -16,7 +16,7 @@ JLEngine::Input* input;
 JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
-JLEngine::Node* sceneRoot;
+std::shared_ptr<JLEngine::Node> sceneRoot;
 JLEngine::Texture* texture;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
@@ -68,7 +68,7 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
     //    shader->SetUniform("uModel", modelMatrix);
     //});
 
-    m_defRenderer->Render(sceneRoot, flyCamera->GetPosition(), view, projection, debugGBuffer);
+    m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection, debugGBuffer);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -143,25 +143,30 @@ int main(int argc, char* argv[])
 
     basicLit = shaderMgr->BasicLitShader();
 
-    sceneRoot = new JLEngine::Node("SceneRoot", JLEngine::NodeTag::SceneRoot);
+    sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
     //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
     planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
     auto mat = engine.GetMaterialManager()->CreateMaterial("planeMat");
     mat->baseColorTexture = texture;
     planeMesh->AddMaterial(mat);
-    auto planeNode = std::make_unique<JLEngine::Node>("Plane", JLEngine::NodeTag::Mesh);
+    auto planeNode = std::make_shared<JLEngine::Node>("Plane", JLEngine::NodeTag::Mesh);
     planeNode->meshes.push_back(planeMesh);
-    auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb");
-    auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb");
+    auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb")[0];
+    auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb")[0];
     afishScene->translation += glm::vec3(5, 0, 0);
     afishScene->scale = glm::vec3(3.0f, 3.0f, 3.0f);
     cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
     
-    sceneRoot->AddChild(std::move(aduckScene));
-    sceneRoot->AddChild(std::move(afishScene));
-    sceneRoot->AddChild(std::move(planeNode));
+    auto test = engine.GetAssetLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
+    for (auto item : test)
+    {
+        sceneRoot->AddChild(item);
+    }
+    //sceneRoot->AddChild(std::move(aduckScene));
+    //sceneRoot->AddChild(std::move(afishScene));
+    //sceneRoot->AddChild(planeNode);
 
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, 
         engine.GetRenderTargetManager(), 

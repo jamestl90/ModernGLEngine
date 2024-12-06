@@ -24,6 +24,8 @@ namespace JLEngine
 		ShaderProgram(uint32 handle, string name, string path);
 		~ShaderProgram();
 
+		void ReloadFromFile();
+
 		void UploadToGPU(Graphics* graphics);
 
 		void SetProgramId(uint32 id) { m_programId = id; }

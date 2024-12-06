@@ -2,9 +2,13 @@
 #include "Graphics.h"
 #include "Types.h"
 
+#include <unordered_map>
+#include <stdexcept>
 #include <array>
 #include <vector>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 #include <glm/gtc/constants.hpp> 
 
 namespace JLEngine
@@ -131,6 +135,7 @@ namespace JLEngine
         JLEngine::VertexAttribute posAttri(JLEngine::POSITION, 0, 3); // Position attribute
         JLEngine::VertexAttribute normAttri(JLEngine::NORMAL, sizeof(float) * 3, 3); // Normal attribute
         JLEngine::VertexAttribute uvAttri(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2); // UV attribute
+        
         vbo.AddAttribute(posAttri);
         vbo.AddAttribute(normAttri);
         vbo.AddAttribute(uvAttri);
@@ -189,6 +194,75 @@ namespace JLEngine
         }
     }
 
+    void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
+        const std::vector<float>& normals,
+        const std::vector<float>& texCoords,
+        const std::vector<float>& tangents,
+        std::vector<float>& vertexData)
+    {
+        size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
+        if (positions.size() % 3 != 0) {
+            std::cerr << "Error: Positions array size is not a multiple of 3." << std::endl;
+            return;
+        }
+
+        // Check for optional attributes
+        bool hasTexCoords = texCoords.size() == vertexCount * 2;
+        bool hasTangents = tangents.size() == vertexCount * 4;
+        bool hasNormals = normals.size() == vertexCount * 3;
+
+        // Log any mismatches
+        if (!hasNormals && !normals.empty()) {
+            std::cerr << "Warning: Normals array size mismatch. Ignoring normals." << std::endl;
+        }
+        if (!hasTexCoords && !texCoords.empty()) {
+            std::cerr << "Warning: TexCoords array size mismatch. Ignoring texCoords." << std::endl;
+        }
+        if (!hasTangents && !tangents.empty()) {
+            std::cerr << "Warning: Tangents array size mismatch. Ignoring tangents." << std::endl;
+        }
+
+        // Reserve memory for interleaved vertex data
+        size_t vertexSize = 3 + (hasNormals ? 3 : 0) + (hasTexCoords ? 2 : 0) + (hasTangents ? 3 : 0);
+        vertexData.clear();
+        vertexData.reserve(vertexCount * vertexSize);
+
+        // Default values for missing attributes
+        std::array<float, 3> defaultNormal = { 0.0f, 0.0f, 1.0f };
+        std::array<float, 3> defaultTangent = { 1.0f, 0.0f, 0.0f };
+        std::array<float, 2> defaultTexCoord = { 0.0f, 0.0f };
+
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            // Add position (vec3)
+            vertexData.insert(vertexData.end(), positions.begin() + i * 3, positions.begin() + (i + 1) * 3);
+
+            // Add normal (vec3)
+            if (hasNormals) {
+                vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
+            }
+            else {
+                vertexData.insert(vertexData.end(), defaultNormal.begin(), defaultNormal.end());
+            }
+
+            // Add texCoords (vec2)
+            if (hasTexCoords) {
+                vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
+            }
+            else {
+                vertexData.insert(vertexData.end(), defaultTexCoord.begin(), defaultTexCoord.end());
+            }
+
+            // Add tangent (vec3)
+            if (hasTangents) {
+                vertexData.insert(vertexData.end(), tangents.begin() + i * 4, tangents.begin() + (i + 1) * 4);
+            }
+            else {
+                vertexData.insert(vertexData.end(), defaultTangent.begin(), defaultTangent.end());
+            }
+        }
+    }
+
     std::vector<glm::vec3> Geometry::CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32>& indices) 
     {
         // Map to store accumulated normals for each vertex
@@ -232,40 +306,312 @@ namespace JLEngine
         return smoothNormals;
     }
 
-    void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
-        const std::vector<float>& normals,
-        const std::vector<float>& texCoords,
-        const std::vector<float>& tangents,
-        std::vector<float>& vertexData)
+    // Function to calculate smooth normals
+    std::vector<float> Geometry::CalculateSmoothNormals(const std::vector<float>& positions)
     {
-        size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
-        bool hasTexCoords = !texCoords.empty();
-        bool hasTangents = !tangents.empty();
-
-        vertexData.clear();
-        vertexData.reserve(vertexCount * (3 + 3 + (hasTexCoords ? 2 : 0) + (hasTangents ? 3 : 0)));
-
-        for (size_t i = 0; i < vertexCount; ++i)
+        if (positions.size() % 3 != 0) 
         {
-            // Add position (vec3)
-            vertexData.insert(vertexData.end(), positions.begin() + i * 3, positions.begin() + (i + 1) * 3);
+            throw std::invalid_argument("Positions size must be a multiple of 3 (x, y, z for each vertex).");
+        }
 
-            // Add normal (vec3)
-            vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
+        // Convert flat positions to glm::vec3 for easier handling
+        std::vector<glm::vec3> vertices;
+        for (size_t i = 0; i < positions.size(); i += 3) 
+        {
+            vertices.emplace_back(positions[i], positions[i + 1], positions[i + 2]);
+        }
 
-            // Add texCoords (vec2) if available
-            if (hasTexCoords)
+        // Smooth normals storage
+        std::vector<glm::vec3> smoothNormals(vertices.size(), glm::vec3(0.0f));
+
+        // Map to accumulate normals per vertex
+        std::unordered_map<glm::vec3, glm::vec3> normalMap;
+
+        // Iterate through each triangle
+        for (size_t i = 0; i < vertices.size(); i += 3) 
+        {
+            const glm::vec3& v0 = vertices[i];
+            const glm::vec3& v1 = vertices[i + 1];
+            const glm::vec3& v2 = vertices[i + 2];
+
+            // Compute face normal
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
+            glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+            // Accumulate the face normal for each vertex
+            normalMap[v0] += faceNormal;
+            normalMap[v1] += faceNormal;
+            normalMap[v2] += faceNormal;
+        }
+
+        // Flatten the normals into a vector<float>
+        std::vector<float> flatNormals;
+        flatNormals.reserve(vertices.size() * 3); // Preallocate memory
+
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            glm::vec3 normalized = glm::normalize(normalMap[vertices[i]]);
+            flatNormals.push_back(normalized.x);
+            flatNormals.push_back(normalized.y);
+            flatNormals.push_back(normalized.z);
+        }
+
+        return flatNormals;
+    }
+
+    std::vector<float> Geometry::CalculateFlatNormals(const std::vector<float>& positions) 
+    {
+        if (positions.size() % 9 != 0) 
+        {
+            throw std::invalid_argument("Positions size must be a multiple of 9 (3 vertices per triangle).");
+        }
+
+        // Storage for flat normals
+        std::vector<float> flatNormals;
+        flatNormals.reserve(positions.size()); // Preallocate memory
+
+        // Iterate through each triangle
+        for (size_t i = 0; i < positions.size(); i += 9) 
+        {
+            // Extract triangle vertices
+            glm::vec3 v0(positions[i], positions[i + 1], positions[i + 2]);
+            glm::vec3 v1(positions[i + 3], positions[i + 4], positions[i + 5]);
+            glm::vec3 v2(positions[i + 6], positions[i + 7], positions[i + 8]);
+
+            // Compute face normal
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
+            glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+            // Add the same normal for all three vertices
+            for (int j = 0; j < 3; ++j) 
             {
-                vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
-            }
-
-            // Add tangent (vec3) if available
-            if (hasTangents)
-            {
-                vertexData.insert(vertexData.end(), tangents.begin() + i * 3, tangents.begin() + (i + 1) * 3);
+                flatNormals.push_back(faceNormal.x);
+                flatNormals.push_back(faceNormal.y);
+                flatNormals.push_back(faceNormal.z);
             }
         }
+
+        return flatNormals;
     }
+
+    std::vector<float> Geometry::CalculateSmoothNormals(const std::vector<float>& positions, const std::vector<uint32_t>& indices) 
+    {
+        if (positions.size() % 3 != 0) 
+        {
+            throw std::invalid_argument("Positions size must be a multiple of 3 (x, y, z per vertex).");
+        }
+        if (indices.size() % 3 != 0) 
+        {
+            throw std::invalid_argument("Indices size must be a multiple of 3 (triangle indices).");
+        }
+
+        // Number of vertices
+        size_t vertexCount = positions.size() / 3;
+
+        // Storage for smooth normals
+        std::vector<glm::vec3> smoothNormals(vertexCount, glm::vec3(0.0f));
+
+        // Iterate through each triangle
+        for (size_t i = 0; i < indices.size(); i += 3) 
+        {
+            uint32_t i0 = indices[i];
+            uint32_t i1 = indices[i + 1];
+            uint32_t i2 = indices[i + 2];
+
+            // Get vertex positions
+            glm::vec3 v0(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
+            glm::vec3 v1(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
+            glm::vec3 v2(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
+
+            // Compute face normal
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
+            glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+            // Accumulate normals for each vertex
+            smoothNormals[i0] += faceNormal;
+            smoothNormals[i1] += faceNormal;
+            smoothNormals[i2] += faceNormal;
+        }
+
+        // Normalize the accumulated normals for each vertex
+        std::vector<float> flatNormals;
+        flatNormals.reserve(positions.size());
+        for (const auto& normal : smoothNormals) 
+        {
+            glm::vec3 normalized = glm::normalize(normal);
+            flatNormals.push_back(normalized.x);
+            flatNormals.push_back(normalized.y);
+            flatNormals.push_back(normalized.z);
+        }
+
+        return flatNormals;
+    }
+
+    std::vector<float> Geometry::CalculateFlatNormals(const std::vector<float>& positions, const std::vector<uint32_t>& indices)
+    {
+        if (positions.size() % 3 != 0) 
+        {
+            throw std::invalid_argument("Positions size must be a multiple of 3 (x, y, z per vertex).");
+        }
+        if (indices.size() % 3 != 0) 
+        {
+            throw std::invalid_argument("Indices size must be a multiple of 3 (triangle indices).");
+        }
+
+        // Storage for flat normals
+        std::vector<float> flatNormals;
+        flatNormals.reserve(indices.size() * 3); // Each vertex gets a normal
+
+        // Iterate through each triangle
+        for (size_t i = 0; i < indices.size(); i += 3) 
+        {
+            uint32_t i0 = indices[i];
+            uint32_t i1 = indices[i + 1];
+            uint32_t i2 = indices[i + 2];
+
+            // Get vertex positions
+            glm::vec3 v0(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
+            glm::vec3 v1(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
+            glm::vec3 v2(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
+
+            // Compute face normal
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
+            glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+            // Add the same normal for all three vertices of the triangle
+            for (int j = 0; j < 3; ++j) 
+            {
+                flatNormals.push_back(faceNormal.x);
+                flatNormals.push_back(faceNormal.y);
+                flatNormals.push_back(faceNormal.z);
+            }
+        }
+
+        return flatNormals;
+    }
+
+    std::vector<float> Geometry::CalculateTangents(const std::vector<float>& positions,
+        const std::vector<float>& normals,
+        const std::vector<float>& uvs,
+        const std::vector<uint32>& indices)
+    {
+        size_t vertexCount = positions.size() / 3;
+        std::vector<glm::vec3> tangents(vertexCount, glm::vec3(0.0f));
+
+        // Iterate over each triangle
+        for (size_t i = 0; i < indices.size(); i += 3)
+        {
+            uint32_t i0 = indices[i];
+            uint32_t i1 = indices[i + 1];
+            uint32_t i2 = indices[i + 2];
+
+            // Vertex positions
+            glm::vec3 p0 = glm::vec3(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
+            glm::vec3 p1 = glm::vec3(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
+            glm::vec3 p2 = glm::vec3(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
+
+            // UV coordinates
+            glm::vec2 uv0 = glm::vec2(uvs[i0 * 2], uvs[i0 * 2 + 1]);
+            glm::vec2 uv1 = glm::vec2(uvs[i1 * 2], uvs[i1 * 2 + 1]);
+            glm::vec2 uv2 = glm::vec2(uvs[i2 * 2], uvs[i2 * 2 + 1]);
+
+            // Edge vectors
+            glm::vec3 edge1 = p1 - p0;
+            glm::vec3 edge2 = p2 - p0;
+
+            glm::vec2 deltaUV1 = uv1 - uv0;
+            glm::vec2 deltaUV2 = uv2 - uv0;
+
+            // Compute tangent
+            float denom = deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x;
+            if (std::abs(denom) < 1e-6f) {
+                denom = 1.0f; // Prevent division by zero
+            }
+            float f = 1.0f / denom;
+
+            glm::vec3 tangent = f * (deltaUV2.y * edge1 - deltaUV1.y * edge2);
+
+            // Accumulate tangent for each vertex
+            tangents[i0] += tangent;
+            tangents[i1] += tangent;
+            tangents[i2] += tangent;
+        }
+
+        // Normalize tangents
+        for (auto& tangent : tangents) {
+            tangent = glm::normalize(tangent);
+        }
+
+        // Flatten to std::vector<float>
+        std::vector<float> flattenedTangents;
+        flattenedTangents.reserve(vertexCount * 3);
+        for (const auto& tangent : tangents) {
+            flattenedTangents.push_back(tangent.x);
+            flattenedTangents.push_back(tangent.y);
+            flattenedTangents.push_back(tangent.z);
+        }
+
+        return flattenedTangents;
+    }
+
+    std::vector<float> Geometry::CalculateTangents(const std::vector<float>& positions,
+        const std::vector<float>& normals,
+        const std::vector<float>& uvs)
+    {
+        if (positions.size() % 3 != 0 || normals.size() % 3 != 0 || uvs.size() % 2 != 0) 
+        {
+            throw std::invalid_argument("Invalid input sizes for positions, normals, or UVs.");
+        }
+
+        std::vector<glm::vec3> tangents(positions.size() / 3, glm::vec3(0.0f));
+
+        // Iterate through the vertices in sequential groups of three (triangle list format)
+        for (size_t i = 0; i < positions.size(); i += 9) 
+        {
+            glm::vec3 v0(
+                positions[i], positions[i + 1], positions[i + 2]);
+            glm::vec3 v1(
+                positions[i + 3], positions[i + 4], positions[i + 5]);
+            glm::vec3 v2(
+                positions[i + 6], positions[i + 7], positions[i + 8]);
+
+            glm::vec2 uv0(uvs[i / 3 * 2], uvs[i / 3 * 2 + 1]);
+            glm::vec2 uv1(uvs[(i / 3 + 1) * 2], uvs[(i / 3 + 1) * 2 + 1]);
+            glm::vec2 uv2(uvs[(i / 3 + 2) * 2], uvs[(i / 3 + 2) * 2 + 1]);
+
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
+            glm::vec2 deltaUV1 = uv1 - uv0;
+            glm::vec2 deltaUV2 = uv2 - uv0;
+
+            float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+            glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
+
+            tangents[i / 3] += tangent;
+            tangents[i / 3 + 1] += tangent;
+            tangents[i / 3 + 2] += tangent;
+        }
+
+        // Normalize and flatten tangents
+        std::vector<float> flatTangents;
+        flatTangents.reserve(tangents.size() * 3);
+
+        for (size_t i = 0; i < tangents.size(); ++i) 
+        {
+            glm::vec3 normal(
+                normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+            glm::vec3 tangent = glm::normalize(tangents[i] - normal * glm::dot(normal, tangents[i]));
+
+            flatTangents.push_back(tangent.x);
+            flatTangents.push_back(tangent.y);
+            flatTangents.push_back(tangent.z);
+        }
+
+        return flatTangents;
+    }   
 
 
     uint32 Polygon::AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,

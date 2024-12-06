@@ -1,5 +1,6 @@
 #include "GltfLoader.h"
 #include "Geometry.h"
+#include "AssetLoader.h"
 
 #undef APIENTRY
 #define TINYGLTF_IMPLEMENTATION
@@ -76,8 +77,13 @@ namespace JLEngine
 		return jlmesh;
 	}
 
-	JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Primitive& primitive, MeshManager* meshMgr)
+	JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Primitive& primitive, MeshManager* meshMgr, AssetGenerationSettings& settings)
 	{
+		if (primitive.mode != 4)
+		{
+			std::cout << "Primitive not using triangles!" << std::endl;
+		}
+
 		// Create a VertexBuffer
 		JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
 		std::vector<float> positions;
@@ -87,9 +93,57 @@ namespace JLEngine
 		std::vector<float> vertexData;
 
 		LoadPositionAttribute(model, primitive, positions);
-		LoadNormalAttribute(model, primitive, normals);
-		LoadTexCoordAttribute(model, primitive, texCoords);
+		bool hasNormals = LoadNormalAttribute(model, primitive, normals);
+		bool hasUVs = LoadTexCoordAttribute(model, primitive, texCoords);
 		bool hasTangents = LoadTangentAttribute(model, primitive, tangents);
+
+		if (!hasUVs)
+		{
+			std::cerr << "Primitive doesn't have UV coordinates" << std::endl;
+			texCoords.insert(texCoords.end(), (positions.size() / 3) * 2, 0.0f);
+			tangents.insert(tangents.end(), (positions.size() / 3) * 4, 0.0f);
+			tangents.insert(tangents.end(), (positions.size() / 3) * 4, 0.0f);
+			for (size_t i = 0; i < positions.size() / 3; ++i)
+				tangents[i * 4 + 3] = 1.0f; 
+			hasTangents = true;
+			hasUVs = true;
+		}
+
+		// Process IndexBuffer
+		JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+		bool hasIndices = LoadIndices(model, primitive, ibo);
+
+		if (!hasNormals && settings.GenerateNormals)
+		{
+			std::cout << "Generating normals..." << std::endl;
+			if (settings.NormalGenType == NormalGen::Flat)
+			{
+				if (hasIndices)
+					normals = Geometry::CalculateFlatNormals(positions, ibo.GetBuffer());
+				else
+					normals = Geometry::CalculateFlatNormals(positions);
+			}
+			else
+			{
+				if (hasIndices)
+					normals = Geometry::CalculateSmoothNormals(positions, ibo.GetBuffer());
+				else
+					normals = Geometry::CalculateSmoothNormals(positions);
+			}
+			hasNormals = true;
+		}
+		if (!hasTangents && hasNormals && hasUVs && settings.GenerateTangents)
+		{
+			std::cout << "Generating tangents..." << std::endl;
+
+			if (hasIndices)
+				tangents = Geometry::CalculateTangents(positions, normals, texCoords, ibo.GetBuffer());
+			else
+				tangents = Geometry::CalculateTangents(positions, normals, texCoords);
+
+			hasTangents = true;
+		}
+
 		if (hasTangents)
 		{
 			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, vertexData);
@@ -98,16 +152,26 @@ namespace JLEngine
 		{
 			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, vertexData);
 		}
-		
 		vbo.Set(vertexData);
 
+		int offset = 0;
 		std::set<JLEngine::VertexAttribute> attributes;
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
-		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
-		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
+		offset += sizeof(float) * 3;
+
+		if (hasNormals)
+		{			
+			attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, offset, 3));
+			offset += sizeof(float) * 3;
+		}
+		if (hasUVs)
+		{			
+			attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, offset, 2));
+			offset += sizeof(float) * 2;
+		}
 		if (hasTangents)
 		{
-			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 3)); // Tangents as vec3
+			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, offset, 3));
 		}
 
 		for (VertexAttribute attrib : attributes)
@@ -116,35 +180,107 @@ namespace JLEngine
 		}
 		vbo.CalcStride();
 
-		// Process IndexBuffer
-		JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-		LoadIndices(model, primitive, ibo);
-
-		// Create and initialize the Mesh
-		auto jlmesh = meshMgr->LoadMeshFromData(name, vbo, ibo);
+		JLEngine::Mesh* jlmesh = nullptr;
+		if (!hasIndices)
+		{
+			jlmesh = meshMgr->LoadMeshFromData(name, vbo);
+		}
+		else
+		{
+			jlmesh = meshMgr->LoadMeshFromData(name, vbo, ibo);
+		}
 		return jlmesh;
 	}
 
-	JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Mesh& mesh, MeshManager* meshMgr)
+	JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Mesh& mesh, MeshManager* meshMgr, AssetGenerationSettings& settings)
 	{
 		std::vector<float> positions, normals, texCoords, tangents, vertexData;
-		bool hasTangents = false;
+		std::vector<IndexBuffer> ibos;
+		size_t vertexOffset = positions.size() / 3;
+		size_t indexOffset = 0;
 
 		// Load attributes for all primitives
 		for (const auto& primitive : mesh.primitives)
 		{
-			LoadPositionAttribute(model, primitive, positions);
-			LoadNormalAttribute(model, primitive, normals);
-			LoadTexCoordAttribute(model, primitive, texCoords);
-
-			if (LoadTangentAttribute(model, primitive, tangents)) 
+			if (primitive.mode != 4)
 			{
+				std::cout << "Primitive not using triangles!" << std::endl;
+			}
+
+			size_t initialVertexCount = positions.size() / 3;
+			LoadPositionAttribute(model, primitive, positions);
+			bool hasNormals = LoadNormalAttribute(model, primitive, normals);
+			bool hasUVs = LoadTexCoordAttribute(model, primitive, texCoords);
+			bool hasTangents = LoadTangentAttribute(model, primitive, tangents);
+
+			size_t newVertexCount = positions.size() / 3;
+			size_t addedVertexCount = newVertexCount - initialVertexCount;
+
+			JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+			bool hasIndices = LoadIndices(model, primitive, ibo);
+			if (hasIndices)
+			{ 
+				auto indices = ibo.GetBuffer();
+				for (auto& index : indices) {
+					index += (unsigned int)indexOffset;
+				}
+				ibo.Set(indices);
+				ibos.push_back(ibo);
+			}
+			indexOffset += addedVertexCount;
+
+			if (!hasNormals && settings.GenerateNormals)
+			{
+				std::cout << "Generating normals..." << std::endl;
+				if (settings.NormalGenType == NormalGen::Flat)
+				{
+					if (hasIndices)
+						normals = Geometry::CalculateFlatNormals(positions, ibo.GetBuffer());
+					else
+						normals = Geometry::CalculateFlatNormals(positions);
+				}
+				else
+				{
+					if (hasIndices)
+						normals = Geometry::CalculateSmoothNormals(positions, ibo.GetBuffer());
+					else
+						normals = Geometry::CalculateSmoothNormals(positions);
+				}
+				hasNormals = true;
+			}
+			if (!hasTangents && hasNormals && hasUVs && settings.GenerateTangents)
+			{
+				std::cout << "Generating tangents..." << std::endl;
+
+				if (hasIndices)
+					tangents = Geometry::CalculateTangents(positions, normals, texCoords, ibo.GetBuffer());
+				else
+					tangents = Geometry::CalculateTangents(positions, normals, texCoords);
+
 				hasTangents = true;
 			}
+
+			// Pad normals if missing
+			if (!hasNormals) { normals.insert(normals.end(), addedVertexCount * 3, 1.0f); }
+			if (!hasUVs) { texCoords.insert(texCoords.end(), addedVertexCount * 2, 0.0f); }
+			if (!hasTangents) { tangents.insert(tangents.end(), addedVertexCount * 4, 0.0f); }
+		}
+
+		if (normals.size() > 0 && normals.size() / 3 != positions.size() / 3) 
+		{
+			std::cerr << "Error: Normal data size does not match position data size in mesh: " << name << std::endl;
+		}
+		if (texCoords.size() > 0 && texCoords.size() / 2 != positions.size() / 3) 
+		{
+			std::cerr << "Error: TexCoord data size does not match position data size in mesh: " << name << std::endl;
+		}
+		if (tangents.size() > 0 && tangents.size() / 3 != positions.size() / 3) 
+		{
+			std::cerr << "Error: Tangent data size does not match position data size in mesh: " << name << std::endl;
 		}
 
 		// Generate interleaved vertex data based on whether tangents are available
-		if (hasTangents) 
+		if (tangents.size() > 0)
 		{
 			Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, vertexData);
 		}
@@ -159,14 +295,14 @@ namespace JLEngine
 		vbo.Set(vertexData);
 
 		// Define the vertex attributes
+		int offset = 0;
 		std::set<JLEngine::VertexAttribute> attributes;
 		attributes.insert(JLEngine::VertexAttribute(JLEngine::POSITION, 0, 3));
-		attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, sizeof(float) * 3, 3));
-		attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2));
-		if (hasTangents) 
-		{
-			attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, sizeof(float) * 8, 4)); // Tangents as vec3
-		}
+		offset += sizeof(float) * 3;
+
+		if (!normals.empty()) { attributes.insert(JLEngine::VertexAttribute(JLEngine::NORMAL, offset, 3)); offset += sizeof(float) * 3; }
+		if (!texCoords.empty()) { attributes.insert(JLEngine::VertexAttribute(JLEngine::TEX_COORD_2D, offset, 2)); offset += sizeof(float) * 2; }
+		if (!tangents.empty()) { attributes.insert(JLEngine::VertexAttribute(JLEngine::TANGENT, offset, 4)); }
 
 		for (auto attrib : attributes) 
 		{
@@ -174,20 +310,7 @@ namespace JLEngine
 		}
 		vbo.CalcStride();
 
-		// Create an empty Mesh instance
-		auto jlmesh = meshMgr->CreateEmptyMesh(name);
-		jlmesh->SetVertexBuffer(vbo);
-
-		// Create separate index buffers for each primitive
-		for (size_t i = 0; i < mesh.primitives.size(); ++i)
-		{
-			const auto& primitive = mesh.primitives[i];
-
-			JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-			LoadIndices(model, primitive, ibo);
-			jlmesh->AddIndexBuffer(ibo);
-		}
-
+		auto jlmesh = meshMgr->LoadMeshFromData(name, vbo, ibos);
 		return jlmesh;
 	}
 
@@ -410,7 +533,7 @@ namespace JLEngine
 	}
 
 	// Function to load NORMAL attribute
-	void LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+	bool LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
 		std::vector<float>& vertexData) 
 	{
 		const auto& normalAttr = primitive.attributes.find("NORMAL");
@@ -424,14 +547,14 @@ namespace JLEngine
 			if (normalAccessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT) 
 			{
 				std::cerr << "Error: Unsupported NORMAL component type: " << normalAccessor.componentType << std::endl;
-				return;
+				return false;
 			}
 
 			size_t stride = normalAccessor.ByteStride(model.bufferViews[normalAccessor.bufferView]);
 			if (stride != sizeof(float) * 3)
 			{
 				std::cerr << "Error: Unsupported NORMAL stride: " << stride << std::endl;
-				return;
+				return false;
 			}
 
 			// Validate buffer bounds
@@ -440,7 +563,7 @@ namespace JLEngine
 			if (requiredSize > normalBuffer.data.size()) 
 			{
 				std::cerr << "Error: Normal accessor exceeds buffer bounds!" << std::endl;
-				return;
+				return false;
 			}
 
 			// Access the normals
@@ -453,11 +576,13 @@ namespace JLEngine
 		else 
 		{
 			std::cerr << "Warning: NORMAL attribute not found in primitive!" << std::endl;
+			return false;
 		}
+		return true;
 	}
 
 	// Function to load TEXCOORD_0 attribute
-	void LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+	bool LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
 		std::vector<float>& vertexData) 
 	{
 		const auto& texCoordAttr = primitive.attributes.find("TEXCOORD_0");
@@ -470,7 +595,7 @@ namespace JLEngine
 			// Validate component type
 			if (texCoordAccessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT) {
 				std::cerr << "Error: Unsupported TEXCOORD_0 component type: " << texCoordAccessor.componentType << std::endl;
-				return;
+				return false;
 			}
 
 			size_t stride = texCoordAccessor.ByteStride(model.bufferViews[texCoordAccessor.bufferView]);
@@ -484,7 +609,7 @@ namespace JLEngine
 				texCoordAccessor.count * 2 * sizeof(float);
 			if (requiredSize > texCoordBuffer.data.size()) {
 				std::cerr << "Error: TEXCOORD_0 accessor exceeds buffer bounds!" << std::endl;
-				return;
+				return false;
 			}
 
 			// Access the texture coordinates
@@ -497,7 +622,9 @@ namespace JLEngine
 		else 
 		{
 			std::cerr << "Warning: TEXCOORD_0 attribute not found in primitive!" << std::endl;
+			return false;
 		}
+		return true;
 	}
 
 	bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData)
@@ -535,19 +662,19 @@ namespace JLEngine
 			const float* tangents = reinterpret_cast<const float*>(
 				&tangentBuffer.data[tangentBufferView.byteOffset + tangentAccessor.byteOffset]);
 
-			size_t count = tangentAccessor.count * 4; // Assuming vec3 tangents
+			size_t count = tangentAccessor.count * 4; 
 			tangentData.insert(tangentData.end(), tangents, tangents + count);
 		}
 		else
-		{
+		{			
+			std::cerr << "Warning: TANGENT attribute not found in primitive" << std::endl;
 			return false;
-			//std::cerr << "Warning: TANGENT attribute not found in primitive. Continuing without tangents." << std::endl;
 		}
 		return true;
 	}
 
 	// Function to load indices
-	void LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, JLEngine::IndexBuffer& ibo) 
+	bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, JLEngine::IndexBuffer& ibo)
 	{
 		if (primitive.indices >= 0) 
 		{
@@ -561,7 +688,7 @@ namespace JLEngine
 			if (endOffset > indexBuffer.data.size()) 
 			{
 				std::cerr << "Index accessor out of buffer bounds!" << std::endl;
-				return;
+				return false;
 			}
 
 			const void* data = &indexBuffer.data[indexBufferView.byteOffset + indexAccessor.byteOffset];
@@ -588,11 +715,14 @@ namespace JLEngine
 					break;
 				}
 				default:
-					std::cerr << "Unsupported index component type: " << indexAccessor.componentType << std::endl;
-					return;
+					auto msg = "Unsupported index component type: " + std::to_string(indexAccessor.componentType);
+					throw std::exception(msg.c_str());
+					return false;
 			}
 
 			ibo.Set(indexVector);
+			return true;
 		}
+		return false;
 	}
 }

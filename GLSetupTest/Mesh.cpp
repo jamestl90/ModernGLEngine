@@ -42,7 +42,7 @@ namespace JLEngine
 
 		m_graphics->CreateMesh(this);
 
-		if (freeData)
+		if (m_ibos.size() != 0)
 		{
 			m_vbo.Clear();
 		}

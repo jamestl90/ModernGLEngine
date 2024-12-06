@@ -757,7 +757,10 @@ namespace JLEngine
 		}
 		else
 		{
-			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)mesh->GetVertexBuffer().Size() / mesh->GetVertexBuffer().GetStride());
+			auto size = mesh->GetVertexBuffer().Size();
+			auto stride = mesh->GetVertexBuffer().GetStride();
+			GLsizei tris = size / stride;
+			glDrawArrays(GL_TRIANGLES, 0, tris);
 		}
 
 		glBindVertexArray(0);

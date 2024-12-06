@@ -18,8 +18,8 @@ uniform vec4 baseColorFactor = vec4(1.0);          // Base color factor (RGBA)
 uniform sampler2D baseColorTexture;               // Base color texture
 uniform bool useBaseColorTexture = false;         // Flag to use texture
 
-uniform float metallicFactor = 1.0;               // Metallic scalar
-uniform float roughnessFactor = 1.0;              // Roughness scalar
+uniform float metallicFactor = 0.0;               // Metallic scalar
+uniform float roughnessFactor = 0.0;              // Roughness scalar
 uniform sampler2D metallicRoughnessTexture;       // Metallic-Roughness combined texture
 uniform bool useMetallicRoughnessTexture = false; // Flag to use texture
 

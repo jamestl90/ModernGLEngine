@@ -36,6 +36,18 @@ namespace JLEngine
 			std::vector<float>& vertexData);
 
 		static std::vector<glm::vec3> CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32>& indices);
+		static std::vector<float> CalculateSmoothNormals(const std::vector<float>& positions, const std::vector<uint32>& indices);
+		static std::vector<float> CalculateFlatNormals(const std::vector<float>& positions, const std::vector<uint32>& indices);
+		static std::vector<float> CalculateSmoothNormals(const std::vector<float>& positions);
+		static std::vector<float> CalculateFlatNormals(const std::vector<float>& positions);
+
+		static std::vector<float> CalculateTangents(const std::vector<float>& positions,
+			const std::vector<float>& normals,
+			const std::vector<float>& uvs,
+			const std::vector<uint32>& indices);
+		static std::vector<float> CalculateTangents(const std::vector<float>& positions,
+			const std::vector<float>& normals,
+			const std::vector<float>& uvs);
 	};
 
 	class Polygon

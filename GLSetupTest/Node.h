@@ -23,7 +23,7 @@ namespace JLEngine
     };
 
     // Node class representing a single entity in a scene graph
-    class Node 
+    class Node : public std::enable_shared_from_this<Node>
     {
     public:
         // Constructor
@@ -47,9 +47,9 @@ namespace JLEngine
 
         Light* m_lightData;
         std::vector<Mesh*> meshes;
-        std::vector<std::unique_ptr<Node>> children;
+        std::vector<std::shared_ptr<Node>> children;
 
-        Node* parent;
+        std::weak_ptr<Node> parent;
 
         glm::mat4 globalTransform; // Cached global transform
 
@@ -82,11 +82,11 @@ namespace JLEngine
             }
         }
 
-        void AddChild(std::unique_ptr<Node> child)
+        void AddChild(std::shared_ptr<Node>& child)
         {
-            child->parent = this;          
+            child->parent = shared_from_this();
             child->UpdateTransforms(globalTransform);
-            children.push_back(std::move(child));
+            children.push_back(child);
         }
 
         void SetTag(NodeTag newTag)

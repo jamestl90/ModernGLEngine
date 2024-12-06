@@ -12,7 +12,7 @@ namespace JLEngine
     {
 
     }
-    std::unique_ptr<Node> AssetLoader::LoadGLB(const std::string& glbFile)
+    std::vector<std::shared_ptr<Node>> AssetLoader::LoadGLB(const std::string& glbFile)
     {
 		tinygltf::TinyGLTF loader;
 		tinygltf::Model model;
@@ -22,15 +22,15 @@ namespace JLEngine
 		bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, glbFile);
 		if (!ret)
 		{
-			std::cout << err << std::endl;
-			return nullptr;
+            auto err = "Could not load file " + glbFile;
+            throw std::exception(err.c_str());
 		}
 
 		auto meshes = loadMeshes(model);
 		auto materials = loadMaterials(model);
 
         // Map to store GLTF node indices to scene nodes
-        std::unordered_map<int, std::unique_ptr<Node>> nodeMap;
+        std::unordered_map<int, std::shared_ptr<Node>> nodeMap;
 
         // Create all nodes first
         for (size_t i = 0; i < model.nodes.size(); ++i)
@@ -80,7 +80,7 @@ namespace JLEngine
             }
             if (!gltfNode.matrix.empty())
             {
-                node->useMatrix = true;
+                node->useMatrix = false;
                 node->localMatrix = glm::mat4(
                     gltfNode.matrix[0], gltfNode.matrix[1], gltfNode.matrix[2], gltfNode.matrix[3],
                     gltfNode.matrix[4], gltfNode.matrix[5], gltfNode.matrix[6], gltfNode.matrix[7],
@@ -131,7 +131,7 @@ namespace JLEngine
                 }
 
                 // Ensure number of index buffers matches number of materials
-                if (mesh->GetIndexBuffers().size() != mesh->GetMaterials().size())
+                if (mesh->HasIndices() && mesh->GetIndexBuffers().size() != mesh->GetMaterials().size())
                 {
                     std::cerr << "Error: Mismatch between index buffers and materials in mesh: " << mesh->GetName() << std::endl;
                 }
@@ -149,13 +149,20 @@ namespace JLEngine
             for (int childIndex : gltfNode.children)
             {
                 auto& childNode = nodeMap[childIndex];
-                parentNode->AddChild(std::move(childNode));
+                parentNode->AddChild(childNode);
             }
         }
 
         //PrintNodeHierarchy(rootNode.get());
+        std::vector<std::shared_ptr<Node>> topLevelNodes;
 
-        return std::move(nodeMap[0]); // Return raw pointer as per your current implementation
+        for (auto& node : nodeMap)
+        {
+            if (node.second->parent.expired())
+                topLevelNodes.push_back(node.second);
+        }
+
+        return topLevelNodes; // Return raw pointer as per your current implementation
     }
 
 	std::vector<Mesh*> AssetLoader::loadMeshes(tinygltf::Model& model)
@@ -167,14 +174,16 @@ namespace JLEngine
 			if (mesh.primitives.size() == 1)
 			{
                 auto name = mesh.name + "_Primitive0";
-				auto jlmesh = PrimitiveFromMesh(model, name, mesh.primitives[0], m_meshManager);
-				meshes.push_back(jlmesh);
+				auto jlmesh = PrimitiveFromMesh(model, name, mesh.primitives[0], m_meshManager, m_settings);
+                if (jlmesh)
+				    meshes.push_back(jlmesh);
 			}
 			else if (mesh.primitives.size() > 1)
 			{
                 std::string name = mesh.name;
-				auto jlmesh = MergePrimitivesToMesh(model, name, mesh, m_meshManager);
-				meshes.push_back(jlmesh);
+				auto jlmesh = MergePrimitivesToMesh(model, name, mesh, m_meshManager, m_settings);
+                if (jlmesh)
+				    meshes.push_back(jlmesh);
 			}
 		}
 		return meshes;

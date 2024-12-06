@@ -19,6 +19,13 @@ namespace JLEngine
 		UnloadFromGraphics();
 	}
 
+	void ShaderProgram::ReloadFromFile()
+	{
+		UnloadFromGraphics();
+		
+		UploadToGPU(m_graphics);
+	}
+
 	void ShaderProgram::UploadToGPU(Graphics* graphics)
 	{
 		m_graphics = graphics;

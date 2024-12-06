@@ -54,7 +54,8 @@ namespace JLEngine
 		//m_stride = m_attributes.size() * 3;
 	}
 
-	IndexBuffer::IndexBuffer( std::vector<uint32>& indices, int type, int data, int draw ) : Buffer(indices), GraphicsBuffer(type, data, draw)
+	IndexBuffer::IndexBuffer( std::vector<uint32>& indices, int type, int data, int draw ) 
+		: Buffer(indices), GraphicsBuffer(type, data, draw)
 	{
 	}
 

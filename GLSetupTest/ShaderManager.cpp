@@ -211,10 +211,7 @@ namespace JLEngine
                 }
                 if (needsUpdate) // if any shader in this program needs an update we will recreate all of them
                 {                    
-                    Shader vertShader = shaderProg->GetShader(GL_VERTEX_SHADER);
-                    Shader fragShader = shaderProg->GetShader(GL_FRAGMENT_SHADER);
-
-                    //auto newProgram = CreateShaderFromFile()
+                    shaderProg->ReloadFromFile();
                 }
             }
             m_accumTime = 0;

@@ -11,11 +11,13 @@
 
 namespace JLEngine
 {
+    struct AssetGenerationSettings;
+
     /* loads a glb file with a single mesh inside it and returns a JLEngine::Mesh */
 	JLEngine::Mesh* LoadModelGLB(std::string fileName, Graphics* graphics);
     
-    JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Primitive& primitive, MeshManager* meshMgr);
-    JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Mesh& mesh, MeshManager* meshMgr);
+    JLEngine::Mesh* PrimitiveFromMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Primitive& primitive, MeshManager* meshMgr, AssetGenerationSettings& settings);
+    JLEngine::Mesh* MergePrimitivesToMesh(const tinygltf::Model& model, std::string& name, const tinygltf::Mesh& mesh, MeshManager* meshMgr, AssetGenerationSettings& settings);
     JLEngine::Material* LoadMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, MaterialManager* matMgr, TextureManager* textureMgr);
     JLEngine::Texture* LoadTexture(const tinygltf::Model& model, std::string& name, int textureIndex, TextureManager* textureMgr);
 
@@ -25,13 +27,13 @@ namespace JLEngine
 
     void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
         std::vector<float>& vertexData);
-    void LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+    bool LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
         std::vector<float>& vertexData);
-    void LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+    bool LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
         std::vector<float>& vertexData);
     bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
         std::vector<float>& tangentData);
-    void LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, JLEngine::IndexBuffer& ibo);
+    bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, JLEngine::IndexBuffer& ibo);
 }
 
 #endif
