@@ -1,5 +1,6 @@
 #include "JLEngine.h"
 #include "Graphics.h"
+#include "ShaderStorageBuffer.h"
 #include <iostream> 
 #include <thread>
 #include <chrono>
@@ -17,21 +18,25 @@ namespace JLEngine
         m_window = std::make_unique<Window>(windowWidth, windowHeight, windowTitle, fixedUpdates);
         m_input = std::make_unique<Input>(m_window.get());
         m_graphics = std::make_unique<Graphics>(m_window.get());
-        m_textureManager = std::make_unique<TextureManager>(m_graphics.get());
-        m_shaderManager = std::make_unique<ShaderManager>(m_graphics.get());
-        m_materialManager = std::make_unique<MaterialManager>(m_graphics.get());
-        m_renderTargetManager = std::make_unique<RenderTargetManager>(m_graphics.get());
-        m_shaderStorageManager = std::make_unique<ShaderStorageManager>(m_graphics.get());
-        m_meshManager = std::make_unique<MeshManager>(m_graphics.get());
+
+        auto textureManager = new ResourceManager<Texture>();
+        auto shaderManager = new ResourceManager<ShaderProgram>();
+        auto materialManager = new ResourceManager<Material>();
+        auto renderTargetManager = new ResourceManager<RenderTarget>();
+        auto shaderStorageManager = new ResourceManager<ShaderStorageBuffer>();
+        auto meshManager = new ResourceManager<Mesh>();
 
         m_assetLoader = std::make_unique<AssetLoader>(
-            m_shaderManager.get(),
-            m_meshManager.get(),
-            m_materialManager.get(),
-            m_textureManager.get()
+            m_graphics.get(),
+            shaderManager,
+            meshManager,
+            materialManager,
+            textureManager,
+            renderTargetManager,
+            shaderStorageManager
         );
 
-        m_shaderManager->SetHotReloading(true);
+        m_assetLoader->SetHotReloading(true);
         m_input->SetRawMouseMotion(true);
         setVsync(true);
     }
@@ -110,7 +115,7 @@ namespace JLEngine
             m_window->PollEvents();
 
             logPerformanceMetrics();
-            m_shaderManager->PollForChanges((float)m_deltaTime);
+            m_assetLoader->PollForChanges((float)m_deltaTime);
         }
     }
 
@@ -118,43 +123,12 @@ namespace JLEngine
     {
         return m_graphics.get();
     }
-
-    ShaderManager* JLEngineCore::GetShaderManager() const
-    {
-        return m_shaderManager.get();
-    }
-
-    TextureManager* JLEngineCore::GetTextureManager() const
-    {
-        return m_textureManager.get();
-    }
-
-    MeshManager* JLEngineCore::GetMeshManager() const
-    {
-        return m_meshManager.get();
-    }
-
-    MaterialManager* JLEngineCore::GetMaterialManager() const
-    {
-        return m_materialManager.get();
-    }
-
     Input* JLEngineCore::GetInput() const
     {
         return m_input.get();
     }
-
-    RenderTargetManager* JLEngineCore::GetRenderTargetManager() const
-    {
-        return m_renderTargetManager.get();
-    }
-
     AssetLoader* JLEngineCore::GetAssetLoader() const
     {
         return m_assetLoader.get();
-    }
-    ShaderStorageManager* JLEngineCore::GetShaderStorageManager() const
-    {
-        return m_shaderStorageManager.get();
     }
 }

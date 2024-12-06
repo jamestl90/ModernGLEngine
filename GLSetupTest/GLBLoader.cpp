@@ -1,9 +1,9 @@
 #include "GLBLoader.h"
 
 #include "Material.h"
-#include "TextureManager.h"
-#include "MaterialManager.h"
 #include "Mesh.h"
+#include "Node.h"
+#include "Texture.h"
 
 namespace JLEngine
 {
@@ -144,17 +144,17 @@ namespace JLEngine
 		}
 
 		// Parse and cache the mesh
-		auto mesh = std::make_shared<Mesh>(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
+		auto mesh = new Mesh(0, gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
 		// Parse primitives (placeholder for now)
 		for (const tinygltf::Primitive& gltfPrimitive : gltfMesh.primitives)
 		{
-			gltfPrimitive.indices
-			auto primitive = ParsePrimitive(model, gltfPrimitive);
-			if (primitive)
-			{
-				mesh->AddPrimitive(primitive);
-			}
+			//gltfPrimitive.indices
+			//auto primitive = ParsePrimitive(model, gltfPrimitive);
+			//if (primitive)
+			//{
+			//	mesh->AddPrimitive(primitive);
+			//}
 		}
 
 		// Add to cache

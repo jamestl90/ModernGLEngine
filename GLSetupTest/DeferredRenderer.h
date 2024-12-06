@@ -8,17 +8,15 @@
 #include "RenderTarget.h"
 #include "ShaderProgram.h"
 #include "Node.h"
-#include "ShaderManager.h"
-#include "RenderTargetManager.h"
-#include "ShaderStorageManager.h"
 #include "VertexBuffers.h"
+#include "AssetLoader.h"
 
 namespace JLEngine
 {
     class DeferredRenderer 
     {
     public:
-        DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, ShaderStorageManager* shaderStorageManager,
+        DeferredRenderer(Graphics* graphics, AssetLoader* assetManager,
             int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
@@ -40,9 +38,7 @@ namespace JLEngine
         void RenderScreenSpaceTriangle();
 
         Graphics* m_graphics;
-        ShaderManager* m_shaderManager;
-        RenderTargetManager* m_rtManager;
-        ShaderStorageManager* m_shaderStorageManager;
+        AssetLoader* m_assetLoader;
 
         int m_width, m_height;
         std::string m_assetFolder;

@@ -92,7 +92,6 @@ namespace JLEngine
             m_resources.clear();
         }
 
-    protected:
         uint32 GenerateHandle()
         {
             std::scoped_lock lock(m_mutex);
@@ -110,6 +109,7 @@ namespace JLEngine
             std::scoped_lock lock(m_mutex);
             return m_resources;
         }
+    protected:
 
     private:
         std::unordered_map<std::string, std::unique_ptr<T>> m_resources;

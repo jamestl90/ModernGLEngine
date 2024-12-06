@@ -3,8 +3,8 @@
 
 namespace JLEngine
 {
-    DeferredRenderer::DeferredRenderer(Graphics* graphics, RenderTargetManager* rtManager, ShaderManager* shaderManager, ShaderStorageManager* shaderStorageManager, int width, int height, const std::string& assetFolder)
-        : m_graphics(graphics), m_rtManager(rtManager), m_shaderManager(shaderManager), m_triangleVAO(0), m_shaderStorageManager(shaderStorageManager),
+    DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
+        : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0),
         m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr) {}
 
@@ -18,9 +18,9 @@ namespace JLEngine
         SetupGBuffer();
 
         auto finalAssetPath = m_assetFolder + "Core/";
-        m_gBufferDebugShader = m_shaderManager->CreateShaderFromFile("DebugGBuffer", "gbuffer_debug_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
-        m_gBufferShader = m_shaderManager->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
-        m_lightingTestShader = m_shaderManager->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
+        m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "gbuffer_debug_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
+        m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
+        m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
 
         InitScreenSpaceTriangle();
     }
@@ -62,7 +62,7 @@ namespace JLEngine
         attributes[2] = { GL_RG8, GL_RG, GL_UNSIGNED_BYTE };      // Metallic (R) + Roughness (G)
         attributes[3] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };  // Emissive (RGB) + Reserved (A)
 
-        m_gBufferTarget = m_rtManager->CreateRenderTarget("GBufferTarget", m_width, m_height, attributes, DepthType::Texture, attributes.Size());
+        m_gBufferTarget = m_assetLoader->CreateRenderTarget("GBufferTarget", m_width, m_height, attributes, DepthType::Texture, attributes.Size());
     }
 
     void DeferredRenderer::GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -300,7 +300,7 @@ namespace JLEngine
         m_height = height;
 
         // Recreate the G-buffer to match the new dimensions
-        m_rtManager->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer
+        m_assetLoader->GetRenderTargetManager()->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer
         SetupGBuffer();
 
         std::cout << "DeferredRenderer resized to: " << m_width << "x" << m_height << std::endl;

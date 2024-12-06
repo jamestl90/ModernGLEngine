@@ -160,37 +160,21 @@
       <SubType>
       </SubType>
     </ClCompile>
-    <ClCompile Include="MaterialManager.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="MeshManager.cpp" />
-    <ClCompile Include="GltfLoader.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
-    <ClCompile Include="RenderTargetManager.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="ShaderManager.cpp" />
     <ClCompile Include="ShaderProgram.cpp" />
     <ClCompile Include="ShaderStorageBuffer.cpp">
       <SubType>
       </SubType>
     </ClCompile>
-    <ClCompile Include="ShaderStorageManager.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="Singleton.cpp" />
     <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="TextureReader.cpp" />
     <ClCompile Include="VertexBuffers.cpp" />
     <ClCompile Include="VertexStructures.cpp" />
@@ -226,38 +210,22 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="MaterialManager.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="MeshManager.h" />
-    <ClInclude Include="GltfLoader.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="CollisionShapes.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderTarget.h" />
-    <ClInclude Include="RenderTargetManager.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="ShaderManager.h" />
     <ClInclude Include="ShaderProgram.h" />
     <ClInclude Include="ShaderStorageBuffer.h">
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="ShaderStorageManager.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="Singleton.h" />
     <ClInclude Include="Texture.h" />
-    <ClInclude Include="TextureManager.h" />
     <ClInclude Include="TextureReader.h" />
     <ClInclude Include="Transform3.h" />
     <ClInclude Include="Types.h" />

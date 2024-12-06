@@ -5,7 +5,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "JLEngine.h"
 #include "FlyCamera.h"
-#include "GltfLoader.h"
 #include "Mesh.h"
 #include "Node.h"
 #include "Geometry.h"
@@ -121,8 +120,6 @@ int main(int argc, char* argv[])
 
     auto graphics = engine.GetGraphics();
     window = graphics->GetWindow()->GetGLFWwindow();
-    auto shaderMgr = engine.GetShaderManager();
-    auto textureMgr = engine.GetTextureManager();
     input = engine.GetInput();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
 
@@ -130,8 +127,6 @@ int main(int argc, char* argv[])
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
     graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
-
-    texture = textureMgr->CreateTextureFromFile("DefaulTexture", assetFolder + "floor_default_grid.png");
 
     //meshShader = shaderMgr->LoadShaderFromFile("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
     //meshShader.get()->CacheUniformLocation("uModel");
@@ -141,17 +136,15 @@ int main(int argc, char* argv[])
     //meshShader.get()->CacheUniformLocation("uLightColor");
     //meshShader.get()->CacheUniformLocation("uTexture");
 
-    basicLit = shaderMgr->BasicLitShader();
-
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
     //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
-    planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
-    auto mat = engine.GetMaterialManager()->CreateMaterial("planeMat");
+    //planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
+    auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
     mat->baseColorTexture = texture;
     planeMesh->AddMaterial(mat);
     auto planeNode = std::make_shared<JLEngine::Node>("Plane", JLEngine::NodeTag::Mesh);
-    planeNode->meshes.push_back(planeMesh);
+    //planeNode->meshes.push_back(planeMesh);
     auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb")[0];
     auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb")[0];
     afishScene->translation += glm::vec3(5, 0, 0);
@@ -168,10 +161,7 @@ int main(int argc, char* argv[])
     //sceneRoot->AddChild(std::move(afishScene));
     //sceneRoot->AddChild(planeNode);
 
-    m_defRenderer = new JLEngine::DeferredRenderer(graphics, 
-        engine.GetRenderTargetManager(), 
-        engine.GetShaderManager(), 
-        engine.GetShaderStorageManager(),
+    m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
         1280, 720, assetFolder);
     m_defRenderer->Initialize();
 
