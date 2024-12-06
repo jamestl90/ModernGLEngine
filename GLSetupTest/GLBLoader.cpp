@@ -5,6 +5,8 @@
 #include "Node.h"
 #include "Texture.h"
 
+#include <tiny_gltf.h>
+
 namespace JLEngine
 {
     GLBLoader::GLBLoader()
