@@ -23,50 +23,16 @@ JLEngine::ShaderProgram* basicLit;
 JLEngine::DeferredRenderer* m_defRenderer;
 GLFWwindow* window;
 
+int width = 1920;
+int height = 1080;
 bool debugGBuffer = false;
 
 void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 {
-    // Render the scene
-    //glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    float aspect = (float)graphics.GetWindow()->GetWidth() / (float)graphics.GetWindow()->GetHeight();
     glm::mat4 view = flyCamera->GetViewMatrix();
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
-    glm::mat4 vp = projection * view; 
-    glm::mat4 mvpA = vp * glm::translate(glm::vec3(5.0f, 0.0f, 0.0f));
-
-    //auto shader = basicLit;
-    //graphics.BindShader(shader->GetProgramId());
-    //shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, 0.0f, 0.0f)));
-    //shader->SetUniform("uView", view);
-    //shader->SetUniform("uProjection", projection);
-    //shader->SetUniform("uLightPos", glm::vec3(5.0f, 15.0f, 5.0f));
-    //shader->SetUniform("uLightColor", glm::vec3(0.8f, 0.8f, 0.8f)); 
-    //shader->SetUniformi("uUseTexture", 0);
-    //shader->SetUniformi("uTexture", 0);
-    //shader->SetUniform("uSolidColor", glm::vec4(1.8f, 0.5f, 0.2f, 1.0f));
-    //graphics.RenderMeshWithTexture(sphereMesh, texture);
-    //
-    //shader->SetUniform("uModel", glm::translate(glm::vec3(-5.0f, 0.0f, 0.0f)));
-    //shader->SetUniformi("uTexture", 0);
-    //shader->SetUniformi("uUseTexture", 1);
-    //graphics.RenderMeshWithTexture(cubeMesh, texture);
-    //
-    //shader->SetUniform("uModel", glm::translate(glm::vec3(0.0f, -1.0f, 0.0f)));
-    //graphics.RenderMeshWithTexture(planeMesh, texture);
-
-    //graphics.RenderNodeHierarchy(duckScene, [shader](JLEngine::Node* node)
-    //{
-    //    glm::mat4 modelMatrix = glm::translate(glm::vec3(5.0f, 0.0f, 0.0f)) * node->GetGlobalTransform();
-    //    shader->SetUniform("uModel", modelMatrix);
-    //});
-    //
-    //graphics.RenderNodeHierarchy(fishScene, [shader](JLEngine::Node* node)
-    //{
-    //    glm::mat4 modelMatrix = glm::translate(glm::vec3(0.0f, 0.0f, 3.0f)) * node->GetGlobalTransform();
-    //    shader->SetUniform("uModel", modelMatrix);
-    //});
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 1000.0f);
 
     m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection, debugGBuffer);
 }
@@ -117,7 +83,7 @@ void WindowResizeCallback(int width, int height)
 int main(int argc, char* argv[])
 {
     std::string assetFolder = argv[1];
-    JLEngine::JLEngineCore engine(1280, 720, "JL Engine", 60, 120);
+    JLEngine::JLEngineCore engine(width, height, "JL Engine", 60, 120);
 
     auto graphics = engine.GetGraphics();
     window = graphics->GetWindow()->GetGLFWwindow();
@@ -153,15 +119,18 @@ int main(int argc, char* argv[])
     //cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     //sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
     
-    auto test = engine.GetAssetLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
-    sceneRoot->AddChild(test);
+    auto test = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    test->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+    //sceneRoot->AddChild(test);
+    sceneRoot = test;
+    sceneRoot->children[0]->UpdateTransforms(sceneRoot->localMatrix);
 
     //sceneRoot->AddChild(std::move(aduckScene));
     //sceneRoot->AddChild(std::move(afishScene));
     //sceneRoot->AddChild(planeNode);
 
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
-        1280, 720, assetFolder);
+        width, height, assetFolder);
     m_defRenderer->Initialize();
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);

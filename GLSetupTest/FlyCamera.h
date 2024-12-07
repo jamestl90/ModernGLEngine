@@ -10,7 +10,7 @@ namespace JLEngine
     {
     public:
         FlyCamera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
-            : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(2.5f), MouseSensitivity(0.1f) 
+            : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.5f), MouseSensitivity(0.1f) 
         {
             Position = position;
             WorldUp = up;

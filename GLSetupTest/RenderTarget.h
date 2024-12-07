@@ -65,6 +65,8 @@ namespace JLEngine
 		void BindTextures();
 		void Unbind() const;
 
+		void ResizeTextures(int newWidth, int newHeight);
+
 	private:
 
 		bool m_useWindowSize;

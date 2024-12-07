@@ -8,20 +8,22 @@
 
 namespace JLEngine
 {
+    class Node;
+
     class Batch
     {
     public:
         Batch(
             std::shared_ptr<VertexBuffer> vb,
             std::shared_ptr<IndexBuffer> ib,
-            std::shared_ptr<Material> mat,
+            Material* mat,
             bool instanced = false)
             : vertexBuffer(vb), indexBuffer(ib), material(mat), isInstanced(instanced) {}
 
         Batch(
             std::shared_ptr<VertexBuffer> vb,
             std::shared_ptr<IndexBuffer> ib,
-            std::shared_ptr<Material> mat)
+            Material* mat)
             : vertexBuffer(vb), indexBuffer(ib), material(mat), isInstanced(false) {}
 
         void SetInstanceBuffer(std::shared_ptr<InstanceBuffer> ib);
@@ -35,9 +37,12 @@ namespace JLEngine
         // Accessors
         const std::shared_ptr<VertexBuffer>& GetVertexBuffer() const { return vertexBuffer; }
         const std::shared_ptr<IndexBuffer>& GetIndexBuffer() const { return indexBuffer; }
-        const std::shared_ptr<Material>& GetMaterial() const { return material; }
+        Material* GetMaterial() const { return material; }
         const std::shared_ptr<InstanceBuffer>& GetInstanceBuffer() const { return instanceBuffer; }
         bool IsInstanced() const { return isInstanced; }
+
+        std::string attributesKey;
+        JLEngine::Node* owner;
 
     private:
         // Core buffers
@@ -45,7 +50,7 @@ namespace JLEngine
         std::shared_ptr<IndexBuffer> indexBuffer;
 
         // Material for the batch
-        std::shared_ptr<Material> material;
+        Material* material;
 
         // Instance data (optional)
         std::shared_ptr<InstanceBuffer> instanceBuffer;

@@ -10,6 +10,11 @@
 #include "Node.h"
 #include "VertexBuffers.h"
 #include "AssetLoader.h"
+#include "Batch.h"
+
+using RenderGroupKey = std::pair<int, std::string>;
+using RenderGroupValue = std::pair<JLEngine::Batch*, glm::mat4>;
+using RenderGroupMap = std::map<RenderGroupKey, std::vector<RenderGroupValue>>;
 
 namespace JLEngine
 {
@@ -35,7 +40,8 @@ namespace JLEngine
         void TraverseSceneGraph(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetUniformsForGBuffer(Material* mat);
-
+        void RenderGroups(const RenderGroupMap& renderGroups, const glm::mat4& viewMatrix);
+        void GroupRenderables(Node* node, RenderGroupMap& renderGroups);
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
 

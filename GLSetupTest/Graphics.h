@@ -30,6 +30,7 @@ namespace JLEngine
 	class TextureReader;
 	class Material;
 	class InstanceBuffer;
+	class Batch;
 
 	struct PrimitiveType
 	{
@@ -130,6 +131,7 @@ namespace JLEngine
 
 		// Texture 
 		
+		bool ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight);
 		bool CreateRenderTarget(RenderTarget* target);
 		void DisposeRenderTarget(RenderTarget* target);
 
@@ -146,6 +148,7 @@ namespace JLEngine
 		
 		void CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms);
 		void DisposeInstanceBuffer(InstanceBuffer& instancedBO);
+		void CreateBatch(Batch& batch);
 		void CreateVertexBuffer(VertexBuffer& vbo);
 		void CreateIndexBuffer(IndexBuffer& ibo);
 		void DisposeVertexBuffer(VertexBuffer& vbo);
@@ -168,7 +171,7 @@ namespace JLEngine
 		void BindFrameBufferToRenderbuffer(uint32 type, uint32 internalFormat, uint32 target, uint32 id);
 		// VAO
 		uint32 CreateVertexArray();
-		void CreateVertexArray(uint32 count, uint32& id);
+		//void CreateVertexArray(uint32 count, uint32& id);
 		void BindVertexArray(uint32 vaoID);
 		// VBO
 		void CreateBuffer(uint32 count, uint32& id);

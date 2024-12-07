@@ -10,7 +10,9 @@
 
 #include <tiny_gltf.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include "Geometry.h"
+#include <glm/gtx/string_cast.hpp>
 
 namespace JLEngine
 {
@@ -106,7 +108,7 @@ namespace JLEngine
 			node->mesh = ParseMesh(model, gltfNode.mesh);
 
 			// Debug: Log the mesh association
-			std::cout << "Node " << node->name << " references mesh " << node->mesh->GetName() << std::endl;
+			//std::cout << "Node " << node->name << " references mesh " << node->mesh->GetName() << std::endl;
 		}
 		else if (gltfNode.camera >= 0)
 		{
@@ -164,28 +166,35 @@ namespace JLEngine
 		// Create a new Mesh object
 		auto mesh = m_assetLoader->CreateEmptyMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
-		// Group primitives by material and attributes
-		std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
-		for (const auto& primitive : gltfMesh.primitives)
+		for (auto& primitive : gltfMesh.primitives)
 		{
-			MaterialAttributeKey key(primitive.material, GetAttributesKey(primitive.attributes));
-			groups[key].push_back(&primitive);
+			MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
+			auto batch = CreateBatch2(model, primitive, key);
+			mesh->AddBatch(batch);
 		}
 
-		// Create batches for each grouped set of primitives
-		for (const auto& [key, primitives] : groups)
-		{
-			auto batch = CreateBatch(model, primitives, key);
-			if (batch)
-			{
-				mesh->AddBatch(batch);
-			}
-			else
-			{
-				std::cerr << "GLBLoader Warning: Failed to create batch for material "
-					<< key.materialIndex << "." << std::endl;
-			}
-		}
+		// Group primitives by material and attributes
+		//std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
+		//for (const auto& primitive : gltfMesh.primitives)
+		//{
+		//	MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
+		//	groups[key].push_back(&primitive);
+		//}
+		//
+		//// Create batches for each grouped set of primitives
+		//for (const auto& [key, primitives] : groups)
+		//{
+		//	auto batch = CreateBatch(model, primitives, key);
+		//	if (batch)
+		//	{
+		//		mesh->AddBatch(batch);
+		//	}
+		//	else
+		//	{
+		//		std::cerr << "GLBLoader Warning: Failed to create batch for material "
+		//			<< key.materialIndex << "." << std::endl;
+		//	}
+		//}
 
 		mesh->UploadToGPU(m_graphics);
 
@@ -204,14 +213,14 @@ namespace JLEngine
 
 		// Load attributes from primitives
 		uint32_t indexOffset = 0;
-		LoadAttributes(model, primitives, positions, normals, texCoords, tangents, indices, indexOffset);
+		BatchLoadAttributes(model, primitives, positions, normals, texCoords, tangents, indices, indexOffset);
 
 		// Generate missing normals or tangents if required
 		GenerateMissingAttributes(positions, normals, texCoords, tangents);
 
 		// Interleave vertex data
 		std::vector<float> interleavedVertexData;
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, interleavedVertexData, key.attributesKey);
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, interleavedVertexData);
 
 		// Create vertex and index buffers
 		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
@@ -224,7 +233,45 @@ namespace JLEngine
 		auto material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
 
 		// Create and return the batch
-		return std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
+		auto batch = std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
+		batch->attributesKey = key.attributesKey;
+		m_graphics->CreateBatch(*batch);
+		return batch;
+	}
+
+	std::shared_ptr<Batch> GLBLoader::CreateBatch2(const tinygltf::Model& model,
+		const tinygltf::Primitive& primitives,
+		MaterialAttributeKey key)
+	{
+		std::vector<float> positions, normals, texCoords, tangents;
+		std::vector<uint32> indices;
+
+		// Load attributes from primitives
+		uint32_t indexOffset = 0;
+		LoadAttributes(model, &primitives, positions, normals, texCoords, tangents, indices, indexOffset);
+
+		// Generate missing normals or tangents if required
+		GenerateMissingAttributes(positions, normals, texCoords, tangents);
+
+		// Interleave vertex data
+		std::vector<float> interleavedVertexData;
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, interleavedVertexData);
+
+		// Create vertex and index buffers
+		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+		vertexBuffer->Set(interleavedVertexData);
+
+		auto indexBuffer = std::make_shared<IndexBuffer>(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+		indexBuffer->Set(indices);
+
+		// Load material
+		auto material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
+
+		// Create and return the batch
+		auto batch = std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
+		batch->attributesKey = key.attributesKey;
+		m_graphics->CreateBatch(*batch);
+		return batch;
 	}
 
 	void GLBLoader::SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const
@@ -272,7 +319,7 @@ namespace JLEngine
 			<< " with " << instanceTransforms.size() << " instances." << std::endl;
 	}
 
-	std::shared_ptr<Material> GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
+	Material* GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
 	{
 		// Check cache
 		auto it = materialCache.find(matIdx);
@@ -282,7 +329,7 @@ namespace JLEngine
 			return it->second;
 		}
 
-		auto material = std::make_shared<Material>(gltfMaterial.name.empty() ? "UnnamedMat" : gltfMaterial.name);
+		auto material = m_assetLoader->CreateMaterial(gltfMaterial.name.empty() ? "UnnamedMat" : gltfMaterial.name);		
 		int texId = 0;
 
 		// Parse base color factor
@@ -432,32 +479,46 @@ namespace JLEngine
 
 	void GLBLoader::ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode)
 	{
-		if (!gltfNode.matrix.empty())
+		if (!gltfNode.matrix.empty() && gltfNode.matrix.size() == 16)
 		{
+			// Load the matrix directly
 			glm::mat4 matrix(1.0f);
-			std::memcpy(glm::value_ptr(matrix), gltfNode.matrix.data(), sizeof(float) * 16);
+			for (int i = 0; i < 16; ++i) {
+				matrix[i / 4][i % 4] = static_cast<float>(gltfNode.matrix[i]);
+			}
 			node->localMatrix = matrix;
+
+			// Decompose the matrix into T/R/S
+			glm::vec3 skew;
+			glm::vec4 perspective;
+			if (!glm::decompose(matrix, node->scale, node->rotation, node->translation, skew, perspective))
+			{
+				std::cerr << "Error: Failed to decompose matrix in GLTF node." << std::endl;
+				node->translation = glm::vec3(0.0f);
+				node->rotation = glm::quat_identity<float, glm::defaultp>();
+				node->scale = glm::vec3(1.0f);
+			}
 			return;
 		}
 
-		// Fallback to individual T/R/S components
-		glm::vec3 translation(0.0f);
-		glm::quat rotation(1.0f, 0.0f, 0.0f, 0.0f); // Identity quaternion
-		glm::vec3 scale(1.0f);
+		// Load T/R/S components and compose the matrix
+		node->translation = glm::vec3(0.0f);
+		node->rotation = glm::quat_identity<float, glm::defaultp>();
+		node->scale = glm::vec3(1.0f);
 
 		// Parse translation
-		if (!gltfNode.translation.empty())
+		if (!gltfNode.translation.empty() && gltfNode.translation.size() == 3)
 		{
-			translation = glm::vec3(
-				static_cast<float>(gltfNode.translation[0]),
-				static_cast<float>(gltfNode.translation[1]),
-				static_cast<float>(gltfNode.translation[2]));
+			node->translation = glm::vec3(
+				gltfNode.translation[0],
+				gltfNode.translation[1],
+				gltfNode.translation[2]);
 		}
 
 		// Parse rotation (GLTF quaternion format: x, y, z, w)
-		if (!gltfNode.rotation.empty())
+		if (!gltfNode.rotation.empty() && gltfNode.rotation.size() == 4)
 		{
-			rotation = glm::quat(
+			node->rotation = glm::quat(
 				static_cast<float>(gltfNode.rotation[3]), // w
 				static_cast<float>(gltfNode.rotation[0]), // x
 				static_cast<float>(gltfNode.rotation[1]), // y
@@ -465,21 +526,21 @@ namespace JLEngine
 		}
 
 		// Parse scale
-		if (!gltfNode.scale.empty())
+		if (!gltfNode.scale.empty() && gltfNode.scale.size() == 3)
 		{
-			scale = glm::vec3(
-				static_cast<float>(gltfNode.scale[0]),
-				static_cast<float>(gltfNode.scale[1]),
-				static_cast<float>(gltfNode.scale[2]));
+			node->scale = glm::vec3(
+				gltfNode.scale[0],
+				gltfNode.scale[1],
+				gltfNode.scale[2]);
 		}
 
-		// Compose the local transformation matrix
-		node->localMatrix = glm::translate(glm::mat4(1.0f), translation) *
-			glm::mat4_cast(rotation) *
-			glm::scale(glm::mat4(1.0f), scale);
+		// Compose the matrix from T/R/S
+		node->localMatrix = glm::translate(glm::mat4(1.0f), node->translation) *
+			glm::mat4_cast(node->rotation) *
+			glm::scale(glm::mat4(1.0f), node->scale);
 	}
 
-	void GLBLoader::LoadAttributes(const tinygltf::Model& model,
+	void GLBLoader::BatchLoadAttributes(const tinygltf::Model& model,
 		const std::vector<const tinygltf::Primitive*>& primitives,
 		std::vector<float>& positions,
 		std::vector<float>& normals,
@@ -521,6 +582,46 @@ namespace JLEngine
 		}
 	}
 
+	void GLBLoader::LoadAttributes(const tinygltf::Model& model,
+		const tinygltf::Primitive* primitive,
+		std::vector<float>& positions,
+		std::vector<float>& normals,
+		std::vector<float>& texCoords,
+		std::vector<float>& tangents,
+		std::vector<uint32>& indices,
+		uint32& indexOffset)
+	{
+
+		uint32_t currentVertexCount = static_cast<uint32_t>(positions.size() / 3); // Before adding new vertices
+
+		// Load vertex attributes
+		LoadPositionAttribute(model, *primitive, positions);
+		LoadNormalAttribute(model, *primitive, normals);
+		LoadTexCoordAttribute(model, *primitive, texCoords);
+		LoadTangentAttribute(model, *primitive, tangents);
+
+		// Load indices or generate sequential ones
+		if (primitive->indices >= 0)
+		{
+			std::vector<unsigned int> tempIndexBuffer;
+			if (LoadIndices(model, *primitive, tempIndexBuffer))
+			{
+				for (auto index : tempIndexBuffer)
+				{
+					indices.push_back(index + currentVertexCount); // Apply current offset
+				}
+			}
+		}
+		else
+		{
+			size_t vertexCount = positions.size() / 3 - currentVertexCount;
+			for (size_t i = 0; i < vertexCount; ++i)
+			{
+				indices.push_back(static_cast<int>(i + currentVertexCount));
+			}
+		}
+	}
+
 	void GLBLoader::GenerateMissingAttributes(std::vector<float>& positions,
 		std::vector<float>& normals,
 		const std::vector<float>& texCoords,
@@ -545,12 +646,12 @@ namespace JLEngine
 		}
 	}
 
-	std::string GLBLoader::GetAttributesKey(const std::map<std::string, int>& attributes)
+	std::string MaterialAttributeKey::GetAttributesKey(const std::map<std::string, int>& attributes)
 	{
 		std::string key;
 		for (const auto& [name, accessorIndex] : attributes)
 		{
-			key += name + std::to_string(accessorIndex) + ";";
+			key += name + ";";
 		}
 		return key;
 	}

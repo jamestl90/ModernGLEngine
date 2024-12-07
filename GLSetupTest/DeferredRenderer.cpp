@@ -82,7 +82,13 @@ namespace JLEngine
         m_gBufferShader->SetUniform("u_View", viewMatrix);
         m_gBufferShader->SetUniform("u_Projection", projMatrix);
 
-        TraverseSceneGraph(sceneGraph, viewMatrix, projMatrix);
+        RenderGroupMap renderGroups;
+        GroupRenderables(sceneGraph, renderGroups);
+        
+        // Render each group
+        RenderGroups(renderGroups, viewMatrix);
+
+        //TraverseSceneGraph(sceneGraph, viewMatrix, projMatrix);
 
         m_graphics->BindFrameBuffer(0); 
     }
@@ -106,16 +112,25 @@ namespace JLEngine
 
     void DeferredRenderer::RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix) 
     {
-        if (node->mesh) return; // Skip if no meshes
+        if (node->mesh == nullptr) return; // Skip if no meshes
 
         Mesh* mesh = node->mesh;
         if (!mesh) return; // Skip if mesh is null
 
         glm::mat4 modelMatrix = node->GetGlobalTransform();
         m_gBufferShader->SetUniform("u_Model", modelMatrix);
+        
+        for (const auto& batch : node->mesh->GetBatches())
+        {
+            SetUniformsForGBuffer(batch->GetMaterial());
 
-        //SetUniformsForGBuffer(mat);
-        //m_graphics->RenderMesh(mesh);
+            // Bind vertex and index buffers
+            m_graphics->BindVertexArray(batch->GetVertexBuffer()->GetVAO());
+            m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch->GetIndexBuffer()->GetId());
+
+            // Issue draw call
+            m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)batch->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
+        }
     }
 
     void DeferredRenderer::SetUniformsForGBuffer(Material* mat)
@@ -263,6 +278,61 @@ namespace JLEngine
         m_graphics->BindVertexArray(0);
     }
 
+    void DeferredRenderer::GroupRenderables(Node* node, RenderGroupMap& renderGroups)
+    {
+        if (!node)
+            return;
+
+        if (!node->mesh && node->children.empty()) return;
+
+        glm::mat4 worldMatrix = node->GetGlobalTransform();
+
+        // If the node contains a mesh, add its batches to the appropriate group
+        if (node->GetTag() == NodeTag::Mesh && node->mesh)
+        {
+            for (auto& batch : node->mesh->GetBatches())
+            {
+                RenderGroupKey key(batch->GetMaterial()->GetHandle(), batch->attributesKey);
+                renderGroups[key].emplace_back(batch.get(), worldMatrix);
+            }
+        }
+
+        // Recursively process child nodes
+        for (auto& child : node->children)
+        {
+            GroupRenderables(child.get(), renderGroups);
+        }
+    }
+
+    void DeferredRenderer::RenderGroups(const RenderGroupMap& renderGroups, const glm::mat4& viewMatrix)
+    {
+        for (const auto& [key, batches] : renderGroups)
+        {
+            // Extract material ID and attributes key from the key
+            int materialId = key.first;
+            const std::string& attributesKey = key.second;
+
+            // Bind material (assuming materials are identified by ID)
+            auto material = m_assetLoader->GetMaterialManager()->Get(materialId);
+            SetUniformsForGBuffer(material);
+
+            // Render all batches in this group
+            for (const auto& batch : batches)
+            {
+                // Bind vertex and index buffers
+                m_graphics->BindVertexArray(batch.first->GetVertexBuffer()->GetVAO());
+                m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.first->GetIndexBuffer()->GetId());
+
+                // Set model matrix
+                glm::mat4 modelMatrix = batch.second;
+                m_gBufferShader->SetUniform("u_Model", modelMatrix);
+
+                // Issue draw call
+                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
+            }
+        }
+    }
+
     void DeferredRenderer::Resize(int width, int height) 
     {
         if (width == m_width && height == m_height)
@@ -271,9 +341,11 @@ namespace JLEngine
         m_width = width;
         m_height = height;
 
+        m_gBufferTarget->ResizeTextures(m_width, m_height);
+
         // Recreate the G-buffer to match the new dimensions
-        m_assetLoader->GetRenderTargetManager()->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer
-        SetupGBuffer();
+        //m_assetLoader->GetRenderTargetManager()->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer
+        //SetupGBuffer();
 
         std::cout << "DeferredRenderer resized to: " << m_width << "x" << m_height << std::endl;
     }

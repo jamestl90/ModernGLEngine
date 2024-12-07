@@ -36,9 +36,7 @@ namespace JLEngine
 				std::cerr << "Invalid batch found in Mesh '" << GetName() << "' during upload.\n";
 				continue;
 			}
-
-			m_graphics->CreateVertexBuffer(*batch->GetVertexBuffer().get());
-			m_graphics->CreateIndexBuffer(*batch->GetIndexBuffer().get());
+			m_graphics->CreateBatch(*batch);
 			if (batch->HasInstanceBuffer()) {
 				batch->GetInstanceBuffer()->UploadToGPU(m_graphics, {}); 
 			}

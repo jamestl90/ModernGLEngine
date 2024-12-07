@@ -4,6 +4,7 @@
 #include "FileHelpers.h"
 #include "RenderTarget.h"
 #include "InstanceBuffer.h"
+#include "Batch.h"
 
 #include <set>
 #include <glm/gtc/type_ptr.hpp>
@@ -17,7 +18,7 @@ namespace JLEngine
 	{
 		float fov = 40.0f;
 		float nearDist = 0.1f;
-		float farDist = 1000.0f;
+		float farDist = 100000.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 
@@ -478,10 +479,10 @@ namespace JLEngine
 		glGenFramebuffers(count, &id);
 	}
 
-	void Graphics::CreateVertexArray(uint32 count, uint32& id)
-	{
-		glGenVertexArrays(count, &id);
-	}
+	//void Graphics::CreateVertexArray(uint32 count, uint32& id)
+	//{
+	//	glGenVertexArrays(count, &id);
+	//}
 
 	void Graphics::BindVertexArray( uint32 vaoID )
 	{
@@ -626,6 +627,86 @@ namespace JLEngine
 	{
 		GLuint id = instancedBO.GetGPUID();
 		glDeleteBuffers(1, &id);
+	}
+
+	void Graphics::CreateBatch(Batch& batch)
+	{
+		auto vbo = batch.GetVertexBuffer();
+		// Create and bind the VAO
+		auto vaoId = CreateVertexArray();
+		vbo->SetVAO(vaoId);
+		BindVertexArray(vaoId);
+
+		// Bind the vertex buffer
+		GLuint vboId;
+		CreateBuffer(1, vboId);
+		vbo->SetId(vboId);
+		BindBuffer(GL_ARRAY_BUFFER, vbo->GetId());
+
+		const auto& vertexData = batch.GetVertexBuffer()->GetBuffer(); // Retrieve vertex data
+		glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(float), vertexData.data(), GL_STATIC_DRAW);
+
+		// Parse the attributesKey and bind attributes based on format
+		const std::string& attributesKey = batch.attributesKey; // Determines the layout
+		uint32 stride = 0, positionOffset = 0, normalOffset = 0, texCoordOffset = 0, tangentOffset = 0;
+
+		// Determine attribute offsets and locations based on the attributesKey
+		if (attributesKey == "NORMAL;POSITION;TEXCOORD_0;" || attributesKey == "NORMAL;POSITION;TANGENT;TEXCOORD_0;")
+		{
+			stride = sizeof(float) * (3 + 3 + 2 + 4); // Pos (3), Norm (3), UV (2), Tan (4)
+			positionOffset = 0;
+			normalOffset = 3 * sizeof(float);
+			texCoordOffset = 6 * sizeof(float);
+			tangentOffset = 8 * sizeof(float);
+
+			glEnableVertexAttribArray(0); // Position
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(positionOffset));
+
+			glEnableVertexAttribArray(1); // Normal
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(normalOffset));
+
+			glEnableVertexAttribArray(2); // UV
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(texCoordOffset));
+
+			glEnableVertexAttribArray(3); // Tangent
+			glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(tangentOffset));
+		}
+		else if (attributesKey == "POSITION;" || attributesKey == "NORMAL;POSITION;")
+		{
+			stride = sizeof(float) * (3 + 3 + 2); // Pos (3), Norm (3), UV (2)
+			positionOffset = 0;
+			normalOffset = 3 * sizeof(float);
+			texCoordOffset = 6 * sizeof(float);
+
+			glEnableVertexAttribArray(0); // Position
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(positionOffset));
+
+			glEnableVertexAttribArray(1); // Normal
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(normalOffset));
+		}
+		else if (attributesKey == "POSITION;TEXCOORD_0")
+		{
+			stride = sizeof(float) * (3 + 2); // Pos (3), UV (2)
+			positionOffset = 0;
+			texCoordOffset = 3 * sizeof(float);
+
+			glEnableVertexAttribArray(0); // Position
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(positionOffset));
+
+			glEnableVertexAttribArray(1); // UV
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(texCoordOffset));
+		}
+
+		// Bind the index buffer
+		auto ibo = batch.GetIndexBuffer();
+		if (ibo != nullptr)
+		{
+			CreateIndexBuffer(*ibo);
+			BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo->GetId());
+		}
+
+		// Unbind the VAO to prevent accidental modifications
+		BindVertexArray(0);
 	}
 
 	void Graphics::CreateVertexBuffer( VertexBuffer& vbo )
@@ -863,7 +944,8 @@ namespace JLEngine
 
 			auto& attrib = attributes[i];
 
-			glTexStorage2D(GL_TEXTURE_2D, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
+			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, target->GetWidth(), target->GetHeight(), 0, attrib.format, attrib.dataType, nullptr);
+			//glTexStorage2D(GL_TEXTURE_2D, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
 			// glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, attrib.internalFormat, target->GetWidth(), target->GetHeight(), GL_TRUE);
 			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, tex, 0);
 			target->SetSourceId(i, tex);
@@ -940,6 +1022,71 @@ namespace JLEngine
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
+		return true;
+	}
+
+	bool Graphics::ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight)
+	{
+		if (newWidth == 0 || newHeight == 0)
+		{
+			std::cerr << "Graphics: Invalid render target dimensions for resizing!" << std::endl;
+			return false;
+		}
+
+		target->SetWidth(newWidth);
+		target->SetHeight(newHeight);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, target->GetFrameBufferId());
+
+		// Resize textures for color attachments
+		auto& attributes = target->GetTextureAttributes();
+		for (uint32 i = 0; i < target->GetNumSources(); i++)
+		{
+			GLuint tex = target->GetSourceId(i);
+			glBindTexture(GL_TEXTURE_2D, tex);
+
+			auto& attrib = attributes[i];
+			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, newWidth, newHeight, 0, attrib.format, attrib.dataType, nullptr);
+		}
+
+		// Resize depth buffer
+		GLuint depth = target->GetDepthBufferId();
+		if (target->DepthType() == DepthType::Renderbuffer)
+		{
+			glBindRenderbuffer(GL_RENDERBUFFER, depth);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, newWidth, newHeight);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			glBindTexture(GL_TEXTURE_2D, depth);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, newWidth, newHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+		}
+
+		// Check framebuffer completeness
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			std::cerr << "Framebuffer resize failed: ";
+			switch (status)
+			{
+			case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED"; break;
+			default: std::cerr << "Unknown Error"; break;
+			}
+			std::cerr << std::endl;
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			return false;
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 		return true;
 	}
 
@@ -1025,7 +1172,7 @@ namespace JLEngine
 		vbo.AddAttribute(uvAttri);
 		vbo.CalcStride();
 		uint32 vao;
-		CreateVertexArray(1, vao);
+		vao = CreateVertexArray();
 		CreateVertexBuffer(vbo);
 
 		CreatePrimitiveBuffers(octahedronVerts, sizeof(octahedronVerts), octahedronInds, sizeof(octahedronInds), m_octahedronGeom);

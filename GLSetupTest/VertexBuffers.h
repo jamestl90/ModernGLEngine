@@ -73,7 +73,7 @@ namespace JLEngine
 	class VertexBuffer : public Buffer<float>, public GraphicsBuffer
 	{
 	public:
-		VertexBuffer() : m_stride(0) {}
+		VertexBuffer() : m_stride(0), m_vaoId(0) {}
 
 		VertexBuffer(int type, int data, int draw);
 
@@ -93,7 +93,12 @@ namespace JLEngine
 
 		uint32 SizeInBytes();
 
+		void SetVAO(uint32 id) { m_vaoId = id; }
+		uint32 GetVAO() { return m_vaoId; }
+
 	private:
+
+		uint32 m_vaoId;
 
 		std::set<VertexAttribute> m_attributes;
 

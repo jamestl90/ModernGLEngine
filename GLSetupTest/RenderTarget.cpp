@@ -91,6 +91,17 @@ namespace JLEngine
 		}
 	}
 
+	void RenderTarget::ResizeTextures(int newWidth, int newHeight)
+	{
+		if (newWidth == m_width && newHeight == m_height)
+			return;
+
+		m_width = newWidth;
+		m_height = newHeight;
+
+		m_graphics->ResizeRenderTarget(this, newWidth, newHeight);
+	}
+
 	void RenderTarget::SetNumSources( uint32 numSources )
 	{
 		m_numSources = numSources;

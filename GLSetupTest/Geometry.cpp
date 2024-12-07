@@ -190,8 +190,7 @@ namespace JLEngine
         std::vector<float>& normals,
         std::vector<float>& texCoords,
         std::vector<float>& tangents,
-        std::vector<float>& vertexData,
-        const std::string& attributesKey)
+        std::vector<float>& vertexData)
     {
         size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
         if (positions.size() % 3 != 0)
@@ -200,83 +199,37 @@ namespace JLEngine
             return;
         }
 
-        // Determine required attributes from attributesKey
-        bool requiresNormals = attributesKey.find("NORMAL") != std::string::npos;
-        bool requiresTexCoords = attributesKey.find("TEXCOORD_0") != std::string::npos;
-        bool requiresTangents = attributesKey.find("TANGENT") != std::string::npos;
+        // Check availability of attributes
+        bool hasNormals = !normals.empty() && normals.size() == vertexCount * 3;
+        bool hasTexCoords = !texCoords.empty() && texCoords.size() == vertexCount * 2;
+        bool hasTangents = !tangents.empty() && tangents.size() == vertexCount * 4;
 
-        // Generate normals if missing and required
-        if (requiresNormals && normals.empty())
-        {
-            std::cout << "Generating normals..." << std::endl;
-            normals = Geometry::CalculateFlatNormals(positions);
-        }
-
-        // Generate tangents if missing and required (requires UVs and normals)
-        if (requiresTangents && tangents.empty())
-        {
-            if (!texCoords.empty() && !normals.empty())
-            {
-                std::cout << "Generating tangents..." << std::endl;
-                tangents = CalculateTangents(positions, normals, texCoords);
-            }
-            else if (requiresTangents)
-            {
-                std::cerr << "Warning: Cannot generate tangents without UVs and normals. Tangents will remain empty." << std::endl;
-            }
-        }
-
-        // Check sizes of all attributes
-        bool hasNormals = normals.size() == vertexCount * 3;
-        bool hasTexCoords = texCoords.size() == vertexCount * 2;
-        bool hasTangents = tangents.size() == vertexCount * 4;
-
-        // Calculate vertex size dynamically
-        size_t vertexSize = 3; // Positions are always included
-        if (requiresNormals) vertexSize += 3;
-        if (requiresTexCoords) vertexSize += 2;
-        if (requiresTangents) vertexSize += 4;
+        // Determine vertex size dynamically
+        size_t vertexSize = 3; // Start with positions (vec3)
+        if (hasNormals) vertexSize += 3; // Add normals (vec3)
+        if (hasTexCoords) vertexSize += 2; // Add texcoords (vec2)
+        if (hasTangents) vertexSize += 4; // Add tangents (vec4)
 
         vertexData.clear();
         vertexData.reserve(vertexCount * vertexSize);
 
-        // Default values for missing attributes
-        const float defaultNormal[3] = { 0.0f, 0.0f, 1.0f };
-        const float defaultTexCoord[2] = { 0.0f, 0.0f };
-        const float defaultTangent[4] = { 1.0f, 0.0f, 0.0f, 1.0f };
-
-        // Interleave vertex data
+        // Interleave only the available attributes
         for (size_t i = 0; i < vertexCount; ++i)
         {
             // Add position (vec3)
             vertexData.insert(vertexData.end(), positions.begin() + i * 3, positions.begin() + (i + 1) * 3);
 
-            // Add normal (vec3) if required
-            if (requiresNormals)
-            {
-                if (hasNormals)
-                    vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
-                else
-                    vertexData.insert(vertexData.end(), defaultNormal, defaultNormal + 3);
-            }
+            // Add normal (vec3) if available
+            if (hasNormals)
+                vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
 
-            // Add texCoords (vec2) if required
-            if (requiresTexCoords)
-            {
-                if (hasTexCoords)
-                    vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
-                else
-                    vertexData.insert(vertexData.end(), defaultTexCoord, defaultTexCoord + 2);
-            }
+            // Add texcoord (vec2) if available
+            if (hasTexCoords)
+                vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
 
-            // Add tangent (vec4) if required
-            if (requiresTangents)
-            {
-                if (hasTangents)
-                    vertexData.insert(vertexData.end(), tangents.begin() + i * 4, tangents.begin() + (i + 1) * 4);
-                else
-                    vertexData.insert(vertexData.end(), defaultTangent, defaultTangent + 4);
-            }
+            // Add tangent (vec4) if available
+            if (hasTangents)
+                vertexData.insert(vertexData.end(), tangents.begin() + i * 4, tangents.begin() + (i + 1) * 4);
         }
     }
 
