@@ -63,17 +63,24 @@ vec3 getNormal()
 {
     if (useNormalTexture) 
     {
+        // Sample and decode the normal from the normal texture
         vec3 normalTex = texture(normalTexture, v_TexCoords).rgb;
         normalTex = normalTex * 2.0 - 1.0; // Map [0, 1] to [-1, 1]
 
-        // Construct TBN matrix from interpolated data
+        // Construct TBN matrix from interpolated vertex data
         mat3 TBN = mat3(normalize(v_Tangent), normalize(v_Bitangent), normalize(v_Normal));
 
-        // Transform the normal map's tangent-space normal to world space
+        // Transform the tangent-space normal to world space
         vec3 worldNormal = normalize(TBN * normalTex);
-        return worldNormal;
+
+        // Encode the world-space normal to [0, 1] for storage
+        return worldNormal * 0.5 + 0.5;
     }
-    return normalize(v_Normal); // Use interpolated normal if no normal map
+        // Use the interpolated vertex normal (already in world space)
+    vec3 worldNormal = normalize(v_Normal);
+
+    // Encode the world-space normal to [0, 1] for storage
+    return worldNormal * 0.5 + 0.5;
 }
 
 float getAmbientOcclusion() 

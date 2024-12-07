@@ -166,35 +166,35 @@ namespace JLEngine
 		// Create a new Mesh object
 		auto mesh = m_assetLoader->CreateEmptyMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
-		for (auto& primitive : gltfMesh.primitives)
-		{
-			MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
-			auto batch = CreateBatch2(model, primitive, key);
-			mesh->AddBatch(batch);
-		}
-
-		// Group primitives by material and attributes
-		//std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
-		//for (const auto& primitive : gltfMesh.primitives)
+		//for (auto& primitive : gltfMesh.primitives)
 		//{
 		//	MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
-		//	groups[key].push_back(&primitive);
+		//	auto batch = CreateBatch2(model, primitive, key);
+		//	mesh->AddBatch(batch);
 		//}
-		//
-		//// Create batches for each grouped set of primitives
-		//for (const auto& [key, primitives] : groups)
-		//{
-		//	auto batch = CreateBatch(model, primitives, key);
-		//	if (batch)
-		//	{
-		//		mesh->AddBatch(batch);
-		//	}
-		//	else
-		//	{
-		//		std::cerr << "GLBLoader Warning: Failed to create batch for material "
-		//			<< key.materialIndex << "." << std::endl;
-		//	}
-		//}
+
+		// Group primitives by material and attributes
+		std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
+		for (const auto& primitive : gltfMesh.primitives)
+		{
+			MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
+			groups[key].push_back(&primitive);
+		}
+		
+		// Create batches for each grouped set of primitives
+		for (const auto& [key, primitives] : groups)
+		{
+			auto batch = CreateBatch(model, primitives, key);
+			if (batch)
+			{
+				mesh->AddBatch(batch);
+			}
+			else
+			{
+				std::cerr << "GLBLoader Warning: Failed to create batch for material "
+					<< key.materialIndex << "." << std::endl;
+			}
+		}
 
 		mesh->UploadToGPU(m_graphics);
 

@@ -40,9 +40,8 @@ vec3 ReconstructWorldPosition(vec2 texCoords, float depth)
 }
 
 // Fresnel-Schlick approximation for specular reflection
-vec3 fresnelSchlick(float cosTheta, vec3 F0) 
-{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 float ggxNDF(float NdotH, float roughness) {
@@ -59,45 +58,64 @@ float schlickGGX_G(float NdotV, float roughness) {
     return NdotV / (NdotV * (1.0 - k) + k);
 }
 
-vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 lightColor, float metallic, float roughness) {
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+float geometrySmith(float NdotV, float NdotL, float roughness) {
+    float r = roughness + 1.0;
+    float k = (r * r) / 8.0;
+    float gV = NdotV / (NdotV * (1.0 - k) + k);
+    float gL = NdotL / (NdotL * (1.0 - k) + k);
+    return gV * gL;
+}
+
+vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 lightColor, float metallic, float roughness, float ao) {
+    // Fresnel-Schlick with roughness
     vec3 halfDir = normalize(lightDir + viewDir);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    vec3 F = fresnelSchlickRoughness(max(dot(viewDir, halfDir), 0.0), F0, roughness);
 
-    // Fresnel term
-    vec3 F = fresnelSchlick(max(dot(viewDir, halfDir), 0.0), F0);
-
-    // NDF
+    // Normal Distribution Function (GGX)
     float NDF = ggxNDF(max(dot(normal, halfDir), 0.0), roughness);
 
-    // Geometry
-    float G = schlickGGX_G(max(dot(normal, lightDir), 0.0), roughness) *
-              schlickGGX_G(max(dot(normal, viewDir), 0.0), roughness);
+    // Geometry (Smith's correlated GGX)
+    float G = geometrySmith(max(dot(normal, viewDir), 0.0), max(dot(normal, lightDir), 0.0), roughness);
 
-    // Specular
-    vec3 specular = F * NDF * G / (4.0 * max(dot(normal, lightDir), 0.01) * max(dot(normal, viewDir), 0.01));
+    // Specular term
+    vec3 specular = F * NDF * G / (4.0 * max(dot(normal, viewDir), 0.01) * max(dot(normal, lightDir), 0.01));
 
-    // Diffuse
+    // Diffuse term
     vec3 diffuse = (1.0 - F) * albedo / 3.14159265359;
 
-    return (diffuse + specular) * lightColor;
+    // Lighting
+    vec3 lighting = (diffuse + specular) * lightColor * max(dot(normal, lightDir), 0.0);
+
+    // Apply ambient occlusion
+    lighting *= ao;
+
+    return lighting;
 }
+
 void main() 
 {
     float depth = texture(gDepth, v_TexCoords).r;
     float linearDepth = LinearizeDepth(depth);
     vec3 worldPos = ReconstructWorldPosition(v_TexCoords, linearDepth);
 
-    vec3 albedo = texture(gAlbedoAO, v_TexCoords).rgb;
-    vec3 normal = normalize(texture(gNormals, v_TexCoords).rgb); // Decode normal
+    vec4 albedoAO = texture(gAlbedoAO, v_TexCoords);
+    vec3 albedo = albedoAO.rgb;
+    float ao = albedoAO.a;
+    vec3 normal = normalize(texture(gNormals, v_TexCoords).xyz * 2.0 - 1.0); // Decode normal
     vec2 metallicRoughness = texture(gMetallicRoughness, v_TexCoords).rg;
     float metallic = metallicRoughness.r;
-    float roughness = metallicRoughness.g;
+    float roughness = max(metallicRoughness.g, 0.05); // Prevent extreme highlights
 
     vec3 lightDir = normalize(-lightDirection);
-    vec3 viewDir = normalize(cameraPos); 
+    vec3 viewDir = normalize(cameraPos - worldPos); // Correct view direction
 
-    vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness);
+    vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness, ao);
 
+    // Add ambient and emissive contributions
     lighting += ambientColor * albedo; 
+    lighting += texture(gEmissive, v_TexCoords).rgb * 1.25f;
+    lighting *= 1.5f;
+
     FragColor = vec4(lighting, 1.0);
 }

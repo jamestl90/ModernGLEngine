@@ -95,14 +95,6 @@ int main(int argc, char* argv[])
     input->SetMouseMoveCallback(MouseMoveCallback);
     graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
 
-    //meshShader = shaderMgr->LoadShaderFromFile("SimpleMeshShader", "simple_mesh_vert.glsl", "simple_mesh_frag.glsl", "../Assets/");
-    //meshShader.get()->CacheUniformLocation("uModel");
-    //meshShader.get()->CacheUniformLocation("uView");
-    //meshShader.get()->CacheUniformLocation("uProjection");
-    //meshShader.get()->CacheUniformLocation("uLightPos");
-    //meshShader.get()->CacheUniformLocation("uLightColor");
-    //meshShader.get()->CacheUniformLocation("uTexture");
-
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
     //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
@@ -119,11 +111,18 @@ int main(int argc, char* argv[])
     //cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
     //sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
     
-    auto test = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    test->scale = glm::vec3(0.1f, 0.1f, 0.1f);
-    //sceneRoot->AddChild(test);
-    sceneRoot = test;
-    sceneRoot->children[0]->UpdateTransforms(sceneRoot->localMatrix);
+    auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    sceneRoot->AddChild(helmet);
+
+    auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
+    potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
+    potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
+    sceneRoot->AddChild(potofcoals);
+
+    auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
+    fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
+    fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
+    sceneRoot->AddChild(fish);
 
     //sceneRoot->AddChild(std::move(aduckScene));
     //sceneRoot->AddChild(std::move(afishScene));

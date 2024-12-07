@@ -122,6 +122,11 @@ namespace JLEngine
 		m_clearColour = glm::vec4(x, y, z, w);
 	}
 
+	void Graphics::ClearColor()
+	{
+		glClearColor(m_clearColour.x, m_clearColour.y, m_clearColour.z, m_clearColour.w);
+	}
+
 	glm::mat4& Graphics::CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view)
 	{
 		m_mvp = projection * view * modelMat;
