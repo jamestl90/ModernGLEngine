@@ -2,12 +2,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "Material.h"
 #include "Graphics.h"
+#include "DirectionalLightShadowMap.h"
 
 namespace JLEngine
 {
     DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
         : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0),
-        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
+        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), 
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr) {}
 
     DeferredRenderer::~DeferredRenderer() 
@@ -17,9 +18,17 @@ namespace JLEngine
 
     void DeferredRenderer::Initialize() 
     {
-        SetupGBuffer();
+        m_directionalLight.direction = glm::vec3(0, 0, -1.0f);
+        m_directionalLight.position = glm::vec3(0, 0, -500.0f);
 
         auto finalAssetPath = m_assetFolder + "Core/";
+
+        auto dlShader = m_assetLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", finalAssetPath);
+        m_dlShadowMap = new DirectionalLightShadowMap(m_graphics, dlShader);
+        m_dlShadowMap->Initialise();
+
+        SetupGBuffer();
+        
         m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "gbuffer_debug_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
         m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
         m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
@@ -67,7 +76,36 @@ namespace JLEngine
         m_gBufferTarget = m_assetLoader->CreateRenderTarget("GBufferTarget", m_width, m_height, attributes, DepthType::Texture, attributes.Size());
     }
 
-    void DeferredRenderer::GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    glm::mat4 DeferredRenderer::DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        auto frustum = m_graphics->GetViewFrustum();
+        auto nearPlane = frustum->GetNear();
+        auto farPlane = frustum->GetFar();
+
+        float orthoSize = 10.0f; // Adjust based on scene size
+
+        // Calculate the light projection matrix
+        glm::mat4 lightProjection = glm::ortho(
+            -orthoSize, orthoSize,  // Left, Right
+            -orthoSize, orthoSize,  // Bottom, Top
+            nearPlane, farPlane     // Near, Far
+        );
+
+        glm::vec3 lightPos = m_directionalLight.position;
+        glm::vec3 lightTarget = m_directionalLight.position + (m_directionalLight.direction * 2.0f);
+        glm::mat4 lightView = glm::lookAt(lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        m_dlShadowMap->ShadowMapPassSetup(lightView, lightProjection);
+
+        RenderGroups(renderGroups, viewMatrix);
+
+        m_graphics->BindFrameBuffer(0);
+
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+        return lightSpaceMatrix;
+    }
+
+    void DeferredRenderer::GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         m_graphics->BindFrameBuffer(m_gBufferTarget->GetFrameBufferId());
         m_graphics->SetDepthMask(GL_TRUE);
@@ -82,8 +120,8 @@ namespace JLEngine
         m_gBufferShader->SetUniform("u_View", viewMatrix);
         m_gBufferShader->SetUniform("u_Projection", projMatrix);
 
-        RenderGroupMap renderGroups;
-        GroupRenderables(sceneGraph, renderGroups);
+        //RenderGroupMap renderGroups;
+        //GroupRenderables(sceneGraph, renderGroups);
         
         // Render each group
         RenderGroups(renderGroups, viewMatrix);
@@ -221,7 +259,11 @@ namespace JLEngine
 
     void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer)
     {
-        GBufferPass(sceneRoot, viewMatrix, projMatrix);
+        RenderGroupMap renderGroups;
+        GroupRenderables(sceneRoot, renderGroups);
+        auto lightSpaceMatrix = DirectionalShadowMapPass(renderGroups, eyePos, viewMatrix, projMatrix);
+
+        GBufferPass(renderGroups, sceneRoot, viewMatrix, projMatrix);
 
         if (debugGBuffer)
         {
@@ -232,11 +274,11 @@ namespace JLEngine
         }
         else
         {
-            TestLightPass(eyePos, viewMatrix, projMatrix);
+            TestLightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
     }
 
-    void DeferredRenderer::TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    void DeferredRenderer::TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
     {
         glm::vec3 lightDir(0.0f, 0.0f, 1.0f);
 
@@ -258,7 +300,12 @@ namespace JLEngine
         m_gBufferTarget->BindDepthTexture(4);
         m_gBufferDebugShader->SetUniformi("gDepth", 4);
 
-        m_lightingTestShader->SetUniform("lightDirection", glm::vec3(0.5f, -1.0f, -0.5f));
+        m_graphics->SetActiveTexture(GL_TEXTURE0 + 5);
+        glBindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
+        m_lightingTestShader->SetUniformi("gDLShadowMap", 5);
+
+        m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
+        m_lightingTestShader->SetUniform("lightDirection", m_directionalLight.direction);
         m_lightingTestShader->SetUniform("lightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
         m_lightingTestShader->SetUniform("cameraPos", eyePos);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));

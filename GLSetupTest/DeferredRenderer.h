@@ -19,6 +19,7 @@ using RenderGroupMap = std::map<RenderGroupKey, std::vector<RenderGroupValue>>;
 namespace JLEngine
 {
     class Material;
+    class DirectionalLightShadowMap;
 
     class DeferredRenderer 
     {
@@ -32,11 +33,12 @@ namespace JLEngine
         void DebugGBuffer(int debugMode);
         void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer);
 
-        void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
 
     private:
-        void GBufferPass(Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
+        glm::mat4 DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void TraverseSceneGraph(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetUniformsForGBuffer(Material* mat);
@@ -60,6 +62,9 @@ namespace JLEngine
 
         VertexBuffer m_triangleVertexBuffer;
         GLuint m_triangleVAO;
+
+        DirectionalLightShadowMap* m_dlShadowMap;
+        Light m_directionalLight;
     };
 }
 

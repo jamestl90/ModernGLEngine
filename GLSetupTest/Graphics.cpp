@@ -16,9 +16,9 @@ namespace JLEngine
 		: m_drawAABB(false), m_shaderInfo(""), m_versionInfo(""), m_activeTextureUnit(0), m_activeShaderProgram(0),
 		m_vendorInfo(""), m_extensionInfo(""), m_rendererInfo(""), m_window(window), m_usingMSAA(false)
 	{
-		float fov = 40.0f;
+		float fov = 45.0f;
 		float nearDist = 0.1f;
-		float farDist = 100000.0f;
+		float farDist = 1000.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 

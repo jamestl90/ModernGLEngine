@@ -9,6 +9,9 @@ layout(binding = 1) uniform sampler2D gNormals;
 layout(binding = 2) uniform sampler2D gMetallicRoughness;
 layout(binding = 3) uniform sampler2D gEmissive;
 layout(binding = 4) uniform sampler2D gDepth;
+layout(binding = 5) uniform sampler2D gDLShadowMap;
+
+uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 
 uniform float u_Near;
 uniform float u_Far;
@@ -28,6 +31,26 @@ float LinearizeDepth(float depth)
 {
     float z = depth * 2.0 - 1.0; // Convert to NDC space
     return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
+}
+
+// Shadow calculation
+float CalculateShadow(vec3 worldPos) 
+{
+    // Transform world position into light space
+    vec4 lightSpacePos = u_LightSpaceMatrix * vec4(worldPos, 1.0);
+    vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w; // Perspective divide
+    projCoords = projCoords * 0.5 + 0.5; // Transform to [0, 1] range
+
+    // Sample shadow map and compare depths
+    float closestDepth = texture(gDLShadowMap, projCoords.xy).r;
+    float currentDepth = projCoords.z;
+
+    // Shadow bias to prevent self-shadowing
+    float shadowBias = 0.005;
+    float shadow = currentDepth > closestDepth + shadowBias ? 1.0 : 0.0;
+
+    // Ensure shadow value is valid
+    return projCoords.z > 1.0 ? 0.0 : shadow; // No shadow outside light frustum
 }
 
 vec3 ReconstructWorldPosition(vec2 texCoords, float depth) 
@@ -110,12 +133,16 @@ void main()
     vec3 lightDir = normalize(-lightDirection);
     vec3 viewDir = normalize(cameraPos - worldPos); // Correct view direction
 
+    float shadow = CalculateShadow(worldPos);
+
     vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness, ao);
+
+    lighting *= (1.0 - shadow);
 
     // Add ambient and emissive contributions
     lighting += ambientColor * albedo; 
     lighting += texture(gEmissive, v_TexCoords).rgb * 1.25f;
-    lighting *= 1.5f;
+    lighting *= 2.5f;
 
     FragColor = vec4(lighting, 1.0);
 }
