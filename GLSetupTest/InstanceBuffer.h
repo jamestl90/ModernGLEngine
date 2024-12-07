@@ -1,7 +1,6 @@
 #ifndef INSTANCE_BUFFER_H
 #define INSTANCE_BUFFER_H
 
-#include "Graphics.h"
 #include "Types.h"
 
 #include <vector>

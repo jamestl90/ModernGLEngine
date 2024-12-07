@@ -1,5 +1,7 @@
 #include "InstanceBuffer.h"
 
+#include "Graphics.h"
+
 namespace JLEngine
 {
 	InstanceBuffer::~InstanceBuffer() { UnloadFromGPU(); }
@@ -22,7 +24,7 @@ namespace JLEngine
 		}
 		else
 		{
-			m_graphics->SetBufferSubData(GL_ARRAY_BUFFER, 0, instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data());
+			m_graphics->SetBufferSubData(GL_ARRAY_BUFFER, 0, (uint32)instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data());
 		}
 		m_instanceCount = (uint32)instanceTransforms.size();
 	}

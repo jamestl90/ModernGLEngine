@@ -30,7 +30,7 @@ namespace JLEngine
         Node(const std::string& name = "", NodeTag nodeTag = NodeTag::Mesh)
             : name(name), tag(nodeTag), useMatrix(false),
             localMatrix(glm::mat4(1.0)), translation(0.0f),
-            rotation(1.0f, 0.0f, 0.0f, 0.0f), scale(1.0f), meshes(0) 
+            rotation(1.0f, 0.0f, 0.0f, 0.0f), scale(1.0f), mesh(0) 
         {
             UpdateTransforms();
         }
@@ -46,7 +46,7 @@ namespace JLEngine
         bool useMatrix;
 
         Light* m_lightData;
-        std::vector<Mesh*> meshes;
+        Mesh* mesh;
         std::vector<std::shared_ptr<Node>> children;
 
         std::weak_ptr<Node> parent;

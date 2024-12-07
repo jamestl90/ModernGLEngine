@@ -594,11 +594,16 @@ namespace JLEngine
             throw std::invalid_argument("Invalid input sizes for positions, normals, or UVs.");
         }
 
+        if (positions.size() / 3 != uvs.size() / 2)
+        {
+            throw std::invalid_argument("Mismatch between positions and UVs.");
+        }
+
         std::vector<glm::vec3> tangents(positions.size() / 3, glm::vec3(0.0f));
         std::vector<glm::vec3> bitangents(positions.size() / 3, glm::vec3(0.0f));
 
-        // Iterate through the vertices in sequential groups of three (triangle list format)
-        for (size_t i = 0; i < positions.size(); i += 9)
+        // Iterate through the vertices in groups of three (triangle list format)
+        for (size_t i = 0; i + 8 < positions.size(); i += 9) // Ensure bounds
         {
             glm::vec3 v0(
                 positions[i], positions[i + 1], positions[i + 2]);
@@ -607,9 +612,15 @@ namespace JLEngine
             glm::vec3 v2(
                 positions[i + 6], positions[i + 7], positions[i + 8]);
 
-            glm::vec2 uv0(uvs[(i / 3) * 2], uvs[(i / 3) * 2 + 1]);
-            glm::vec2 uv1(uvs[((i / 3) + 1) * 2], uvs[((i / 3) + 1) * 2 + 1]);
-            glm::vec2 uv2(uvs[((i / 3) + 2) * 2], uvs[((i / 3) + 2) * 2 + 1]);
+            size_t uvIndex = (i / 3) * 2;
+            if (uvIndex + 5 >= uvs.size())
+            {
+                throw std::out_of_range("UV array index out of range.");
+            }
+
+            glm::vec2 uv0(uvs[uvIndex], uvs[uvIndex + 1]);
+            glm::vec2 uv1(uvs[uvIndex + 2], uvs[uvIndex + 3]);
+            glm::vec2 uv2(uvs[uvIndex + 4], uvs[uvIndex + 5]);
 
             glm::vec3 edge1 = v1 - v0;
             glm::vec3 edge2 = v2 - v0;
@@ -620,13 +631,14 @@ namespace JLEngine
             glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
             glm::vec3 bitangent = (edge2 * deltaUV1.x - edge1 * deltaUV2.x) * r;
 
-            tangents[i / 3] += tangent;
-            tangents[i / 3 + 1] += tangent;
-            tangents[i / 3 + 2] += tangent;
+            size_t vertexIndex = i / 3;
+            tangents[vertexIndex] += tangent;
+            tangents[vertexIndex + 1] += tangent;
+            tangents[vertexIndex + 2] += tangent;
 
-            bitangents[i / 3] += bitangent;
-            bitangents[i / 3 + 1] += bitangent;
-            bitangents[i / 3 + 2] += bitangent;
+            bitangents[vertexIndex] += bitangent;
+            bitangents[vertexIndex + 1] += bitangent;
+            bitangents[vertexIndex + 2] += bitangent;
         }
 
         // Normalize and flatten tangents with w-component

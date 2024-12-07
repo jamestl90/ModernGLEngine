@@ -21,7 +21,7 @@ namespace JLEngine
 	class Geometry
 	{
 	public:
-		static Mesh* GenerateSphereMesh(Graphics* graphics, string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments);
+		static Mesh* GenerateSphereMesh(Graphics* graphics, std::string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments);
 		static Mesh* GenerateBoxMesh(Graphics* graphics, std::string name, float width, float length, float height);
 
 		static void GenerateInterleavedVertexData(const std::vector<float>& positions,

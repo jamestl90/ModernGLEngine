@@ -106,9 +106,9 @@ namespace JLEngine
 
     void DeferredRenderer::RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix) 
     {
-        if (node->meshes.empty()) return; // Skip if no meshes
+        if (node->mesh) return; // Skip if no meshes
 
-        Mesh* mesh = node->meshes[0];
+        Mesh* mesh = node->mesh;
         if (!mesh) return; // Skip if mesh is null
 
         glm::mat4 modelMatrix = node->GetGlobalTransform();

@@ -609,7 +609,7 @@ namespace JLEngine
 		auto instanceCount = instanceTransforms.size();
 
 		instancedBO.SetGPUID(bufferID);
-		instancedBO.SetInstanceCount(instanceCount);
+		instancedBO.SetInstanceCount((uint32)instanceCount);
 
 		// Configure vertex attributes for the mat4 (split into 4 vec4 attributes)
 		for (int i = 0; i < 4; ++i) 

@@ -355,17 +355,6 @@ namespace JLEngine
             });
     }
 
-    Mesh* AssetLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo, std::vector<IndexBuffer>& ibos)
-    {
-        return m_meshManager->Add(name, [&]()
-            {
-                auto mesh = std::make_unique<Mesh>(name);
-
-                mesh->UploadToGPU(m_graphics);
-                return mesh;
-            });
-    }
-
     Mesh* AssetLoader::CreateEmptyMesh(const std::string& name)
     {
         return m_meshManager->Add(name, [&]()

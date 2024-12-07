@@ -6,6 +6,7 @@
 #include "Texture.h"
 #include "Graphics.h"
 #include "AssetLoader.h"
+#include "InstanceBuffer.h"
 
 #include <tiny_gltf.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -21,33 +22,43 @@ namespace JLEngine
 
 	std::shared_ptr<Node> GLBLoader::LoadGLB(const std::string& fileName)
 	{
+		// Load GLB file using tinygltf
 		tinygltf::TinyGLTF loader;
 		tinygltf::Model model;
-		std::string err;
-		std::string warn;
+		std::string err, warn;
 
 		bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, fileName);
+
 		if (!warn.empty())
 		{
-			std::cerr << "Warning: " << warn << std::endl;
+			std::cerr << "GLBLoader Warning: " << warn << std::endl;
 		}
+
 		if (!ret)
 		{
-			std::cerr << "Error: " << err << std::endl;
+			std::cerr << "GLBLoader Error: Failed to load GLB file: " << err << std::endl;
 			return nullptr;
 		}
+
 		if (model.scenes.empty())
 		{
-			std::cerr << "Error: No scenes in the GLB file." << std::endl;
+			std::cerr << "GLBLoader Error: No scenes found in GLB file." << std::endl;
 			return nullptr;
 		}
 
-		const tinygltf::Scene& scene = model.scenes[model.defaultScene];
+		// Retrieve the default scene or the first scene
+		const tinygltf::Scene& scene = model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
 		auto rootNode = std::make_shared<Node>("RootNode");
 
-		// Parse nodes
+		// Parse all nodes in the scene
 		for (int nodeIndex : scene.nodes)
 		{
+			if (nodeIndex < 0 || nodeIndex >= model.nodes.size())
+			{
+				std::cerr << "GLBLoader Warning: Invalid node index in scene." << std::endl;
+				continue;
+			}
+
 			const tinygltf::Node& gltfNode = model.nodes[nodeIndex];
 			auto childNode = ParseNode(model, gltfNode);
 			if (childNode)
@@ -56,6 +67,25 @@ namespace JLEngine
 			}
 		}
 
+		// Process mesh instancing
+		//for (const auto& [meshIndex, nodes] : meshNodeReferences)
+		//{
+		//	if (nodes.size() > 1) // Mesh is referenced by multiple nodes
+		//	{
+		//		auto meshIt = meshCache.find(meshIndex);
+		//		if (meshIt != meshCache.end())
+		//		{
+		//			auto mesh = meshIt->second;
+		//			mesh->SetInstanced(true);
+		//			SetupInstancing(mesh, nodes);
+		//		}
+		//		else
+		//		{
+		//			std::cerr << "GLBLoader Warning: Mesh index " << meshIndex << " is missing from cache." << std::endl;
+		//		}
+		//	}
+		//}
+
 		return rootNode;
 	}
 
@@ -63,9 +93,20 @@ namespace JLEngine
 	{
 		auto node = std::make_shared<Node>(gltfNode.name.empty() ? "UnnamedNode" : gltfNode.name);
 
+		// Handle mesh
 		if (gltfNode.mesh >= 0)
 		{
 			node->SetTag(NodeTag::Mesh);
+
+			// Track which nodes reference this mesh
+			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
+			referencingNodes.push_back(node);
+
+			// Parse the mesh
+			node->mesh = ParseMesh(model, gltfNode.mesh);
+
+			// Debug: Log the mesh association
+			std::cout << "Node " << node->name << " references mesh " << node->mesh->GetName() << std::endl;
 		}
 		else if (gltfNode.camera >= 0)
 		{
@@ -80,11 +121,18 @@ namespace JLEngine
 			node->SetTag(NodeTag::Default);
 		}
 
+		// Parse and apply transformations
 		ParseTransform(node, gltfNode);
 
-		// Parse child nodes
+		// Recursively parse child nodes
 		for (int childIndex : gltfNode.children)
 		{
+			if (childIndex < 0 || childIndex >= model.nodes.size())
+			{
+				std::cerr << "Warning: Invalid child index in node " << node->name << std::endl;
+				continue;
+			}
+
 			const tinygltf::Node& childGltfNode = model.nodes[childIndex];
 			auto childNode = ParseNode(model, childGltfNode);
 			if (childNode)
@@ -105,10 +153,16 @@ namespace JLEngine
 			return it->second; // Return cached mesh
 		}
 
+		if (meshIndex < 0 || meshIndex >= model.meshes.size())
+		{
+			std::cerr << "GLBLoader Error: Invalid mesh index " << meshIndex << "." << std::endl;
+			return nullptr;
+		}
+
 		const tinygltf::Mesh& gltfMesh = model.meshes[meshIndex];
 
-		// Create a new Mesh
-		auto mesh = new Mesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
+		// Create a new Mesh object
+		auto mesh = m_assetLoader->CreateEmptyMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
 		// Group primitives by material and attributes
 		std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
@@ -118,15 +172,26 @@ namespace JLEngine
 			groups[key].push_back(&primitive);
 		}
 
-		// Create batches for each group
+		// Create batches for each grouped set of primitives
 		for (const auto& [key, primitives] : groups)
 		{
 			auto batch = CreateBatch(model, primitives, key);
-			mesh->AddBatch(std::shared_ptr<Batch>(batch));
+			if (batch)
+			{
+				mesh->AddBatch(batch);
+			}
+			else
+			{
+				std::cerr << "GLBLoader Warning: Failed to create batch for material "
+					<< key.materialIndex << "." << std::endl;
+			}
 		}
 
-		// Cache the mesh
+		mesh->UploadToGPU(m_graphics);
+
+		// Cache the mesh for future use
 		meshCache[meshIndex] = mesh;
+
 		return mesh;
 	}
 
@@ -134,48 +199,15 @@ namespace JLEngine
 		const std::vector<const tinygltf::Primitive*>& primitives,
 		MaterialAttributeKey key)
 	{
-		// Temporary data arrays
-		std::vector<float> positions;
-		std::vector<float> normals;
-		std::vector<float> texCoords;
-		std::vector<float> tangents;
+		std::vector<float> positions, normals, texCoords, tangents;
 		std::vector<uint32> indices;
 
+		// Load attributes from primitives
 		uint32_t indexOffset = 0;
+		LoadAttributes(model, primitives, positions, normals, texCoords, tangents, indices, indexOffset);
 
-		for (const auto* primitive : primitives)
-		{
-			// Load vertex attributes
-			LoadPositionAttribute(model, *primitive, positions);
-			LoadNormalAttribute(model, *primitive, normals);
-			LoadTexCoordAttribute(model, *primitive, texCoords);
-			LoadTangentAttribute(model, *primitive, tangents);
-
-			// Check if the primitive has indices
-			if (primitive->indices >= 0)
-			{
-				std::vector<unsigned int> tempIndices;
-				if (LoadIndices(model, *primitive, tempIndices))
-				{
-					for (auto index : tempIndices)
-					{
-						indices.push_back(index + indexOffset); // Apply offset
-					}
-				}
-			}
-			else
-			{
-				// Generate sequential indices for the primitive
-				size_t vertexCount = positions.size() / 3;
-				for (size_t i = 0; i < vertexCount; ++i)
-				{
-					indices.push_back(static_cast<int>(i + indexOffset));
-				}
-			}
-
-			// Update the index offset for the next primitive
-			indexOffset += positions.size() / 3; // Increment by the number of vertices
-		}
+		// Generate missing normals or tangents if required
+		GenerateMissingAttributes(positions, normals, texCoords, tangents);
 
 		// Interleave vertex data
 		std::vector<float> interleavedVertexData;
@@ -195,7 +227,52 @@ namespace JLEngine
 		return std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
 	}
 
-	Material* GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
+	void GLBLoader::SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const
+	{
+		if (!mesh)
+		{
+			std::cerr << "GLBLoader Error: Null mesh passed to SetupInstancing." << std::endl;
+			return;
+		}
+
+		if (nodes.empty())
+		{
+			std::cerr << "GLBLoader Warning: No nodes to instance for mesh " << mesh->GetName() << "." << std::endl;
+			return;
+		}
+
+		// Collect transformation matrices for instancing
+		std::vector<glm::mat4> instanceTransforms;
+		for (const auto& node : nodes)
+		{
+			if (node)
+			{
+				instanceTransforms.push_back(node->localMatrix);
+			}
+			else
+			{
+				std::cerr << "GLBLoader Warning: Null node encountered in instancing setup." << std::endl;
+			}
+		}
+
+		// Create an InstanceBuffer and upload instance data to the GPU
+		auto instanceBuffer = std::make_shared<InstanceBuffer>(false); // Use dynamic buffer for updates
+		instanceBuffer->UploadToGPU(m_graphics, instanceTransforms);
+
+		// Associate the instance buffer with the mesh
+		mesh->SetInstanceBuffer(instanceBuffer);
+
+		// Mark all batches in the mesh as instanced
+		for (auto& batch : mesh->GetBatches())
+		{
+			batch->SetInstanceBuffer(instanceBuffer);
+		}
+
+		std::cout << "GLBLoader: Instancing setup complete for mesh: " << mesh->GetName()
+			<< " with " << instanceTransforms.size() << " instances." << std::endl;
+	}
+
+	std::shared_ptr<Material> GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
 	{
 		// Check cache
 		auto it = materialCache.find(matIdx);
@@ -205,7 +282,7 @@ namespace JLEngine
 			return it->second;
 		}
 
-		auto material = new Material(gltfMaterial.name.empty() ? "UnnamedMat" : gltfMaterial.name);
+		auto material = std::make_shared<Material>(gltfMaterial.name.empty() ? "UnnamedMat" : gltfMaterial.name);
 		int texId = 0;
 
 		// Parse base color factor
@@ -320,19 +397,34 @@ namespace JLEngine
 
 	Texture* GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex)
 	{
+		// Check if the texture index is valid
 		if (textureIndex < 0 || textureIndex >= model.textures.size())
 			return nullptr;
 
+		// Check the cache for an existing texture
+		auto it = textureCache.find(textureIndex);
+		if (it != textureCache.end())
+		{
+			return it->second; // Return the cached texture
+		}
+
+		// Fetch the texture and its image data
 		const auto& texture = model.textures[textureIndex];
 		const auto& imageData = model.images[texture.source];
 
+		// Generate a final name for the texture
 		const std::string& finalName = name + (texture.name.empty() ? "UnnamedTexture" : texture.name);
+
+		// Extract texture details
 		uint32 width = static_cast<uint32>(imageData.width);
 		uint32 height = static_cast<uint32>(imageData.height);
 		int channels = imageData.component;
 		std::vector<unsigned char> data = imageData.image; // Raw pixel data
 
-		auto jltexture = new Texture(name, width, height, data, channels);
+		// Create a new texture
+		auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data);
+
+		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;
 
 		return jltexture;
@@ -385,6 +477,72 @@ namespace JLEngine
 		node->localMatrix = glm::translate(glm::mat4(1.0f), translation) *
 			glm::mat4_cast(rotation) *
 			glm::scale(glm::mat4(1.0f), scale);
+	}
+
+	void GLBLoader::LoadAttributes(const tinygltf::Model& model,
+		const std::vector<const tinygltf::Primitive*>& primitives,
+		std::vector<float>& positions,
+		std::vector<float>& normals,
+		std::vector<float>& texCoords,
+		std::vector<float>& tangents,
+		std::vector<uint32>& indices,
+		uint32& indexOffset)
+	{
+		for (const auto* primitive : primitives)
+		{
+			uint32_t currentVertexCount = static_cast<uint32_t>(positions.size() / 3); // Before adding new vertices
+
+			// Load vertex attributes
+			LoadPositionAttribute(model, *primitive, positions);
+			LoadNormalAttribute(model, *primitive, normals);
+			LoadTexCoordAttribute(model, *primitive, texCoords);
+			LoadTangentAttribute(model, *primitive, tangents);
+
+			// Load indices or generate sequential ones
+			if (primitive->indices >= 0)
+			{
+				std::vector<unsigned int> tempIndexBuffer;
+				if (LoadIndices(model, *primitive, tempIndexBuffer))
+				{
+					for (auto index : tempIndexBuffer)
+					{
+						indices.push_back(index + currentVertexCount); // Apply current offset
+					}
+				}
+			}
+			else
+			{
+				size_t vertexCount = positions.size() / 3 - currentVertexCount;
+				for (size_t i = 0; i < vertexCount; ++i)
+				{
+					indices.push_back(static_cast<int>(i + currentVertexCount));
+				}
+			}
+		}
+	}
+
+	void GLBLoader::GenerateMissingAttributes(std::vector<float>& positions,
+		std::vector<float>& normals,
+		const std::vector<float>& texCoords,
+		std::vector<float>& tangents)
+	{
+		// Generate normals if only positions are present
+		if (normals.empty() && texCoords.empty())
+		{
+			std::cout << "Generating normals..." << std::endl;
+			normals = Geometry::CalculateFlatNormals(positions);
+		}
+
+		// Generate tangents if UVs and normals are available but tangents are missing
+		if (tangents.empty() && !texCoords.empty() && !normals.empty())
+		{
+			std::cout << "Generating tangents..." << std::endl;
+			tangents = Geometry::CalculateTangents(positions, normals, texCoords);
+		}
+		else if (tangents.empty() && (!texCoords.empty() || !normals.empty()))
+		{
+			std::cerr << "Warning: Cannot generate tangents without both UVs and normals." << std::endl;
+		}
 	}
 
 	std::string GLBLoader::GetAttributesKey(const std::map<std::string, int>& attributes)

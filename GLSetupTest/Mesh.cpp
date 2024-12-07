@@ -57,4 +57,12 @@ namespace JLEngine
 			m_graphics->DisposeMesh(this);
 		}
 	}
+
+	void Mesh::SetInstanceBuffer(std::shared_ptr<InstanceBuffer> instanceBuffer)
+	{
+		for (auto& batch : m_batches)
+		{
+			batch->SetInstanceBuffer(instanceBuffer); // Attach instance buffer
+		}
+	}
 }
