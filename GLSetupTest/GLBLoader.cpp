@@ -63,6 +63,10 @@ namespace JLEngine
 
 			const tinygltf::Node& gltfNode = model.nodes[nodeIndex];
 			auto childNode = ParseNode(model, gltfNode);
+
+			if (scene.nodes.size() == 1)
+				return childNode;
+
 			if (childNode)
 			{
 				rootNode->AddChild(childNode);
@@ -229,8 +233,17 @@ namespace JLEngine
 		auto indexBuffer = std::make_shared<IndexBuffer>(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
 		indexBuffer->Set(indices);
 
+		Material* material;
+
 		// Load material
-		auto material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
+		if (!model.materials.empty())
+		{
+			material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
+		}
+		else
+		{
+			material = m_assetLoader->GetDefaultMaterial();
+		}
 
 		// Create and return the batch
 		auto batch = std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
@@ -325,7 +338,7 @@ namespace JLEngine
 		auto it = materialCache.find(matIdx);
 		if (it != materialCache.end())
 		{
-			std::cout << "Using cached material for index: " << matIdx << std::endl;
+			//std::cout << "Using cached material for index: " << matIdx << std::endl;
 			return it->second;
 		}
 

@@ -38,9 +38,55 @@ namespace JLEngine
         std::string name;
         NodeTag tag;
 
-        glm::vec3 translation;
-        glm::quat rotation;
-        glm::vec3 scale;
+        void SetTranslationRotation(const glm::vec3& newTranslation, const glm::quat& newRotation)
+        {
+            translation = newTranslation;
+            rotation = newRotation;
+            UpdateHierarchy();
+        }
+
+        void SetTRS(const glm::vec3& newTranslation, const glm::quat& newRotation, const glm::vec3& newScale)
+        {
+            translation = newTranslation;
+            rotation = newRotation;
+            scale = newScale;
+            UpdateHierarchy();
+        }
+
+        void SetTranslation(const glm::vec3& newTranslation)
+        {
+            translation = newTranslation;
+            UpdateHierarchy();
+        }
+
+        const glm::vec3& GetTranslation() const
+        {
+            return translation;
+        }
+
+        // Rotation
+        void SetRotation(const glm::quat& newRotation)
+        {
+            rotation = newRotation;
+            UpdateHierarchy();
+        }
+
+        const glm::quat& GetRotation() const
+        {
+            return rotation;
+        }
+
+        // Scale
+        void SetScale(const glm::vec3& newScale)
+        {
+            scale = newScale;
+            UpdateHierarchy();
+        }
+
+        const glm::vec3& GetScale() const
+        {
+            return scale;
+        }
 
         glm::mat4 localMatrix;
         bool useMatrix;
@@ -82,6 +128,21 @@ namespace JLEngine
             }
         }
 
+        // You do not want to call this before a node has been attached to the scene root 
+        // So when setting up a new node just set its scale/translation/rotation directly without 
+        // using the SetX methods which call UpdateHierarchy
+        void UpdateHierarchy()
+        {
+            if (auto parentPtr = parent.lock())
+            {
+                UpdateTransforms(parentPtr->GetGlobalTransform());
+            }
+            else
+            {
+                UpdateTransforms(glm::mat4(1.0f));
+            }
+        }
+
         void AddChild(std::shared_ptr<Node>& child)
         {
             child->parent = shared_from_this();
@@ -98,6 +159,11 @@ namespace JLEngine
         {
             return tag;
         }
+
+        glm::vec3 translation;
+        glm::quat rotation;
+        glm::vec3 scale;
+    private:
     };
 
     void PrintNodeHierarchy(const Node* node, int depth = 0);

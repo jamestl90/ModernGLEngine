@@ -1,6 +1,6 @@
 #include <iostream>
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <GLFW/glfw3.h>     
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include "JLEngine.h"
@@ -17,7 +17,7 @@ JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 std::shared_ptr<JLEngine::Node> sceneRoot;
-JLEngine::Texture* texture;
+std::shared_ptr<JLEngine::Node> cardinalDirections;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
 JLEngine::DeferredRenderer* m_defRenderer;
@@ -29,11 +29,18 @@ bool debugGBuffer = false;
 
 void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 {
-
     float aspect = (float)graphics.GetWindow()->GetWidth() / (float)graphics.GetWindow()->GetHeight();
     glm::mat4 view = flyCamera->GetViewMatrix();
     auto frustum = graphics.GetViewFrustum();
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, frustum->GetNear(), frustum->GetFar());
+
+    glm::vec3 lightDirection = glm::normalize(m_defRenderer->GetDirectionalLight().direction);
+    glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    // Calculate the quaternion rotation
+    glm::quat rotation = glm::quatLookAt(lightDirection, upVector);
+
+    cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
 
     m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection, debugGBuffer);
 }
@@ -98,20 +105,17 @@ int main(int argc, char* argv[])
 
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
-    //cubeMesh = JLEngine::LoadModelGLB(std::string("../Assets/cube.glb"), graphics);
-    //planeMesh = JLEngine::LoadModelGLB(std::string(assetFolder + "plane.glb"), graphics);
+    auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
     auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
-    mat->baseColorTexture = texture;
-    //planeMesh->AddMaterial(mat);
-    auto planeNode = std::make_shared<JLEngine::Node>("Plane", JLEngine::NodeTag::Mesh);
-    //planeNode->meshes.push_back(planeMesh);
-    //auto aduckScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "Duck.glb");
-    //auto afishScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "BarramundiFish.glb");
-    //afishScene->translation += glm::vec3(5, 0, 0);
-    //afishScene->scale = glm::vec3(3.0f, 3.0f, 3.0f);
-    //cubeMesh = JLEngine::Geometry::GenerateBoxMesh(graphics, "Box1", 2.0f, 2.0f, 2.0f);
-    //sphereMesh = JLEngine::Geometry::GenerateSphereMesh(graphics, "Sphere1", 1.0f, 15, 15);
-    
+    mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
+    planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
+    planeNode->translation -= glm::vec3(0, 2.5f, 0);
+    sceneRoot->AddChild(planeNode);
+
+    auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    metallicSpheres->translation += glm::vec3(0, 2.5, -5);
+    sceneRoot->AddChild(metallicSpheres);
+
     auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
     sceneRoot->AddChild(helmet);
 
@@ -125,10 +129,9 @@ int main(int argc, char* argv[])
     fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
     sceneRoot->AddChild(fish);
 
-    //sceneRoot->AddChild(std::move(aduckScene));
-    //sceneRoot->AddChild(std::move(afishScene));
-    //sceneRoot->AddChild(planeNode);
-
+    cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
+    sceneRoot->AddChild(cardinalDirections);
+    
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
         width, height, assetFolder);
     m_defRenderer->Initialize();

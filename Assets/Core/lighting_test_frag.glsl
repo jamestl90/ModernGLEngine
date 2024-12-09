@@ -1,7 +1,5 @@
 #version 460 core
 
-#define DEBUG_OUTPUT = 0
-
 in vec2 v_TexCoords;
 
 layout(binding = 0) uniform sampler2D gAlbedoAO;
@@ -12,6 +10,8 @@ layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 5) uniform sampler2D gDLShadowMap;
 
 uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
+uniform mat4 u_ViewInverse;
+uniform mat4 u_ProjectionInverse;
 
 uniform float u_Near;
 uniform float u_Far;
@@ -20,46 +20,26 @@ uniform vec3 lightDirection; // Directional light direction (normalized)
 uniform vec3 lightColor;     // Directional light color
 uniform vec3 cameraPos;      // Camera position for view direction
 
-uniform mat4 u_ViewInverse;
-uniform mat4 u_ProjectionInverse;
-
 out vec4 FragColor;
 
 const vec3 ambientColor = vec3(0.03); // Low ambient lighting
 
-float LinearizeDepth(float depth) 
-{
+// Linearize depth from non-linear clip space
+float LinearizeDepth(float depth, float near, float far) {
     float z = depth * 2.0 - 1.0; // Convert to NDC space
-    return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
+    return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
-// Shadow calculation
-float CalculateShadow(vec3 worldPos) 
-{
-    // Transform world position into light space
-    vec4 lightSpacePos = u_LightSpaceMatrix * vec4(worldPos, 1.0);
-    vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w; // Perspective divide
-    projCoords = projCoords * 0.5 + 0.5; // Transform to [0, 1] range
+// Shadow calculation function
+float ShadowCalculation(vec4 fragPosLightSpace) {
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
 
-    // Sample shadow map and compare depths
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
+        return 1.0;
+
     float closestDepth = texture(gDLShadowMap, projCoords.xy).r;
-    float currentDepth = projCoords.z;
-
-    // Shadow bias to prevent self-shadowing
-    float shadowBias = 0.005;
-    float shadow = currentDepth > closestDepth + shadowBias ? 1.0 : 0.0;
-
-    // Ensure shadow value is valid
-    return projCoords.z > 1.0 ? 0.0 : shadow; // No shadow outside light frustum
-}
-
-vec3 ReconstructWorldPosition(vec2 texCoords, float depth) 
-{
-    vec4 ndcPos = vec4((texCoords * 2.0 - 1.0), depth * 2.0 - 1.0, 1.0);
-    vec4 viewPos = u_ProjectionInverse * ndcPos;
-    viewPos /= viewPos.w;
-    vec4 worldPos = u_ViewInverse * viewPos;
-    return worldPos.xyz;
+    return projCoords.z > closestDepth ? 0.0 : 1.0;
 }
 
 // Fresnel-Schlick approximation for specular reflection
@@ -67,6 +47,7 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+// GGX Normal Distribution Function
 float ggxNDF(float NdotH, float roughness) {
     float a = roughness * roughness;
     float a2 = a * a;
@@ -76,11 +57,7 @@ float ggxNDF(float NdotH, float roughness) {
     return a2 / (3.14159265359 * denom * denom);
 }
 
-float schlickGGX_G(float NdotV, float roughness) {
-    float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;
-    return NdotV / (NdotV * (1.0 - k) + k);
-}
-
+// Smith geometry term
 float geometrySmith(float NdotV, float NdotL, float roughness) {
     float r = roughness + 1.0;
     float k = (r * r) / 8.0;
@@ -89,58 +66,63 @@ float geometrySmith(float NdotV, float NdotL, float roughness) {
     return gV * gL;
 }
 
+// PBR lighting model
 vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 lightColor, float metallic, float roughness, float ao) {
-    // Fresnel-Schlick with roughness
     vec3 halfDir = normalize(lightDir + viewDir);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
     vec3 F = fresnelSchlickRoughness(max(dot(viewDir, halfDir), 0.0), F0, roughness);
 
-    // Normal Distribution Function (GGX)
     float NDF = ggxNDF(max(dot(normal, halfDir), 0.0), roughness);
-
-    // Geometry (Smith's correlated GGX)
     float G = geometrySmith(max(dot(normal, viewDir), 0.0), max(dot(normal, lightDir), 0.0), roughness);
-
-    // Specular term
     vec3 specular = F * NDF * G / (4.0 * max(dot(normal, viewDir), 0.01) * max(dot(normal, lightDir), 0.01));
-
-    // Diffuse term
     vec3 diffuse = (1.0 - F) * albedo / 3.14159265359;
 
-    // Lighting
     vec3 lighting = (diffuse + specular) * lightColor * max(dot(normal, lightDir), 0.0);
-
-    // Apply ambient occlusion
-    lighting *= ao;
+    lighting *= ao; // Apply ambient occlusion
 
     return lighting;
 }
 
+// Reconstruct world position from depth
+vec3 ReconstructWorldPosition(vec2 texCoords, float depth) 
+{
+    float ndcDepth = depth * 2.0 - 1.0; // Convert depth to NDC
+    vec4 clipSpacePos = vec4(texCoords * 2.0 - 1.0, ndcDepth, 1.0);
+    vec4 viewSpacePos = u_ProjectionInverse * clipSpacePos;
+    viewSpacePos /= viewSpacePos.w; // Perspective divide
+    vec4 worldSpacePos = u_ViewInverse * viewSpacePos;
+    return worldSpacePos.xyz;
+}
+
 void main() 
 {
+    // Sample G-buffer
     float depth = texture(gDepth, v_TexCoords).r;
-    float linearDepth = LinearizeDepth(depth);
+    float linearDepth = LinearizeDepth(depth, u_Near, u_Far);
     vec3 worldPos = ReconstructWorldPosition(v_TexCoords, linearDepth);
 
     vec4 albedoAO = texture(gAlbedoAO, v_TexCoords);
     vec3 albedo = albedoAO.rgb;
     float ao = albedoAO.a;
+
     vec3 normal = normalize(texture(gNormals, v_TexCoords).xyz * 2.0 - 1.0); // Decode normal
     vec2 metallicRoughness = texture(gMetallicRoughness, v_TexCoords).rg;
     float metallic = metallicRoughness.r;
-    float roughness = max(metallicRoughness.g, 0.05); // Prevent extreme highlights
+    float roughness = max(metallicRoughness.g, 0.05);
 
     vec3 lightDir = normalize(-lightDirection);
-    vec3 viewDir = normalize(cameraPos - worldPos); // Correct view direction
+    vec3 viewDir = normalize(cameraPos - worldPos);
 
-    float shadow = CalculateShadow(worldPos);
-
+    // Calculate PBR lighting
     vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness, ao);
 
-    lighting *= (1.0 - shadow);
+    // Shadow computation
+    vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(worldPos, 1.0);
+    float shadow = ShadowCalculation(fragPosLightSpace);
+    lighting *= shadow;
 
     // Add ambient and emissive contributions
-    lighting += ambientColor * albedo; 
+    lighting += ambientColor * albedo;
     lighting += texture(gEmissive, v_TexCoords).rgb * 1.25f;
     lighting *= 2.5f;
 

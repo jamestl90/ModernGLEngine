@@ -18,7 +18,7 @@ namespace JLEngine
 	{
 		float fov = 45.0f;
 		float nearDist = 0.1f;
-		float farDist = 1000.0f;
+		float farDist = 100.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 
@@ -279,7 +279,6 @@ namespace JLEngine
 			}
 		}		
 	}
-
 
 	void Graphics::CreateShaderFromText(ShaderProgram* program, std::vector<std::string> shaderTexts)
 	{

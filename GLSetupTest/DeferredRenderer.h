@@ -30,19 +30,20 @@ namespace JLEngine
 
         void Initialize();
         void Resize(int width, int height);
-        void DebugGBuffer(int debugMode);
+        
         void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer);
 
-        void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
+        const Light& GetDirectionalLight() const { return m_directionalLight; }
 
     private:
+        void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
+        void DebugGBuffer(int debugMode);
+        void DebugDirectionalLightShadows();
         void GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         glm::mat4 DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void TraverseSceneGraph(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void RenderNode(Node* node, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetUniformsForGBuffer(Material* mat);
-        void RenderGroups(const RenderGroupMap& renderGroups, const glm::mat4& viewMatrix);
+        void RenderGroups(const RenderGroupMap& renderGroups);
         void GroupRenderables(Node* node, RenderGroupMap& renderGroups);
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
@@ -53,12 +54,13 @@ namespace JLEngine
         int m_width, m_height;
         std::string m_assetFolder;
 
-        // Framebuffers and G-buffer
         RenderTarget* m_gBufferTarget;
 
         ShaderProgram* m_gBufferShader;
-        ShaderProgram* m_gBufferDebugShader;
         ShaderProgram* m_lightingTestShader;
+
+        ShaderProgram* m_gBufferDebugShader;
+        ShaderProgram* m_textureDebugShader;
 
         VertexBuffer m_triangleVertexBuffer;
         GLuint m_triangleVAO;

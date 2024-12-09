@@ -39,10 +39,11 @@ namespace JLEngine
         const std::shared_ptr<IndexBuffer>& GetIndexBuffer() const { return indexBuffer; }
         Material* GetMaterial() const { return material; }
         const std::shared_ptr<InstanceBuffer>& GetInstanceBuffer() const { return instanceBuffer; }
+
         bool IsInstanced() const { return isInstanced; }
+        void SetMaterial(Material* mat) { material = mat; }
 
         std::string attributesKey;
-        JLEngine::Node* owner;
 
     private:
         // Core buffers

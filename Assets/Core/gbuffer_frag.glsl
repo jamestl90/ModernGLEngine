@@ -113,7 +113,7 @@ void main()
 
     // Write to G-buffer
     gAlbedoAO = vec4(baseColor.rgb, ao);          // Albedo + Ambient Occlusion
-    gNormalSmooth = vec4(normal, 1.0 - metallicRoughness.y); // Normal + Smoothness
-    gMetallicRoughness = metallicRoughness;       // Metallic + Roughness
+    gNormalSmooth = vec4(normal, 0.0);            // Normal + Reserved
+    gMetallicRoughness = metallicRoughness;       // Metallic + Roughness + Reserved x2
     gEmissive = vec4(emissive, 0.0);              // Emissive + Reserved
 }
