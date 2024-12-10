@@ -3,6 +3,7 @@
 
 #include "Input.h"
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 namespace JLEngine
 {
@@ -26,6 +27,8 @@ namespace JLEngine
         
         void ProcessKeyboard(GLFWwindow* window, float deltaTime) 
         {
+            m_window = window;
+
             if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
                 handleKeyPress(GLFW_KEY_W, (float)deltaTime);
             if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -34,6 +37,8 @@ namespace JLEngine
                 handleKeyPress(GLFW_KEY_A, (float)deltaTime);
             if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
                 handleKeyPress(GLFW_KEY_D, (float)deltaTime);
+
+            // std::cout << glm::to_string(Position) << std::endl;
         }
 
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true) 
@@ -70,7 +75,11 @@ namespace JLEngine
 
         void handleKeyPress(int key, float deltaTime)
         {
-            float velocity = MovementSpeed * deltaTime;
+            float multi = 1.0f;
+            if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT))
+                multi = 3.0f;
+
+            float velocity = MovementSpeed * deltaTime * multi;
             if (key == GLFW_KEY_W)
                 Position += Front * velocity;
             if (key == GLFW_KEY_S)
@@ -81,7 +90,7 @@ namespace JLEngine
                 Position += Right * velocity;
         }
 
-        Window* m_window;
+        GLFWwindow* m_window;
         Input* m_input;
         glm::vec3 Position;
         glm::vec3 Front;

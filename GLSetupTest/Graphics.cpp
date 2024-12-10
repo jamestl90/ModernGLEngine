@@ -569,11 +569,7 @@ namespace JLEngine
 
 	void Graphics::BindTexture( uint32 target, uint32 id )
 	{
-		if (m_boundTextures[m_activeTextureUnit] != id)
-		{
-			glBindTexture(target, id);
-			m_boundTextures[m_activeTextureUnit] = id;
-		}
+		glBindTexture(target, id);
 	}
 
 	void Graphics::BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit) 
@@ -595,11 +591,7 @@ namespace JLEngine
 
 	void Graphics::SetActiveTexture( uint32 texunit )
 	{
-		if (m_activeTextureUnit != texunit)
-		{
-			glActiveTexture(GL_TEXTURE0 + texunit);
-			m_activeTextureUnit = texunit;
-		}
+		glActiveTexture(GL_TEXTURE0 + texunit);
 	}
 
 	void Graphics::CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms)

@@ -355,7 +355,7 @@ namespace JLEngine
             });
     }
 
-    Mesh* AssetLoader::CreateEmptyMesh(const std::string& name)
+    Mesh* AssetLoader::CreateMesh(const std::string& name)
     {
         return m_meshManager->Add(name, [&]()
             {

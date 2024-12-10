@@ -79,7 +79,6 @@ namespace JLEngine
 		 glm::mat4& CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view);
 
 		 void SetViewport(uint32 x, uint32 y, uint32 width, uint32 height);
-		 //void UpdateViewport();
 		 void SwapBuffers();
 		 void Clear(uint32 flags);
 		 void ClearColour(float x, float y, float z, float w);
@@ -116,7 +115,6 @@ namespace JLEngine
 		 void UnbindShader();
 
 		// State modifier
-		
 		void SetMSAA(bool flag);
 		bool UsingMSAA() const;
 
@@ -131,7 +129,6 @@ namespace JLEngine
 		void SetCullFace(uint32 face);
 
 		// Texture 
-		
 		bool ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight);
 		bool CreateRenderTarget(RenderTarget* target);
 		void DisposeRenderTarget(RenderTarget* target);
@@ -146,7 +143,6 @@ namespace JLEngine
 		void SetActiveTexture(uint32 texunit);
 
 		// Buffer objects
-		
 		void CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms);
 		void DisposeInstanceBuffer(InstanceBuffer& instancedBO);
 		void CreateBatch(Batch& batch);

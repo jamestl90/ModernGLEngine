@@ -19,7 +19,6 @@ namespace JLEngine
     GLBLoader::GLBLoader(Graphics* graphics, AssetLoader* assetLoader) 
 		: m_graphics(graphics), m_assetLoader(assetLoader)
     {
-        
     }
 
 	std::shared_ptr<Node> GLBLoader::LoadGLB(const std::string& fileName)
@@ -63,6 +62,7 @@ namespace JLEngine
 
 			const tinygltf::Node& gltfNode = model.nodes[nodeIndex];
 			auto childNode = ParseNode(model, gltfNode);
+			childNode->name = gltfNode.name;
 
 			if (scene.nodes.size() == 1)
 				return childNode;
@@ -168,14 +168,7 @@ namespace JLEngine
 		const tinygltf::Mesh& gltfMesh = model.meshes[meshIndex];
 
 		// Create a new Mesh object
-		auto mesh = m_assetLoader->CreateEmptyMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
-
-		//for (auto& primitive : gltfMesh.primitives)
-		//{
-		//	MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
-		//	auto batch = CreateBatch2(model, primitive, key);
-		//	mesh->AddBatch(batch);
-		//}
+		auto mesh = m_assetLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
 		// Group primitives by material and attributes
 		std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;

@@ -16,30 +16,61 @@ uniform mat4 u_ProjectionInverse;
 uniform float u_Near;
 uniform float u_Far;
 
-uniform vec3 lightDirection; // Directional light direction (normalized)
-uniform vec3 lightColor;     // Directional light color
-uniform vec3 cameraPos;      // Camera position for view direction
+uniform vec3 u_LightDirection; // Directional light direction (normalized)
+uniform vec3 u_LightColor;     // Directional light color
+uniform vec3 u_CameraPos;      // Camera position for view direction
 
 out vec4 FragColor;
 
 const vec3 ambientColor = vec3(0.03); // Low ambient lighting
 
 // Linearize depth from non-linear clip space
-float LinearizeDepth(float depth, float near, float far) {
+float LinearizeDepth(float depth, float near, float far) 
+{
     float z = depth * 2.0 - 1.0; // Convert to NDC space
     return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
 // Shadow calculation function
-float ShadowCalculation(vec4 fragPosLightSpace) {
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir) 
+{
+   // Perform perspective divide to get normalized device coordinates
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+
+    // Transform to [0, 1] range for shadow map sampling
     projCoords = projCoords * 0.5 + 0.5;
 
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
-        return 1.0;
+    // Check if the fragment is outside the shadow map bounds
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+        return 1.0; // Outside the shadow map, fully lit
+    }
 
+    // Sample depth from shadow map
     float closestDepth = texture(gDLShadowMap, projCoords.xy).r;
-    return projCoords.z > closestDepth ? 0.0 : 1.0;
+
+    // Current fragment depth in light space
+    float currentDepth = projCoords.z;
+
+    // Bias to prevent shadow acne
+    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.005);
+
+    // Basic shadow test
+    float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
+
+    // Optional: Percentage Closer Filtering (PCF)
+    //const float texelSize = 1.0 / 2048.0; // Shadow map resolution (e.g., 2048x2048)
+    float pcfShadow = 0.0;
+    float texelSize = 1.0 / 2048.0;
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            vec2 offset = vec2(x, y) * texelSize;
+            float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
+            pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
+        }
+    }
+    shadow = pcfShadow / 9.0; // Average the 3x3 PCF kernel
+
+    return shadow;
 }
 
 // Fresnel-Schlick approximation for specular reflection
@@ -58,7 +89,8 @@ float ggxNDF(float NdotH, float roughness) {
 }
 
 // Smith geometry term
-float geometrySmith(float NdotV, float NdotL, float roughness) {
+float geometrySmith(float NdotV, float NdotL, float roughness) 
+{
     float r = roughness + 1.0;
     float k = (r * r) / 8.0;
     float gV = NdotV / (NdotV * (1.0 - k) + k);
@@ -67,7 +99,8 @@ float geometrySmith(float NdotV, float NdotL, float roughness) {
 }
 
 // PBR lighting model
-vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 lightColor, float metallic, float roughness, float ao) {
+vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 lightColor, float metallic, float roughness, float ao)
+{
     vec3 halfDir = normalize(lightDir + viewDir);
     vec3 F0 = mix(vec3(0.04), albedo, metallic);
     vec3 F = fresnelSchlickRoughness(max(dot(viewDir, halfDir), 0.0), F0, roughness);
@@ -89,7 +122,7 @@ vec3 ReconstructWorldPosition(vec2 texCoords, float depth)
     float ndcDepth = depth * 2.0 - 1.0; // Convert depth to NDC
     vec4 clipSpacePos = vec4(texCoords * 2.0 - 1.0, ndcDepth, 1.0);
     vec4 viewSpacePos = u_ProjectionInverse * clipSpacePos;
-    viewSpacePos /= viewSpacePos.w; // Perspective divide
+    viewSpacePos /= viewSpacePos.w; 
     vec4 worldSpacePos = u_ViewInverse * viewSpacePos;
     return worldSpacePos.xyz;
 }
@@ -99,7 +132,7 @@ void main()
     // Sample G-buffer
     float depth = texture(gDepth, v_TexCoords).r;
     float linearDepth = LinearizeDepth(depth, u_Near, u_Far);
-    vec3 worldPos = ReconstructWorldPosition(v_TexCoords, linearDepth);
+    vec3 worldPos = ReconstructWorldPosition(v_TexCoords, depth);
 
     vec4 albedoAO = texture(gAlbedoAO, v_TexCoords);
     vec3 albedo = albedoAO.rgb;
@@ -110,20 +143,17 @@ void main()
     float metallic = metallicRoughness.r;
     float roughness = max(metallicRoughness.g, 0.05);
 
-    vec3 lightDir = normalize(-lightDirection);
-    vec3 viewDir = normalize(cameraPos - worldPos);
+    vec3 lightDir = normalize(-u_LightDirection);
+    vec3 viewDir = normalize(u_CameraPos - worldPos);
 
-    // Calculate PBR lighting
-    vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, lightColor, metallic, roughness, ao);
+    vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, u_LightColor, metallic, roughness, ao);
 
-    // Shadow computation
     vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(worldPos, 1.0);
-    float shadow = ShadowCalculation(fragPosLightSpace);
+    float shadow = ShadowCalculation(fragPosLightSpace, normal, lightDir);
     lighting *= shadow;
 
-    // Add ambient and emissive contributions
     lighting += ambientColor * albedo;
-    lighting += texture(gEmissive, v_TexCoords).rgb * 1.25f;
+    lighting += texture(gEmissive, v_TexCoords).rgb * 1.15f;
     lighting *= 2.5f;
 
     FragColor = vec4(lighting, 1.0);

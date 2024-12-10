@@ -34,6 +34,7 @@ namespace JLEngine
         void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
+        void SetDirectionalShadowDistance(float dist) { m_dlShadowDistance = dist; }
 
     private:
         void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
@@ -48,6 +49,8 @@ namespace JLEngine
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
 
+        glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
+
         Graphics* m_graphics;
         AssetLoader* m_assetLoader;
 
@@ -58,7 +61,7 @@ namespace JLEngine
 
         ShaderProgram* m_gBufferShader;
         ShaderProgram* m_lightingTestShader;
-
+         
         ShaderProgram* m_gBufferDebugShader;
         ShaderProgram* m_textureDebugShader;
 
@@ -66,6 +69,7 @@ namespace JLEngine
         GLuint m_triangleVAO;
 
         DirectionalLightShadowMap* m_dlShadowMap;
+        float m_dlShadowDistance;
         Light m_directionalLight;
     };
 }

@@ -88,7 +88,7 @@ namespace JLEngine
 		// Mesh Loading ///////////////////////////////////
 		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo);
 		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo);
-		Mesh* CreateEmptyMesh(const std::string& name);
+		Mesh* CreateMesh(const std::string& name);
 
 		// SSBO Loading ///////////////////////////////////
 		ShaderStorageBuffer* CreateSSBO(const std::string& name, size_t size);

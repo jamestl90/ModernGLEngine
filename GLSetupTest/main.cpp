@@ -37,7 +37,6 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
     glm::vec3 lightDirection = glm::normalize(m_defRenderer->GetDirectionalLight().direction);
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
-    // Calculate the quaternion rotation
     glm::quat rotation = glm::quatLookAt(lightDirection, upVector);
 
     cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
@@ -131,6 +130,9 @@ int main(int argc, char* argv[])
 
     cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
     sceneRoot->AddChild(cardinalDirections);
+
+    auto skybox = engine.GetAssetLoader()->LoadGLB(assetFolder + "/skybox.glb");
+    sceneRoot->AddChild(skybox);
     
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
         width, height, assetFolder);

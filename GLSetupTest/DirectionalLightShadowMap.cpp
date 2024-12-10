@@ -7,8 +7,8 @@
 
 namespace JLEngine
 {
-    DirectionalLightShadowMap::DirectionalLightShadowMap(Graphics* graphics, ShaderProgram* shaderProg) 
-        : m_shadowMapShader(shaderProg), m_graphics(graphics)
+    DirectionalLightShadowMap::DirectionalLightShadowMap(Graphics* graphics, ShaderProgram* shaderProg)
+        : m_shadowMapShader(shaderProg), m_graphics(graphics), m_shadowFBO(0)
     {
         
     }

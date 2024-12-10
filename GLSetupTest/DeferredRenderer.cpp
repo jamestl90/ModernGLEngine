@@ -9,7 +9,7 @@ namespace JLEngine
 {
     DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
         : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_textureDebugShader(nullptr),
-        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), 
+        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), m_dlShadowDistance(50.0f),
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr) {}
 
     DeferredRenderer::~DeferredRenderer() 
@@ -80,23 +80,7 @@ namespace JLEngine
 
     glm::mat4 DeferredRenderer::DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        auto frustum = m_graphics->GetViewFrustum();
-        auto nearPlane = 0.1f;
-        auto farPlane = 50.0f;
-
-        float orthoSize = 10.0f; 
-
-        glm::mat4 lightProjection = glm::ortho(
-            -orthoSize, orthoSize,  // Left, Right
-            -orthoSize, orthoSize,  // Bottom, Top
-            nearPlane, farPlane       // Near, Far
-        );
-
-        glm::vec3 lightPos = m_directionalLight.position;
-        glm::vec3 lightTarget = glm::vec3(0.0f);
-        glm::mat4 lightView = glm::lookAt(lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f));
-        
-        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+        glm::mat4 lightSpaceMatrix = GetLightMatrix(m_directionalLight.position, m_directionalLight.direction, 10.0f, 0.01f, m_dlShadowDistance);
 
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
 
@@ -229,23 +213,23 @@ namespace JLEngine
 
     void DeferredRenderer::DebugDirectionalLightShadows()
     {
-        m_graphics->SetViewport(0, 0, m_width * 0.5f, m_height);
+        m_graphics->SetViewport(0, 0, (int)(m_width * 0.5f), m_height);
 
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
         m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(m_textureDebugShader->GetProgramId());
-        glActiveTexture(GL_TEXTURE0 + 0);
-        glBindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
+        m_graphics->BindShader(m_textureDebugShader->GetProgramId());
+        m_graphics->SetActiveTexture(0);
+        m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
         m_textureDebugShader->SetUniformi("debugTexture", 0);
         m_textureDebugShader->SetUniformi("u_Linearize", 0);
-        m_textureDebugShader->SetUniformf("u_Near", -10.0f);
-        m_textureDebugShader->SetUniformf("u_Far", 50.0f);
+        m_textureDebugShader->SetUniformf("u_Near", 0.01f);
+        m_textureDebugShader->SetUniformf("u_Far", m_dlShadowDistance);
 
         RenderScreenSpaceTriangle();
 
-        m_graphics->SetViewport(m_width * 0.5f, 0, m_width * 0.5f, m_height);
+        m_graphics->SetViewport((int)(m_width * 0.5f), 0, (int)(m_width * 0.5f), m_height);
 
         m_gBufferTarget->BindDepthTexture(0);
         m_gBufferDebugShader->SetUniformi("debugTexture", 0);
@@ -261,23 +245,6 @@ namespace JLEngine
 
     void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer)
     {
-        //auto frustum = m_graphics->GetViewFrustum();
-        //auto nearPlane = frustum->GetNear();
-        //auto farPlane = frustum->GetFar();
-        //
-        //float orthoSize = 10.0f; // Adjust based on scene size
-        //
-        //// Calculate the light projection matrix
-        //glm::mat4 lightProjection = glm::ortho(
-        //    -orthoSize, orthoSize,  // Left, Right
-        //    -orthoSize, orthoSize,  // Bottom, Top
-        //    nearPlane, (farPlane * 1.0f)     // Near, Far
-        //);
-        //
-        //glm::vec3 lightPos = m_directionalLight.position;
-        //glm::vec3 lightTarget = m_directionalLight.position + (m_directionalLight.direction * 2.0f);
-        //glm::mat4 lightView = glm::lookAt(lightPos, lightTarget, glm::vec3(0.0f, 0.0f, -1.0f));
-
         RenderGroupMap renderGroups;
         GroupRenderables(sceneRoot, renderGroups);
 
@@ -287,11 +254,11 @@ namespace JLEngine
 
         if (debugGBuffer)
         {
-            DebugDirectionalLightShadows();
-            //for (int mode = 0; mode < 6; ++mode)
-            //{
-            //    DebugGBuffer(mode);
-            //}
+            //DebugDirectionalLightShadows();
+            for (int mode = 0; mode < 6; ++mode)
+            {
+                DebugGBuffer(mode);
+            }
         }
         else
         {
@@ -316,18 +283,16 @@ namespace JLEngine
         m_lightingTestShader->SetUniformi("gMetallicRoughness", 2);
         m_gBufferTarget->BindTexture(3, 3);
         m_lightingTestShader->SetUniformi("gEmissive", 3);
-        glActiveTexture(GL_TEXTURE4);
-        glBindTexture(GL_TEXTURE_2D, m_gBufferTarget->GetDepthBufferId());
+        m_gBufferTarget->BindDepthTexture(4);
         m_lightingTestShader->SetUniformi("gDepth", 4);
-
-        glActiveTexture(GL_TEXTURE5);
-        glBindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
+        m_graphics->SetActiveTexture(5);
+        m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
         m_lightingTestShader->SetUniformi("gDLShadowMap", 5);
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
-        m_lightingTestShader->SetUniform("lightDirection", m_directionalLight.direction);
-        m_lightingTestShader->SetUniform("lightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
-        m_lightingTestShader->SetUniform("cameraPos", eyePos);
+        m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
+        m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
+        m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
 
@@ -343,6 +308,22 @@ namespace JLEngine
         m_graphics->BindVertexArray(m_triangleVAO);
         m_graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
         m_graphics->BindVertexArray(0);
+    }
+
+    glm::mat4 DeferredRenderer::GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float nearPlane, float farPlane)
+    {
+        float orthoSize = size;
+
+        glm::mat4 lightProjection = glm::ortho(
+            -orthoSize, orthoSize,  // Left, Right
+            -orthoSize, orthoSize,  // Bottom, Top
+            nearPlane, farPlane       // Near, Far
+        );
+
+        glm::vec3 lightTarget = glm::normalize(lightPos + (lightDir * 2.0f));
+        glm::mat4 lightView = glm::lookAt(lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        return lightProjection * lightView;
     }
 
     void DeferredRenderer::GroupRenderables(Node* node, RenderGroupMap& renderGroups)
