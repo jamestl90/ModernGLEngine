@@ -9,6 +9,5 @@ out vec4 FragColor;
 void main() 
 {
     vec3 tex = texture(debugTexture, v_TexCoords).rgb;
-
     FragColor = vec4(tex, 1.0);
 }

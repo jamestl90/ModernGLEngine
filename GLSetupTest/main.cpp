@@ -109,29 +109,34 @@ int main(int argc, char* argv[])
     mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
     planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
     planeNode->translation -= glm::vec3(0, 2.5f, 0);
-    sceneRoot->AddChild(planeNode);
-
+    
     auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    sceneRoot->AddChild(metallicSpheres);
-
+    metallicSpheres->receiveShadows = false;
+    
     auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    sceneRoot->AddChild(helmet);
 
     auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
     potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
     potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
-    sceneRoot->AddChild(potofcoals);
 
     auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
     fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
     fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
-    sceneRoot->AddChild(fish);
-
+    
     cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
-    sceneRoot->AddChild(cardinalDirections);
 
     auto skybox = engine.GetAssetLoader()->LoadGLB(assetFolder + "/skybox.glb");
+
+    //auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
+
+    //sceneRoot->AddChild(bistroScene);
+    sceneRoot->AddChild(planeNode);
+    sceneRoot->AddChild(metallicSpheres);
+    sceneRoot->AddChild(helmet);
+    sceneRoot->AddChild(potofcoals);
+    sceneRoot->AddChild(fish);
+    sceneRoot->AddChild(cardinalDirections);
     sceneRoot->AddChild(skybox);
     
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),

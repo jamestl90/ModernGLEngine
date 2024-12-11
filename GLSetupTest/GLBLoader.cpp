@@ -7,6 +7,7 @@
 #include "Graphics.h"
 #include "AssetLoader.h"
 #include "InstanceBuffer.h"
+#include "JLHelpers.h"
 
 #include <tiny_gltf.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -102,7 +103,15 @@ namespace JLEngine
 		// Handle mesh
 		if (gltfNode.mesh >= 0)
 		{
-			node->SetTag(NodeTag::Mesh);
+			auto lowerStr = JLEngine::Str::ToLower(gltfNode.name);
+			if (lowerStr.find("skybox") == std::string::npos)
+			{
+				node->SetTag(NodeTag::Mesh);
+			}
+			else
+			{
+				node->SetTag(NodeTag::Skybox);
+			}
 
 			// Track which nodes reference this mesh
 			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];

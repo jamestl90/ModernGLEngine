@@ -9,8 +9,9 @@ namespace JLEngine
 {
     DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
         : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_textureDebugShader(nullptr),
-        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), m_dlShadowDistance(50.0f),
-        m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr) {}
+        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), m_dlShadowDistance(100.0f),
+        m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), m_skybox(nullptr),
+        m_enableDLShadows(true) {}
 
     DeferredRenderer::~DeferredRenderer() 
     {
@@ -20,7 +21,7 @@ namespace JLEngine
     void DeferredRenderer::Initialize() 
     {
         m_directionalLight.direction = -glm::normalize(glm::vec3(0, 10.0f, 10.0f) - glm::vec3(0.0f));
-        m_directionalLight.position = glm::vec3(0, 10.0f, 10.0f);
+        m_directionalLight.position = glm::vec3(0, 35.0f, 20.0f);
 
         auto finalAssetPath = m_assetFolder + "Core/";
 
@@ -34,6 +35,7 @@ namespace JLEngine
         m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
         m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
         m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
+        m_skyboxShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "skybox_vert.glsl", "skybox_frag.glsl", finalAssetPath);
 
         InitScreenSpaceTriangle();
     }
@@ -104,6 +106,9 @@ namespace JLEngine
     void DeferredRenderer::GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         m_graphics->BindFrameBuffer(m_gBufferTarget->GetFrameBufferId());
+
+        SkyboxPass(viewMatrix, projMatrix);
+
         m_graphics->SetDepthMask(GL_TRUE);
         m_graphics->Enable(GL_DEPTH_TEST);
         m_graphics->Disable(GL_BLEND);
@@ -117,8 +122,6 @@ namespace JLEngine
         m_gBufferShader->SetUniform("u_Projection", projMatrix);
 
         RenderGroups(renderGroups);
-
-        m_graphics->BindFrameBuffer(0); 
     }
 
     void DeferredRenderer::SetUniformsForGBuffer(Material* mat)
@@ -252,6 +255,8 @@ namespace JLEngine
 
         GBufferPass(renderGroups, sceneRoot, viewMatrix, projMatrix);
 
+        //SkyboxPass(viewMatrix, projMatrix);
+
         if (debugGBuffer)
         {
             //DebugDirectionalLightShadows();
@@ -266,10 +271,39 @@ namespace JLEngine
         }
     }
 
+    void DeferredRenderer::SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        if (!m_skybox) return;
+
+        auto& batch = m_skybox->mesh->GetBatches()[0];
+        auto skyboxTexture = batch->GetMaterial()->baseColorTexture;
+        auto& vertexBuffer = batch->GetVertexBuffer();
+        auto& indexBuffer = batch->GetIndexBuffer();
+
+        //m_graphics->BindFrameBuffer(0);
+        m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
+        m_graphics->SetDepthMask(GL_FALSE);
+        m_graphics->Enable(GL_DEPTH_TEST);
+
+        m_graphics->BindShader(m_skyboxShader->GetProgramId());
+        m_skyboxShader->SetUniform("u_Model", m_skybox->localMatrix);
+        m_skyboxShader->SetUniform("u_View", glm::mat4(glm::mat3(viewMatrix)));
+        m_skyboxShader->SetUniform("u_Projection", projMatrix);
+        m_graphics->SetActiveTexture(0);
+        m_graphics->BindTexture(GL_TEXTURE_2D, skyboxTexture->GetGPUID());
+        m_skyboxShader->SetUniformi("u_SkyboxTexture", 0);
+
+        m_graphics->BindVertexArray(vertexBuffer->GetVAO());
+        m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->GetId());
+
+        m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)indexBuffer->Size(), GL_UNSIGNED_INT, nullptr);
+
+        m_graphics->SetDepthMask(GL_TRUE);
+    }
+
     void DeferredRenderer::TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
     {
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
-        m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_graphics->BindShader(m_lightingTestShader->GetProgramId());
@@ -343,6 +377,10 @@ namespace JLEngine
                 RenderGroupKey key(batch->GetMaterial()->GetHandle(), batch->attributesKey);
                 renderGroups[key].emplace_back(batch.get(), worldMatrix);
             }
+        }
+        if (node->GetTag() == NodeTag::Skybox && node->mesh)
+        {
+            m_skybox = node;
         }
 
         // Recursively process child nodes

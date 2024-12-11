@@ -35,8 +35,11 @@ namespace JLEngine
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
         void SetDirectionalShadowDistance(float dist) { m_dlShadowDistance = dist; }
+        bool GetDLShadowsEnabled() { return m_enableDLShadows; }
+        void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
     private:
+        void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
@@ -71,6 +74,10 @@ namespace JLEngine
         DirectionalLightShadowMap* m_dlShadowMap;
         float m_dlShadowDistance;
         Light m_directionalLight;
+        bool m_enableDLShadows;
+
+        Node* m_skybox;
+        ShaderProgram* m_skyboxShader;
     };
 }
 

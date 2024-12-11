@@ -19,6 +19,7 @@ namespace JLEngine
         Mesh,       // Node with a mesh
         Camera,     // Node with a camera
         Light,      // Node with a light
+        Skybox,
         SceneRoot
     };
 
@@ -88,17 +89,6 @@ namespace JLEngine
             return scale;
         }
 
-        glm::mat4 localMatrix;
-        bool useMatrix;
-
-        Light* m_lightData;
-        Mesh* mesh;
-        std::vector<std::shared_ptr<Node>> children;
-
-        std::weak_ptr<Node> parent;
-
-        glm::mat4 globalTransform; // Cached global transform
-
         glm::mat4 GetLocalTransform() const
         {
             if (useMatrix)
@@ -160,9 +150,21 @@ namespace JLEngine
             return tag;
         }
 
+        glm::mat4 localMatrix;
+        bool useMatrix;
+
+        Light* m_lightData;
+        Mesh* mesh;
+
+        std::vector<std::shared_ptr<Node>> children;
+        std::weak_ptr<Node> parent;
+
+        glm::mat4 globalTransform; // Cached global transform
         glm::vec3 translation;
         glm::quat rotation;
         glm::vec3 scale;
+
+        bool receiveShadows = true;
     private:
     };
 

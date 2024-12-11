@@ -6,19 +6,13 @@ uniform sampler2D gAlbedoAO;
 uniform sampler2D gNormals;
 uniform sampler2D gMetallicRoughness;
 uniform sampler2D gEmissive;
-uniform sampler2D gDepth; // Depth buffer sampler
+uniform sampler2D gDepth;           // Depth buffer sampler
 uniform int debugMode;            // 0 = Albedo, 1 = Normals, 2 = Metallic, 3 = AO, 4 = Roughness, 5 = Emissive
 
 uniform float u_Near;
 uniform float u_Far;
 
 out vec4 FragColor;
-
-float LinearizeDepth(float depth, float nearPlane, float farPlane) 
-{
-    float z = depth * 2.0 - 1.0; // Convert [0,1] depth to NDC [-1,1]
-    return (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - z * (farPlane - nearPlane));
-}
 
 void main() 
 {
@@ -44,11 +38,8 @@ void main()
     } 
     else if (debugMode == 4) 
     {
-        float nearPlane = u_Near;
-        float farPlane = u_Far;
         float depth = texture(gDepth, v_TexCoords).r;
-        float linearDepth = LinearizeDepth(depth, nearPlane, farPlane);
-        FragColor = vec4(vec3(linearDepth / farPlane), 1.0); // Normalize to [0, 1]
+        FragColor = vec4(vec3(depth), 1.0); // Normalize to [0, 1]
     } 
     else if (debugMode == 5) 
     {
