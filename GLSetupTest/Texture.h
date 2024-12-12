@@ -32,6 +32,9 @@ namespace JLEngine
         void SetFormat(GLenum internalFormat, GLenum format, GLenum dataType);
         void SetClamped(bool clamped) { m_clamped = clamped; }
         void EnableMipmaps(bool enable) { m_mipmaps = enable; }
+        bool GenerateMipmaps() { return m_mipmaps; }
+        void SetImmutable(bool val) { m_immutable = val; }
+        const bool IsImmutable() const { return m_immutable; }
         
         uint32 GetFormat() const { return m_format; }
         uint32 GetInternalFormat() const { return m_internalFormat; }
@@ -60,6 +63,7 @@ namespace JLEngine
         GLenum m_dataType;               // OpenGL data type (e.g., GL_UNSIGNED_BYTE)
 
         uint32_t m_id = 0;               // OpenGL texture ID
+        bool m_immutable = true;
     };
 }
 

@@ -1,41 +1,96 @@
 #include "VertexStructures.h"
+#include "JLHelpers.h"
 
 #include <iostream>
+#include <unordered_map>
 
 namespace JLEngine
 {
-	//void BuildInterleavedArray(std::vector<float>& vbo, std::vector<uint32>& ibo, aiMesh* mesh)
-	//{
-	//	for (uint32 i = 0; i < mesh->mNumFaces; i++)
-	//	{
-	//		aiFace face = mesh->mFaces[i];
-	//
-	//		ibo.push_back(face.mIndices[0]);
-	//		ibo.push_back(face.mIndices[1]);
-	//		ibo.push_back(face.mIndices[2]);
-	//	}
-	//
-	//	for (uint32 i = 0; i < mesh->mNumVertices; i++)
-	//	{
-	//		vbo.push_back(mesh->mVertices[i].x);
-	//		vbo.push_back(mesh->mVertices[i].y);
-	//		vbo.push_back(mesh->mVertices[i].z);
-	//		vbo.push_back(mesh->mNormals[i].x);
-	//		vbo.push_back(mesh->mNormals[i].y);
-	//		vbo.push_back(mesh->mNormals[i].z);
-	//		vbo.push_back(mesh->mTextureCoords[0][i].x);
-	//		vbo.push_back(mesh->mTextureCoords[0][i].y);
-	//		//vbo.push_back(mesh->mTextureCoords[0][i].z);
-	//
-	//		if (mesh->HasTangentsAndBitangents())
-	//		{
-	//			vbo.push_back(mesh->mTangents[i].x);
-	//			vbo.push_back(mesh->mTangents[i].y);
-	//			vbo.push_back(mesh->mTangents[i].z);
-	//			vbo.push_back(mesh->mBitangents[i].x);
-	//			vbo.push_back(mesh->mBitangents[i].y);
-	//			vbo.push_back(mesh->mBitangents[i].z);
-	//		}
-	//	}
-	//}
+	AttributeType AttribTypeFromString(const std::string& str)
+	{
+		auto lowerStr = JLEngine::Str::ToLower(str);
+		static const std::unordered_map<std::string, AttributeType> attribMap = 
+		{
+				{"position", AttributeType::POSITION},
+				{"normal", AttributeType::NORMAL},
+				{"texcoord_0", AttributeType::TEX_COORD_0},
+				{"texcoord_1", AttributeType::TEX_COORD_1},
+				{"color", AttributeType::COLOUR},
+				{"tangent", AttributeType::TANGENT}
+		};
+
+		auto it = attribMap.find(lowerStr);
+		if (it != attribMap.end()) return it->second;
+
+		throw std::invalid_argument("Unrecognized attribute name: " + str);
+	}
+
+	VertexAttribKey GenerateVertexAttribKey(const std::map<std::string, int>& glftAttributes)
+	{
+		VertexAttribKey key = 0;
+		try
+		{
+			for (const auto& [name, accessorIndex] : glftAttributes)
+			{
+				auto attribType = AttribTypeFromString(name);
+				key |= static_cast<uint32>(attribType);
+			}
+		}
+		catch (const std::exception& e)
+		{
+			std::cerr << "Error generating vertex attribute key: " << e.what() << std::endl;
+		}
+		return key;
+	}
+
+	void AddToVertexAttribKey(VertexAttribKey& key, AttributeType type)
+	{
+		key |= static_cast<uint32>(type);
+	}
+
+	void RemoveFromVertexAttribKey(VertexAttribKey& key, AttributeType type)
+	{
+		key &= ~static_cast<uint32>(type);
+	}
+
+	bool HasVertexAttribKey(uint32 mask, AttributeType attribute)
+	{
+		return (mask & static_cast<uint32>(attribute)) != 0;
+	}
+
+	uint32 CalculateStride(VertexAttribKey vertexAttribKey)
+	{
+		uint32_t stride = 0;
+
+		for (uint32 i = 0; i < 32; ++i)
+		{
+			if (vertexAttribKey & (1 << i)) // Check if the bit is set
+			{
+				switch (static_cast<AttributeType>(1 << i))
+				{
+				case AttributeType::POSITION:
+					stride += 3 * sizeof(float); // 3 floats
+					break;
+				case AttributeType::NORMAL:
+					stride += 3 * sizeof(float); // 3 floats
+					break;
+				case AttributeType::TEX_COORD_0:
+				case AttributeType::TEX_COORD_1:
+					stride += 2 * sizeof(float); // 2 floats
+					break;
+				case AttributeType::COLOUR:
+					stride += 4 * sizeof(float); // 4 floats
+					break;
+				case AttributeType::TANGENT:
+					stride += 4 * sizeof(float); // 4 floats
+					break;
+				default:
+					std::cerr << "Unsupported attribute type!" << std::endl;
+					break;
+				}
+			}
+		}
+		return stride;
+	}
+
 }

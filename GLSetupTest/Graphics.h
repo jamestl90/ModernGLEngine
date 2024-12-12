@@ -17,7 +17,12 @@
 #include "RenderTarget.h"
 #include "Node.h"
 
-#define BUFFER_OFFSET(i) ((char*)NULL + (i))
+//#define BUFFER_OFFSET(i) ((char*)NULL + (i))
+
+inline void* BUFFER_OFFSET(std::size_t i) 
+{
+	return reinterpret_cast<void*>(i);
+}
 
 using std::string;
 
@@ -186,9 +191,6 @@ namespace JLEngine
 		bool UnmapBufferData(uint32 target);
 
 		// Render calls
-
-		void DrawAABB(AABB& aabb);
-
 		void BeginPrimitiveDraw();
 		void RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId = -1);
 		void EndPrimitiveDraw();

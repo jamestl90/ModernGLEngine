@@ -80,9 +80,9 @@ namespace JLEngine
 
         JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
         vbo.Set(vertices);
-        JLEngine::VertexAttribute posAttri(JLEngine::POSITION, 0, 3);
-        JLEngine::VertexAttribute normAttri(JLEngine::NORMAL, sizeof(float) * 3, 3);
-        JLEngine::VertexAttribute uvAttri(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2);
+        JLEngine::VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 3);
+        JLEngine::VertexAttribute normAttri(JLEngine::AttributeType::NORMAL, sizeof(float) * 3, 3);
+        JLEngine::VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, sizeof(float) * 6, 2);
         vbo.AddAttribute(posAttri);
         vbo.AddAttribute(normAttri);
         vbo.AddAttribute(uvAttri);
@@ -129,9 +129,9 @@ namespace JLEngine
         JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
         vbo.Set(vertices);
 
-        JLEngine::VertexAttribute posAttri(JLEngine::POSITION, 0, 3); // Position attribute
-        JLEngine::VertexAttribute normAttri(JLEngine::NORMAL, sizeof(float) * 3, 3); // Normal attribute
-        JLEngine::VertexAttribute uvAttri(JLEngine::TEX_COORD_2D, sizeof(float) * 6, 2); // UV attribute
+        JLEngine::VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 3); // Position attribute
+        JLEngine::VertexAttribute normAttri(JLEngine::AttributeType::NORMAL, sizeof(float) * 3, 3); // Normal attribute
+        JLEngine::VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, sizeof(float) * 6, 2); // UV attribute
         
         vbo.AddAttribute(posAttri);
         vbo.AddAttribute(normAttri);
@@ -189,6 +189,7 @@ namespace JLEngine
     void Geometry::GenerateInterleavedVertexData(std::vector<float>& positions,
         std::vector<float>& normals,
         std::vector<float>& texCoords,
+        std::vector<float>& texCoords2,
         std::vector<float>& tangents,
         std::vector<float>& vertexData)
     {
@@ -202,12 +203,14 @@ namespace JLEngine
         // Check availability of attributes
         bool hasNormals = !normals.empty() && normals.size() == vertexCount * 3;
         bool hasTexCoords = !texCoords.empty() && texCoords.size() == vertexCount * 2;
+        bool hasTexCoords2 = !texCoords2.empty() && texCoords2.size() == vertexCount * 2;
         bool hasTangents = !tangents.empty() && tangents.size() == vertexCount * 4;
 
         // Determine vertex size dynamically
         size_t vertexSize = 3; // Start with positions (vec3)
         if (hasNormals) vertexSize += 3; // Add normals (vec3)
         if (hasTexCoords) vertexSize += 2; // Add texcoords (vec2)
+        if (hasTexCoords2) vertexSize += 2; // Add texcoords2 (vec2)
         if (hasTangents) vertexSize += 4; // Add tangents (vec4)
 
         vertexData.clear();
@@ -226,6 +229,10 @@ namespace JLEngine
             // Add texcoord (vec2) if available
             if (hasTexCoords)
                 vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
+
+            // Add texcoord2 (vec2) if available
+            if (hasTexCoords2)
+                vertexData.insert(vertexData.end(), texCoords2.begin() + i * 2, texCoords2.begin() + (i + 1) * 2);
 
             // Add tangent (vec4) if available
             if (hasTangents)
@@ -468,45 +475,45 @@ namespace JLEngine
         const std::vector<float>& uvs,
         const std::vector<uint32>& indices)
     {
+        if (positions.size() % 3 != 0 || normals.size() % 3 != 0 || uvs.size() % 2 != 0)
+        {
+            throw std::invalid_argument("Invalid input sizes for positions, normals, or UVs.");
+        }
+
+        if (positions.size() / 3 != uvs.size() / 2)
+        {
+            throw std::invalid_argument("Mismatch between positions and UVs.");
+        }
+
         size_t vertexCount = positions.size() / 3;
         std::vector<glm::vec3> tangents(vertexCount, glm::vec3(0.0f));
         std::vector<glm::vec3> bitangents(vertexCount, glm::vec3(0.0f));
 
-        // Iterate over each triangle
+        // Iterate over the indices in groups of three (triangle list format)
         for (size_t i = 0; i < indices.size(); i += 3)
         {
             uint32_t i0 = indices[i];
             uint32_t i1 = indices[i + 1];
             uint32_t i2 = indices[i + 2];
 
-            // Vertex positions
-            glm::vec3 p0 = glm::vec3(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
-            glm::vec3 p1 = glm::vec3(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
-            glm::vec3 p2 = glm::vec3(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
+            glm::vec3 v0(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
+            glm::vec3 v1(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
+            glm::vec3 v2(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
 
-            // UV coordinates
-            glm::vec2 uv0 = glm::vec2(uvs[i0 * 2], uvs[i0 * 2 + 1]);
-            glm::vec2 uv1 = glm::vec2(uvs[i1 * 2], uvs[i1 * 2 + 1]);
-            glm::vec2 uv2 = glm::vec2(uvs[i2 * 2], uvs[i2 * 2 + 1]);
+            glm::vec2 uv0(uvs[i0 * 2], uvs[i0 * 2 + 1]);
+            glm::vec2 uv1(uvs[i1 * 2], uvs[i1 * 2 + 1]);
+            glm::vec2 uv2(uvs[i2 * 2], uvs[i2 * 2 + 1]);
 
-            // Edge vectors
-            glm::vec3 edge1 = p1 - p0;
-            glm::vec3 edge2 = p2 - p0;
-
+            glm::vec3 edge1 = v1 - v0;
+            glm::vec3 edge2 = v2 - v0;
             glm::vec2 deltaUV1 = uv1 - uv0;
             glm::vec2 deltaUV2 = uv2 - uv0;
 
-            // Compute tangent and bitangent
-            float denom = deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x;
-            if (std::abs(denom) < 1e-6f) {
-                denom = 1.0f; // Prevent division by zero
-            }
-            float f = 1.0f / denom;
+            float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+            glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
+            glm::vec3 bitangent = (edge2 * deltaUV1.x - edge1 * deltaUV2.x) * r;
 
-            glm::vec3 tangent = f * (deltaUV2.y * edge1 - deltaUV1.y * edge2);
-            glm::vec3 bitangent = f * (deltaUV1.x * edge2 - deltaUV2.x * edge1);
-
-            // Accumulate tangents and bitangents for each vertex
+            // Accumulate tangents and bitangents
             tangents[i0] += tangent;
             tangents[i1] += tangent;
             tangents[i2] += tangent;
@@ -516,26 +523,27 @@ namespace JLEngine
             bitangents[i2] += bitangent;
         }
 
-        // Normalize tangents and calculate the handedness (w-component)
-        std::vector<float> flattenedTangents;
-        flattenedTangents.reserve(vertexCount * 4); // Reserve space for 4-component tangents
+        // Normalize and flatten tangents with w-component
+        std::vector<float> flatTangents;
+        flatTangents.reserve(vertexCount * 4);
 
-        for (size_t i = 0; i < vertexCount; ++i) {
-            glm::vec3 tangent = glm::normalize(tangents[i]);
-            glm::vec3 bitangent = glm::normalize(bitangents[i]);
-            glm::vec3 normal = glm::vec3(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+        for (size_t i = 0; i < vertexCount; ++i)
+        {
+            glm::vec3 normal(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
 
-            // Compute handedness (w-component)
-            float w = (glm::dot(glm::cross(normal, tangent), bitangent) < 0.0f) ? -1.0f : 1.0f;
+            // Orthogonalize tangent to normal
+            glm::vec3 tangent = glm::normalize(tangents[i] - normal * glm::dot(normal, tangents[i]));
 
-            // Store the tangent with w-component
-            flattenedTangents.push_back(tangent.x);
-            flattenedTangents.push_back(tangent.y);
-            flattenedTangents.push_back(tangent.z);
-            flattenedTangents.push_back(w);
+            // Calculate handedness (w-component)
+            float w = (glm::dot(glm::cross(normal, tangent), bitangents[i]) < 0.0f) ? -1.0f : 1.0f;
+
+            flatTangents.push_back(tangent.x);
+            flatTangents.push_back(tangent.y);
+            flatTangents.push_back(tangent.z);
+            flatTangents.push_back(w); // Handedness
         }
 
-        return flattenedTangents;
+        return flatTangents;
     }
 
     std::vector<float> Geometry::CalculateTangents(const std::vector<float>& positions,
@@ -552,29 +560,24 @@ namespace JLEngine
             throw std::invalid_argument("Mismatch between positions and UVs.");
         }
 
-        std::vector<glm::vec3> tangents(positions.size() / 3, glm::vec3(0.0f));
-        std::vector<glm::vec3> bitangents(positions.size() / 3, glm::vec3(0.0f));
+        size_t vertexCount = positions.size() / 3;
+        std::vector<glm::vec3> tangents(vertexCount, glm::vec3(0.0f));
+        std::vector<glm::vec3> bitangents(vertexCount, glm::vec3(0.0f));
 
         // Iterate through the vertices in groups of three (triangle list format)
-        for (size_t i = 0; i + 8 < positions.size(); i += 9) // Ensure bounds
+        for (size_t i = 0; i < vertexCount; i += 3)
         {
-            glm::vec3 v0(
-                positions[i], positions[i + 1], positions[i + 2]);
-            glm::vec3 v1(
-                positions[i + 3], positions[i + 4], positions[i + 5]);
-            glm::vec3 v2(
-                positions[i + 6], positions[i + 7], positions[i + 8]);
+            // Get vertex positions
+            glm::vec3 v0(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+            glm::vec3 v1(positions[(i + 1) * 3], positions[(i + 1) * 3 + 1], positions[(i + 1) * 3 + 2]);
+            glm::vec3 v2(positions[(i + 2) * 3], positions[(i + 2) * 3 + 1], positions[(i + 2) * 3 + 2]);
 
-            size_t uvIndex = (i / 3) * 2;
-            if (uvIndex + 5 >= uvs.size())
-            {
-                throw std::out_of_range("UV array index out of range.");
-            }
+            // Get UV coordinates
+            glm::vec2 uv0(uvs[i * 2], uvs[i * 2 + 1]);
+            glm::vec2 uv1(uvs[(i + 1) * 2], uvs[(i + 1) * 2 + 1]);
+            glm::vec2 uv2(uvs[(i + 2) * 2], uvs[(i + 2) * 2 + 1]);
 
-            glm::vec2 uv0(uvs[uvIndex], uvs[uvIndex + 1]);
-            glm::vec2 uv1(uvs[uvIndex + 2], uvs[uvIndex + 3]);
-            glm::vec2 uv2(uvs[uvIndex + 4], uvs[uvIndex + 5]);
-
+            // Calculate edges and delta UVs
             glm::vec3 edge1 = v1 - v0;
             glm::vec3 edge2 = v2 - v0;
             glm::vec2 deltaUV1 = uv1 - uv0;
@@ -584,31 +587,29 @@ namespace JLEngine
             glm::vec3 tangent = (edge1 * deltaUV2.y - edge2 * deltaUV1.y) * r;
             glm::vec3 bitangent = (edge2 * deltaUV1.x - edge1 * deltaUV2.x) * r;
 
-            size_t vertexIndex = i / 3;
-            tangents[vertexIndex] += tangent;
-            tangents[vertexIndex + 1] += tangent;
-            tangents[vertexIndex + 2] += tangent;
+            // Accumulate tangents and bitangents for the triangle's vertices
+            tangents[i] += tangent;
+            tangents[i + 1] += tangent;
+            tangents[i + 2] += tangent;
 
-            bitangents[vertexIndex] += bitangent;
-            bitangents[vertexIndex + 1] += bitangent;
-            bitangents[vertexIndex + 2] += bitangent;
+            bitangents[i] += bitangent;
+            bitangents[i + 1] += bitangent;
+            bitangents[i + 2] += bitangent;
         }
 
         // Normalize and flatten tangents with w-component
         std::vector<float> flatTangents;
-        flatTangents.reserve(tangents.size() * 4);
+        flatTangents.reserve(vertexCount * 4);
 
-        for (size_t i = 0; i < tangents.size(); ++i)
+        for (size_t i = 0; i < vertexCount; ++i)
         {
-            glm::vec3 normal(
-                normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+            glm::vec3 normal(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
 
             // Orthogonalize tangent to normal
             glm::vec3 tangent = glm::normalize(tangents[i] - normal * glm::dot(normal, tangents[i]));
 
             // Calculate handedness (w-component)
-            glm::vec3 bitangent = glm::normalize(bitangents[i]);
-            float w = (glm::dot(glm::cross(normal, tangent), bitangent) < 0.0f) ? -1.0f : 1.0f;
+            float w = (glm::dot(glm::cross(normal, tangent), bitangents[i]) < 0.0f) ? -1.0f : 1.0f;
 
             flatTangents.push_back(tangent.x);
             flatTangents.push_back(tangent.y);
@@ -617,8 +618,7 @@ namespace JLEngine
         }
 
         return flatTangents;
-    }   
-
+    }
 
     uint32 Polygon::AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
         int lastTriCount, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, 

@@ -139,9 +139,12 @@ namespace JLEngine
 		// Parse and apply transformations
 		ParseTransform(node, gltfNode);
 
+		int stopTest = 5;
+		int stopIndex = 0;
 		// Recursively parse child nodes
 		for (int childIndex : gltfNode.children)
 		{
+
 			if (childIndex < 0 || childIndex >= model.nodes.size())
 			{
 				std::cerr << "Warning: Invalid child index in node " << node->name << std::endl;
@@ -154,6 +157,7 @@ namespace JLEngine
 			{
 				node->AddChild(childNode);
 			}
+			stopIndex++;
 		}
 
 		return node;
@@ -180,10 +184,24 @@ namespace JLEngine
 		auto mesh = m_assetLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
 		// Group primitives by material and attributes
-		std::unordered_map<MaterialAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
+		std::unordered_map<MaterialVertexAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
 		for (const auto& primitive : gltfMesh.primitives)
 		{
-			MaterialAttributeKey key(primitive.material, MaterialAttributeKey::GetAttributesKey(primitive.attributes));
+			auto vertexAttribKey = GenerateVertexAttribKey(primitive.attributes);
+			if (vertexAttribKey == 7 || vertexAttribKey == 39)
+			{
+				// auto generate tangents for POS/NORMAL/UV
+				AddToVertexAttribKey(vertexAttribKey, AttributeType::TANGENT);
+			}
+			if (vertexAttribKey == 1)
+			{
+				AddToVertexAttribKey(vertexAttribKey, AttributeType::NORMAL);
+			}
+			if (HasVertexAttribKey(vertexAttribKey, AttributeType::TEX_COORD_1))
+			{
+				RemoveFromVertexAttribKey(vertexAttribKey, AttributeType::TEX_COORD_1);
+			}
+			MaterialVertexAttributeKey key(primitive.material, vertexAttribKey);
 			groups[key].push_back(&primitive);
 		}
 		
@@ -210,34 +228,32 @@ namespace JLEngine
 		return mesh;
 	}
 
-	std::shared_ptr<Batch> GLBLoader::CreateBatch(const tinygltf::Model& model,
-		const std::vector<const tinygltf::Primitive*>& primitives,
-		MaterialAttributeKey key)
+	std::shared_ptr<Batch> GLBLoader::CreateBatch(const tinygltf::Model& model, 
+		const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key)
 	{
-		std::vector<float> positions, normals, texCoords, tangents;
+		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
 		std::vector<uint32> indices;
 
 		// Load attributes from primitives
 		uint32_t indexOffset = 0;
-		BatchLoadAttributes(model, primitives, positions, normals, texCoords, tangents, indices, indexOffset);
-
+		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, indices, indexOffset, key.attributesKey);
+		texCoords2.clear();
 		// Generate missing normals or tangents if required
-		GenerateMissingAttributes(positions, normals, texCoords, tangents);
+		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
 
 		// Interleave vertex data
 		std::vector<float> interleavedVertexData;
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, interleavedVertexData);
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
 
 		// Create vertex and index buffers
 		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
 		vertexBuffer->Set(interleavedVertexData);
+		vertexBuffer->SetVertexAttribKey(key.attributesKey);
 
 		auto indexBuffer = std::make_shared<IndexBuffer>(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
 		indexBuffer->Set(indices);
 
 		Material* material;
-
-		// Load material
 		if (!model.materials.empty())
 		{
 			material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
@@ -255,10 +271,9 @@ namespace JLEngine
 	}
 
 	std::shared_ptr<Batch> GLBLoader::CreateBatch2(const tinygltf::Model& model,
-		const tinygltf::Primitive& primitives,
-		MaterialAttributeKey key)
+		const tinygltf::Primitive& primitives, MaterialVertexAttributeKey key)
 	{
-		std::vector<float> positions, normals, texCoords, tangents;
+		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
 		std::vector<uint32> indices;
 
 		// Load attributes from primitives
@@ -266,11 +281,11 @@ namespace JLEngine
 		LoadAttributes(model, &primitives, positions, normals, texCoords, tangents, indices, indexOffset);
 
 		// Generate missing normals or tangents if required
-		GenerateMissingAttributes(positions, normals, texCoords, tangents);
+		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
 
 		// Interleave vertex data
 		std::vector<float> interleavedVertexData;
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, interleavedVertexData);
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
 
 		// Create vertex and index buffers
 		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
@@ -484,7 +499,7 @@ namespace JLEngine
 		std::vector<unsigned char> data = imageData.image; // Raw pixel data
 
 		// Create a new texture
-		auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data);
+		auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data, true, true);
 
 		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;
@@ -560,9 +575,11 @@ namespace JLEngine
 		std::vector<float>& positions,
 		std::vector<float>& normals,
 		std::vector<float>& texCoords,
+		std::vector<float>& texCoords2,
 		std::vector<float>& tangents,
 		std::vector<uint32>& indices,
-		uint32& indexOffset)
+		uint32& indexOffset, 
+		VertexAttribKey key)
 	{
 		for (const auto* primitive : primitives)
 		{
@@ -570,9 +587,14 @@ namespace JLEngine
 
 			// Load vertex attributes
 			LoadPositionAttribute(model, *primitive, positions);
-			LoadNormalAttribute(model, *primitive, normals);
-			LoadTexCoordAttribute(model, *primitive, texCoords);
-			LoadTangentAttribute(model, *primitive, tangents);
+			if (HasVertexAttribKey(key, AttributeType::NORMAL))
+				LoadNormalAttribute(model, *primitive, normals);
+			if (HasVertexAttribKey(key, AttributeType::TEX_COORD_0))
+				LoadTexCoordAttribute(model, *primitive, texCoords);
+			if (HasVertexAttribKey(key, AttributeType::TANGENT))
+				LoadTangentAttribute(model, *primitive, tangents);
+			if (HasVertexAttribKey(key, AttributeType::TEX_COORD_1))
+				LoadTexCoord2Attribute(model, *primitive, texCoords2);
 
 			// Load indices or generate sequential ones
 			if (primitive->indices >= 0)
@@ -640,35 +662,33 @@ namespace JLEngine
 	void GLBLoader::GenerateMissingAttributes(std::vector<float>& positions,
 		std::vector<float>& normals,
 		const std::vector<float>& texCoords,
-		std::vector<float>& tangents)
+		std::vector<float>& tangents, 
+		const std::vector<uint32>& indices,
+		VertexAttribKey key)
 	{
 		// Generate normals if only positions are present
 		if (normals.empty() && texCoords.empty())
 		{
-			std::cout << "Generating normals..." << std::endl;
-			normals = Geometry::CalculateFlatNormals(positions);
+			if (HasVertexAttribKey(key, AttributeType::NORMAL))
+			{
+				std::cout << "Generating normals..." << std::endl;
+				normals = Geometry::CalculateFlatNormals(positions);
+			}
 		}
 
 		// Generate tangents if UVs and normals are available but tangents are missing
 		if (tangents.empty() && !texCoords.empty() && !normals.empty())
 		{
-			std::cout << "Generating tangents..." << std::endl;
-			tangents = Geometry::CalculateTangents(positions, normals, texCoords);
+			if (HasVertexAttribKey(key, AttributeType::TANGENT))
+			{
+				std::cout << "Generating tangents..." << std::endl;
+				tangents = Geometry::CalculateTangents(positions, normals, texCoords, indices);
+			}
 		}
 		else if (tangents.empty() && (!texCoords.empty() || !normals.empty()))
 		{
 			std::cerr << "Warning: Cannot generate tangents without both UVs and normals." << std::endl;
 		}
-	}
-
-	std::string MaterialAttributeKey::GetAttributesKey(const std::map<std::string, int>& attributes)
-	{
-		std::string key;
-		for (const auto& [name, accessorIndex] : attributes)
-		{
-			key += name + ";";
-		}
-		return key;
 	}
 
 	glm::vec4 GLBLoader::GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue)
@@ -826,6 +846,51 @@ namespace JLEngine
 		else
 		{
 			std::cerr << "Warning: TEXCOORD_0 attribute not found in primitive!" << std::endl;
+			return false;
+		}
+		return true;
+	}
+
+	bool GLBLoader::LoadTexCoord2Attribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
+		std::vector<float>& vertexData)
+	{
+		const auto& texCoordAttr = primitive.attributes.find("TEXCOORD_1");
+		if (texCoordAttr != primitive.attributes.end())
+		{
+			const tinygltf::Accessor& texCoordAccessor = model.accessors[texCoordAttr->second];
+			const tinygltf::BufferView& texCoordBufferView = model.bufferViews[texCoordAccessor.bufferView];
+			const tinygltf::Buffer& texCoordBuffer = model.buffers[texCoordBufferView.buffer];
+
+			// Validate component type
+			if (texCoordAccessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT) {
+				std::cerr << "Error: Unsupported TEXCOORD_1 component type: " << texCoordAccessor.componentType << std::endl;
+				return false;
+			}
+
+			size_t stride = texCoordAccessor.ByteStride(model.bufferViews[texCoordAccessor.bufferView]);
+			if (stride != sizeof(float) * 2)
+			{
+				std::cerr << "Error: Unsupported TEXCOORD_1 stride: " << stride << std::endl;
+			}
+
+			// Validate buffer bounds
+			size_t requiredSize = texCoordBufferView.byteOffset + texCoordAccessor.byteOffset +
+				texCoordAccessor.count * 2 * sizeof(float);
+			if (requiredSize > texCoordBuffer.data.size()) {
+				std::cerr << "Error: TEXCOORD_1 accessor exceeds buffer bounds!" << std::endl;
+				return false;
+			}
+
+			// Access the texture coordinates
+			const float* texCoords = reinterpret_cast<const float*>(
+				&texCoordBuffer.data[texCoordBufferView.byteOffset + texCoordAccessor.byteOffset]);
+
+			size_t count = texCoordAccessor.count * 2; // Assuming vec2 texture coordinates
+			vertexData.insert(vertexData.end(), texCoords, texCoords + count);
+		}
+		else
+		{
+			std::cerr << "Warning: TEXCOORD_1 attribute not found in primitive!" << std::endl;
 			return false;
 		}
 		return true;

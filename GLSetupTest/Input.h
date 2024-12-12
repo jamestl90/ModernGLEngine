@@ -23,6 +23,7 @@ namespace JLEngine
         void SetMouseStickyKeys(bool flag);
         bool SetRawMouseMotion(bool flag);
         void SetMouseCursor(int value); // GLFW_CURSOR_NORMAL, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_DISABLED
+        int GetMouseCursor();
         double GetMouseX();
         double GetMouseY();
         int IsMouseDown(int button);

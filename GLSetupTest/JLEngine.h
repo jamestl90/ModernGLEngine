@@ -7,6 +7,7 @@
 #include "Graphics.h"
 #include "Input.h"
 #include "AssetLoader.h"
+#include "IMGuiManager.h"
 
 namespace JLEngine
 {
@@ -23,6 +24,8 @@ namespace JLEngine
         Input* GetInput()               const;
         AssetLoader* GetAssetLoader()   const;
 
+        void InitIMGUI() { m_imguiManager.Initialize(m_window->GetGLFWwindow()); }
+
     private:
         void setFixedUpdateRate(int fps);
         void setMaxFrameRate(int fps);
@@ -30,10 +33,11 @@ namespace JLEngine
 
         void logPerformanceMetrics();
 
+        IMGuiManager m_imguiManager;
+
         std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
         std::unique_ptr<Graphics> m_graphics;
-        
         std::unique_ptr<AssetLoader> m_assetLoader;
 
         // Frame timing variables

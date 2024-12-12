@@ -10,6 +10,7 @@ namespace JLEngine
 	{
 	public:
 		static std::string ToLower(const std::string& input);
+		static bool Contains(const std::string& str, const std::string& substr);
 	};
 }
 

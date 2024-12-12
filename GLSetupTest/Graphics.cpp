@@ -18,7 +18,7 @@ namespace JLEngine
 	{
 		float fov = 45.0f;
 		float nearDist = 0.1f;
-		float farDist = 100.0f;
+		float farDist = 200.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 
@@ -330,58 +330,6 @@ namespace JLEngine
 		}
 	}
 
-	//void Graphics::CreateShader(ShaderProgram* program)
-	//{
-	//	FileSystem* fs = FileSystem::getInstance();
-
-	//	Shader* vertShader = program->getShader(VERTEX_SHADER);
-	//	Shader* fragShader = program->getShader(FRAGMENT_SHADER);
-
-	//	GLuint vertId = glCreateShader(GL_VERTEX_SHADER);
-	//	GLuint fragId = glCreateShader(GL_FRAGMENT_SHADER);
-
-	//	int vertFileId = fs->loadFile(program->getFilePath() + vertShader->getName(), false);
-	//	int fragFileId = fs->loadFile(program->getFilePath() + fragShader->getName(), false);
-
-	//	vertShader->setShaderId(vertId);
-	//	fragShader->setShaderId(fragId);
-
-	//	string vertFileString("");
-	//	string fragFileString("");
-
-	//	fs->getWholeFileString(vertFileId, vertFileString);
-	//	fs->getWholeFileString(fragFileId, fragFileString);
-
-	//	fs->closeFile(vertId);
-	//	fs->closeFile(fragId);
-
-	//	const char* vertFile = vertFileString.c_str();
-	//	const char* fragFile = fragFileString.c_str();
-
-	//	glShaderSource(vertId, 1, &vertFile, NULL);
-	//	glCompileShader(vertFileId);
-	//	if (!ShaderCompileErrorCheck(vertFileId, program->getFilePath() + vertShader->getName())) return;
-
-	//	glShaderSource(fragId, 1, &fragFile, NULL);
-	//	glCompileShader(fragFileId);
-	//	if (!ShaderCompileErrorCheck(fragFileId, program->getFilePath() + fragShader->getName())) return;
-
-	//	GLuint id = glCreateProgram();
-
-	//	program->setProgramId(id);
-
-	//	for (vector<Shader*>::iterator it = program->getShaders().begin(); it != program->getShaders().end(); it++)
-	//	{
-	//		glAttachShader(id, (*it)->getShaderId());
-	//	}
-
-	//	glLinkProgram(id);
-	//	if (!ShaderCompileErrorCheck(id, program->getFileName())) DisposeShader(program);
-
-	//	glDeleteShader(vertId);
-	//	glDeleteShader(fragId);
-	//}
-
 	void Graphics::DisposeShader(ShaderProgram* program)
 	{
 		auto shaders = program->GetShaders();
@@ -482,11 +430,6 @@ namespace JLEngine
 	{
 		glGenFramebuffers(count, &id);
 	}
-
-	//void Graphics::CreateVertexArray(uint32 count, uint32& id)
-	//{
-	//	glGenVertexArrays(count, &id);
-	//}
 
 	void Graphics::BindVertexArray( uint32 vaoID )
 	{
@@ -643,54 +586,56 @@ namespace JLEngine
 		glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(float), vertexData.data(), GL_STATIC_DRAW);
 
 		// Parse the attributesKey and bind attributes based on format
-		const std::string& attributesKey = batch.attributesKey; // Determines the layout
-		uint32 stride = 0, positionOffset = 0, normalOffset = 0, texCoordOffset = 0, tangentOffset = 0;
+		auto vertexAttribKey = batch.attributesKey; // Determines the layout
+		uint32_t offset = 0;
+		uint32_t index = 0;
+		uint32 stride = CalculateStride(vertexAttribKey);
 
-		// Determine attribute offsets and locations based on the attributesKey
-		if (attributesKey == "NORMAL;POSITION;TEXCOORD_0;" || attributesKey == "NORMAL;POSITION;TANGENT;TEXCOORD_0;")
+		for (uint32 i = 0; i < static_cast<uint32>(AttributeType::COUNT); ++i)
 		{
-			stride = sizeof(float) * (3 + 3 + 2 + 4); // Pos (3), Norm (3), UV (2), Tan (4)
-			positionOffset = 0;
-			normalOffset = 3 * sizeof(float);
-			texCoordOffset = 6 * sizeof(float);
-			tangentOffset = 8 * sizeof(float);
+			if (vertexAttribKey & (1 << i)) 
+			{
+				GLenum type = GL_FLOAT; 
+				GLsizei size = 0;
 
-			glEnableVertexAttribArray(0); // Position
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(positionOffset));
+				switch (static_cast<AttributeType>(1 << i))
+				{
+				case AttributeType::POSITION:
+					size = 3; 
+					break;
+				case AttributeType::NORMAL:
+					size = 3; 
+					break;
+				case AttributeType::TEX_COORD_0:
+					size = 2; 
+					break;
+				case AttributeType::TEX_COORD_1:
+					size = 2;
+					break;
+				//case AttributeType::COLOUR:
+				//	size = 4;
+				//	break;
+				case AttributeType::TANGENT:
+					size = 4; 
+					break;
+				default:
+					std::cerr << "Unsupported attribute type!" << std::endl;
+					continue;
+				}
 
-			glEnableVertexAttribArray(1); // Normal
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(normalOffset));
+				glEnableVertexAttribArray(index);
+				glVertexAttribPointer(
+					index,               
+					size,                
+					type,                
+					GL_FALSE,            
+					stride,              
+					BUFFER_OFFSET(offset)
+				);
 
-			glEnableVertexAttribArray(2); // UV
-			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(texCoordOffset));
-
-			glEnableVertexAttribArray(3); // Tangent
-			glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(tangentOffset));
-		}
-		else if (attributesKey == "POSITION;" || attributesKey == "NORMAL;POSITION;")
-		{
-			stride = sizeof(float) * (3 + 3 + 2); // Pos (3), Norm (3), UV (2)
-			positionOffset = 0;
-			normalOffset = 3 * sizeof(float);
-			texCoordOffset = 6 * sizeof(float);
-
-			glEnableVertexAttribArray(0); // Position
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(positionOffset));
-
-			glEnableVertexAttribArray(1); // Normal
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(normalOffset));
-		}
-		else if (attributesKey == "POSITION;TEXCOORD_0")
-		{
-			stride = sizeof(float) * (3 + 2); // Pos (3), UV (2)
-			positionOffset = 0;
-			texCoordOffset = 3 * sizeof(float);
-
-			glEnableVertexAttribArray(0); // Position
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(positionOffset));
-
-			glEnableVertexAttribArray(1); // UV
-			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, BUFFER_OFFSET(texCoordOffset));
+				offset += size * sizeof(float);
+				++index; // Increment attribute index
+			}
 		}
 
 		// Bind the index buffer
@@ -767,8 +712,36 @@ namespace JLEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, texture->GetInternalFormat(), texture->GetWidth(), texture->GetHeight(), 0, texture->GetFormat(), texture->GetDataType(), texture->GetData().data());
+
+		// texture wont be updated so we can use glTexStorage
+		if (texture->IsImmutable())
+		{
+			int mipLevels = 1 + static_cast<int>(std::floor(std::log2(std::max(texture->GetWidth(), texture->GetHeight()))));
+			glTexStorage2D(GL_TEXTURE_2D, mipLevels, texture->GetInternalFormat(), texture->GetWidth(), texture->GetHeight());
+			glTexSubImage2D(
+				GL_TEXTURE_2D, // Target
+				0,             // Mipmap level
+				0, 0,          // Offset (x, y)
+				texture->GetWidth(), texture->GetHeight(), // Dimensions
+				texture->GetFormat(),                      // Format (e.g., GL_RGBA)
+				GL_UNSIGNED_BYTE,                          // Data type
+				texture->GetData().data()                         // Pointer to texture data
+			);
+		}
+		else
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, texture->GetInternalFormat(), texture->GetWidth(), texture->GetHeight(), 0, texture->GetFormat(), texture->GetDataType(), texture->GetData().data());
+		}
 		texture->SetGPUID(image);
+
+		if (texture->GenerateMipmaps())
+		{
+			glGenerateMipmap(GL_TEXTURE_2D);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		}
 	}
 
 	void Graphics::DisposeTexture(Texture* texture)
@@ -802,55 +775,6 @@ namespace JLEngine
 	void Graphics::SwapBuffers()
 	{
 		m_window->SwapBuffers();
-	}
-
-	// immediate mode :(
-	void Graphics::DrawAABB( AABB& aabb )
-	{
-		glm::vec3 max = aabb.max;
-		glm::vec3 min = aabb.min;
-
-		glLineWidth(3.0f);
-
-		glBegin(GL_LINES);
-		glVertex3f(min.x, min.y, min.z);
-		glVertex3f(min.x, min.y, max.z);
-
-		glVertex3f(max.x, min.y, min.z);
-		glVertex3f(max.x, min.y, max.z);
-
-		glVertex3f(min.x, max.y, min.z);
-		glVertex3f(min.x, max.y, max.z);
-
-		glVertex3f(max.x, max.y, min.z);
-		glVertex3f(max.x, max.y, max.z);
-
-		glVertex3f(min.x, min.y, min.z);
-		glVertex3f(max.x, min.y, min.z);
-
-		glVertex3f(min.x, min.y, max.z);
-		glVertex3f(max.x, min.y, max.z);
-
-		glVertex3f(min.x, max.y, min.z);
-		glVertex3f(max.x, max.y, min.z);
-
-		glVertex3f(min.x, max.y, max.z);
-		glVertex3f(max.x, max.y, max.z);
-
-		glVertex3f(min.x, min.y, min.z);
-		glVertex3f(min.x, max.y, min.z);
-
-		glVertex3f(min.x, min.y, max.z);
-		glVertex3f(min.x, max.y, max.z);
-
-		glVertex3f(max.x, min.y, min.z);
-		glVertex3f(max.x, max.y, min.z);
-
-		glVertex3f(max.x, min.y, max.z);
-		glVertex3f(max.x, max.y, max.z);
-		glEnd();
-
-		glLineWidth(1.0f);
 	}
 
 	void Graphics::CreateRenderBuffer( uint32 count, uint32& id )
@@ -966,7 +890,7 @@ namespace JLEngine
 		{
 			glGenTextures(1, &depth);
 			glBindTexture(GL_TEXTURE_2D, depth);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, target->GetWidth(), target->GetHeight(), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight(), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1162,8 +1086,8 @@ namespace JLEngine
 		};
 		VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
 		vbo.InsertAt(0, fullScreenQuad, 36);
-		auto posAttri = VertexAttribute(POSITION, 0, 3);
-		auto uvAttri = VertexAttribute(TEX_COORD_2D, 12, 2);
+		auto posAttri = VertexAttribute(AttributeType::POSITION, 0, 3);
+		auto uvAttri = VertexAttribute(AttributeType::TEX_COORD_0, 12, 2);
 		vbo.AddAttribute(posAttri);
 		vbo.AddAttribute(uvAttri);
 		vbo.CalcStride();

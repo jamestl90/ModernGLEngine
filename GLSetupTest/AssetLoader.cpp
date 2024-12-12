@@ -66,7 +66,7 @@ namespace JLEngine
                 texture->SetFormat(internalFormat, format, dataType);
                 texture->SetClamped(clamped);
                 texture->EnableMipmaps(mipmaps);
-                texture->UploadToGPU(m_graphics, false);
+                texture->UploadToGPU(m_graphics, true);
                 return texture;
             });
     }
@@ -77,7 +77,7 @@ namespace JLEngine
             {
                 auto texture = std::make_unique<Texture>(name, width, height, data.data(), channels);
                 texture->InitFromData(data, width, height, channels, clamped, mipmaps);
-                texture->UploadToGPU(m_graphics, false);
+                texture->UploadToGPU(m_graphics, true);
                 return texture;
             });
     }

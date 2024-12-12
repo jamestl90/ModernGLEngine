@@ -25,7 +25,6 @@ GLFWwindow* window;
 
 int width = 1920;
 int height = 1080;
-bool debugGBuffer = false;
 
 void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 {
@@ -41,7 +40,7 @@ void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
 
     cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
 
-    m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection, debugGBuffer);
+    m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -64,7 +63,12 @@ void KeyboardCallback(int key, int scancode, int action, int mods)
 
     if (glfwGetKey(window, GLFW_KEY_G))
     {
-        debugGBuffer = !debugGBuffer;
+        m_defRenderer->CycleDebugMode();
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_T))
+    {
+        flyCamera->ToggleFreeMouse(input);
     }
 }
 
@@ -101,43 +105,43 @@ int main(int argc, char* argv[])
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
     graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
+    engine.InitIMGUI();
 
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
-    auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
-    mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
-    planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
-    planeNode->translation -= glm::vec3(0, 2.5f, 0);
-    
-    auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
-    metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    metallicSpheres->receiveShadows = false;
-    
-    auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-
-    auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
-    potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
-    potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
-
-    auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
-    fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
-    fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
+    //auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
+    //auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
+    //mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
+    //planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
+    //planeNode->translation -= glm::vec3(0, 2.5f, 0);
+    //
+    //auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    //metallicSpheres->translation += glm::vec3(0, 2.5, -5);
+    //metallicSpheres->receiveShadows = false;
+    //
+    //auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    //
+    //auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
+    //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
+    //potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
+    //
+    //auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
+    //fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
+    //fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
     
     cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
-    auto skybox = engine.GetAssetLoader()->LoadGLB(assetFolder + "/skybox.glb");
+    auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
+    //auto virtualCity = engine.GetAssetLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
 
-    //auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
-
-    //sceneRoot->AddChild(bistroScene);
-    sceneRoot->AddChild(planeNode);
-    sceneRoot->AddChild(metallicSpheres);
-    sceneRoot->AddChild(helmet);
-    sceneRoot->AddChild(potofcoals);
-    sceneRoot->AddChild(fish);
+    sceneRoot->AddChild(bistroScene);
+    //sceneRoot->AddChild(virtualCity);
+    //sceneRoot->AddChild(planeNode);
+    //sceneRoot->AddChild(metallicSpheres);
+    //sceneRoot->AddChild(helmet);
+    //sceneRoot->AddChild(potofcoals);
+    //sceneRoot->AddChild(fish);
     sceneRoot->AddChild(cardinalDirections);
-    sceneRoot->AddChild(skybox);
     
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
         width, height, assetFolder);

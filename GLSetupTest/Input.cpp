@@ -106,6 +106,13 @@ namespace JLEngine
         glfwSetInputMode(m_glfwWindow, GLFW_CURSOR, value);
     }
 
+    // GLFW_CURSOR_NORMAL, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_DISABLED
+
+    int Input::GetMouseCursor() 
+    { 
+        return glfwGetInputMode(m_glfwWindow, GLFW_CURSOR); 
+    }
+
     double Input::GetMouseX()
     {
         return m_mouseX;

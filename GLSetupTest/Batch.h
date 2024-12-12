@@ -43,7 +43,7 @@ namespace JLEngine
         bool IsInstanced() const { return isInstanced; }
         void SetMaterial(Material* mat) { material = mat; }
 
-        std::string attributesKey;
+        VertexAttribKey attributesKey;
 
     private:
         // Core buffers

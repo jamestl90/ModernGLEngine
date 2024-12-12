@@ -1,9 +1,12 @@
 #include "DeferredRenderer.h"
-#include <glm/gtc/type_ptr.hpp>
 #include "Material.h"
 #include "Graphics.h"
 #include "DirectionalLightShadowMap.h"
+
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+
+#include <imgui.h>
 
 namespace JLEngine
 {
@@ -11,7 +14,7 @@ namespace JLEngine
         : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_textureDebugShader(nullptr),
         m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), m_dlShadowDistance(100.0f),
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), m_skybox(nullptr),
-        m_enableDLShadows(true) {}
+        m_enableDLShadows(true), m_debugModes(DebugModes::None) {}
 
     DeferredRenderer::~DeferredRenderer() 
     {
@@ -20,8 +23,8 @@ namespace JLEngine
     
     void DeferredRenderer::Initialize() 
     {
-        m_directionalLight.direction = -glm::normalize(glm::vec3(0, 10.0f, 10.0f) - glm::vec3(0.0f));
-        m_directionalLight.position = glm::vec3(0, 35.0f, 20.0f);
+        m_directionalLight.position = glm::vec3(0, 25.0f, 25.0f);
+        m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
         auto finalAssetPath = m_assetFolder + "Core/";
 
@@ -56,8 +59,8 @@ namespace JLEngine
         m_triangleVertexBuffer.SetType(GL_ARRAY_BUFFER);
         m_triangleVertexBuffer.SetDrawType(GL_STATIC_DRAW);
 
-        VertexAttribute posAttri(JLEngine::POSITION, 0, 2);
-        VertexAttribute uvAttri(JLEngine::TEX_COORD_2D, 2 * sizeof(float), 2);
+        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 2);
+        VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, 2 * sizeof(float), 2);
         m_triangleVertexBuffer.AddAttribute(posAttri);
         m_triangleVertexBuffer.AddAttribute(uvAttri);
         m_triangleVertexBuffer.Set(triVerts);
@@ -82,7 +85,8 @@ namespace JLEngine
 
     glm::mat4 DeferredRenderer::DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        glm::mat4 lightSpaceMatrix = GetLightMatrix(m_directionalLight.position, m_directionalLight.direction, 10.0f, 0.01f, m_dlShadowDistance);
+        glm::mat4 lightSpaceMatrix = GetLightMatrix(m_directionalLight.position,
+            m_directionalLight.direction, 25.0f, 0.01f, m_dlShadowDistance);
 
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
 
@@ -106,8 +110,6 @@ namespace JLEngine
     void DeferredRenderer::GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         m_graphics->BindFrameBuffer(m_gBufferTarget->GetFrameBufferId());
-
-        SkyboxPass(viewMatrix, projMatrix);
 
         m_graphics->SetDepthMask(GL_TRUE);
         m_graphics->Enable(GL_DEPTH_TEST);
@@ -246,29 +248,62 @@ namespace JLEngine
         m_graphics->SetViewport(0, 0, m_width, m_height);
     }
 
-    void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer)
+    void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         RenderGroupMap renderGroups;
         GroupRenderables(sceneRoot, renderGroups);
+        
+        static float lightAngle = 0.0f;  // Rotation angle in degrees
+        static float lightRadius = 10.0f; // Distance from the center
+        ImGui::Begin("Lighting Controls");
+        if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees")) {
+            float radians = glm::radians(lightAngle);
+
+            // Compute light position (circular path around Y-axis)
+            m_directionalLight.position = glm::vec3(
+                lightRadius * cos(radians), // X
+                5.0f,                       // Y (height)
+                lightRadius * sin(radians)  // Z
+            );
+
+            // Compute light direction (toward the origin)
+            m_directionalLight.direction = glm::normalize(-m_directionalLight.position);            
+        }
+        ImGui::End();
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(renderGroups, eyePos, viewMatrix, projMatrix);
 
         GBufferPass(renderGroups, sceneRoot, viewMatrix, projMatrix);
 
-        //SkyboxPass(viewMatrix, projMatrix);
-
-        if (debugGBuffer)
+        if (m_debugModes != DebugModes::None)
         {
-            //DebugDirectionalLightShadows();
-            for (int mode = 0; mode < 6; ++mode)
+            if (m_debugModes == DebugModes::GBuffer)
             {
-                DebugGBuffer(mode);
+                for (int mode = 0; mode < 6; ++mode)
+                {
+                    DebugGBuffer(mode);
+                }
+            }
+            else if (m_debugModes == DebugModes::DirectionalLightShadows)
+            {
+                DebugDirectionalLightShadows();
             }
         }
         else
         {
             TestLightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
+    }
+
+    void DeferredRenderer::CycleDebugMode()
+    {
+        static DebugModes modes[3] = { DebugModes::GBuffer, DebugModes::DirectionalLightShadows, DebugModes::None };
+        if (m_debugModes == modes[1])
+            m_debugModes = modes[2];
+        else if (m_debugModes == modes[2])
+            m_debugModes = modes[0];
+        else if (m_debugModes == modes[0])
+            m_debugModes = modes[1];
     }
 
     void DeferredRenderer::SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -286,7 +321,7 @@ namespace JLEngine
         m_graphics->Enable(GL_DEPTH_TEST);
 
         m_graphics->BindShader(m_skyboxShader->GetProgramId());
-        m_skyboxShader->SetUniform("u_Model", m_skybox->localMatrix);
+        m_skyboxShader->SetUniform("u_Model", m_skybox->GetGlobalTransform());
         m_skyboxShader->SetUniform("u_View", glm::mat4(glm::mat3(viewMatrix)));
         m_skyboxShader->SetUniform("u_Projection", projMatrix);
         m_graphics->SetActiveTexture(0);
@@ -333,6 +368,12 @@ namespace JLEngine
         auto frustum = m_graphics->GetViewFrustum();
         m_lightingTestShader->SetUniformf("u_Near", frustum->GetNear());
         m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
+
+        m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
+
+        ImGui::Begin("Lighting Controls");
+        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.001f, 0.008f, "%.6f");
+        ImGui::End();
 
         RenderScreenSpaceTriangle();
     }
@@ -396,7 +437,6 @@ namespace JLEngine
         {
             // Extract material ID and attributes key from the key
             int materialId = key.first;
-            const std::string& attributesKey = key.second;
 
             // Bind material (assuming materials are identified by ID)
             auto material = m_assetLoader->GetMaterialManager()->Get(materialId);

@@ -9,4 +9,9 @@ namespace JLEngine
 			[](unsigned char c) { return std::tolower(c); });
 		return lowerStr;
 	}
+
+	bool Str::Contains(const std::string& str, const std::string& substr)
+	{
+		return str.find(substr) != std::string::npos;
+	}
 }

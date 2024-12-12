@@ -1,22 +1,26 @@
 #ifndef VERTEX_STRUCTURES_H
 #define VERTEX_STRUCTURES_H
 
-#include <vector>
+#include <map>
+#include <string>
 #include <glm/glm.hpp>
 
 #include "Types.h"
 
 namespace JLEngine
 {
-	enum AttributeType
+	enum class AttributeType
 	{
-		POSITION = 0,
-		NORMAL = 1,
-		TEX_COORD_2D = 2,
-		COLOUR = 3,
-		TANGENT = 4,
-		BINORMAL = 5
+		POSITION	= 1 << 0,
+		NORMAL		= 1 << 1,
+		TEX_COORD_0 = 1 << 2,
+		COLOUR		= 1 << 3,
+		TANGENT		= 1 << 4,
+		TEX_COORD_1 = 1 << 5,
+		COUNT		= 6			// num elements in this enum 
 	};
+
+	using VertexAttribKey = uint32;
 
 	struct VertexAttribute
 	{
@@ -34,6 +38,17 @@ namespace JLEngine
 			return (lhs.m_type < rhs.m_type);
 		}
 	};
+
+	AttributeType AttribTypeFromString(const std::string& str);
+
+	VertexAttribKey GenerateVertexAttribKey(const std::map<std::string, int>& glftAttributes);
+
+	void AddToVertexAttribKey(VertexAttribKey& key, AttributeType type);
+	void RemoveFromVertexAttribKey(VertexAttribKey& key, AttributeType type);
+	bool HasVertexAttribKey(uint32 mask, AttributeType attribute);
+
+	uint32 CalculateStride(VertexAttribKey vertexAttribKey);
+
 }
 
 #endif

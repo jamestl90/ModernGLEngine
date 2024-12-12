@@ -107,7 +107,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)stb\;$(ProjectDir)tiny_gltf\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)stb\;$(ProjectDir)tiny_gltf\;$(ProjectDir)imgui\</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -157,6 +157,16 @@
       </SubType>
     </ClCompile>
     <ClCompile Include="Graphics.cpp" />
+    <ClCompile Include="IMGuiManager.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="imgui\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="imgui\imgui.cpp" />
+    <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp" />
+    <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="InstanceBuffer.cpp">
       <SubType>
@@ -224,6 +234,10 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Graphics.h" />
+    <ClInclude Include="IMGuiManager.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Input.h" />
     <ClInclude Include="InstanceBuffer.h">
       <SubType>

@@ -96,7 +96,12 @@ namespace JLEngine
 		void SetVAO(uint32 id) { m_vaoId = id; }
 		uint32 GetVAO() { return m_vaoId; }
 
+		VertexAttribKey GetAttribKey() { return m_key; }
+		void SetVertexAttribKey(VertexAttribKey key) { m_key = key; }
+
 	private:
+
+		VertexAttribKey m_key;
 
 		uint32 m_vaoId;
 

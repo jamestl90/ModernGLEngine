@@ -42,7 +42,9 @@ namespace JLEngine
         }
 
         void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true) 
-        {
+        {           
+            if (!m_freeCursor) return;
+
             xoffset *= MouseSensitivity;
             yoffset *= MouseSensitivity * -1.0f;
 
@@ -60,6 +62,12 @@ namespace JLEngine
         }
 
         const glm::vec3 GetPosition() { return Position; }
+
+        void ToggleFreeMouse(Input* input)
+        {
+            m_freeCursor = !m_freeCursor;
+            input->SetMouseCursor(m_freeCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+        }
 
     private:
         void updateCameraVectors() 
@@ -97,6 +105,7 @@ namespace JLEngine
         glm::vec3 Up;
         glm::vec3 Right;
         glm::vec3 WorldUp;
+        bool m_freeCursor = true;
 
         float Yaw;
         float Pitch;

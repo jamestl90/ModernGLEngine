@@ -13,6 +13,8 @@ uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
 uniform mat4 u_ProjectionInverse;
 
+uniform float u_Bias;
+
 uniform float u_Near;
 uniform float u_Far;
 
@@ -52,7 +54,7 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     float currentDepth = projCoords.z;
 
     // Bias to prevent shadow acne
-    float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.005);
+    float bias = clamp(max(u_Bias * (1.0 - dot(normal, lightDir)), 0.0001), 0.0, 0.01);
 
     // Basic shadow test
     float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
@@ -60,15 +62,15 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     // Optional: Percentage Closer Filtering (PCF)
     //const float texelSize = 1.0 / 2048.0; // Shadow map resolution (e.g., 2048x2048)
     float pcfShadow = 0.0;
-    float texelSize = 1.0 / 2048.0;
-    for (int x = -1; x <= 1; ++x) {
-        for (int y = -1; y <= 1; ++y) {
+    float texelSize = 1.0 / 4096.0;
+    for (int x = -2; x <= 2; ++x) {
+        for (int y = -2; y <= 2; ++y) {
             vec2 offset = vec2(x, y) * texelSize;
             float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
             pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
         }
     }
-    shadow = pcfShadow / 9.0; // Average the 3x3 PCF kernel
+    shadow = pcfShadow / 25.0; // Average the 3x3 PCF kernel
 
     return shadow;
 }
@@ -111,7 +113,7 @@ vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 li
     vec3 diffuse = (1.0 - F) * albedo / 3.14159265359;
 
     vec3 lighting = (diffuse + specular) * lightColor * max(dot(normal, lightDir), 0.0);
-    lighting *= ao; // Apply ambient occlusion
+    lighting *= ao; 
 
     return lighting;
 }
@@ -154,7 +156,7 @@ void main()
 
     lighting += ambientColor * albedo;
     lighting += texture(gEmissive, v_TexCoords).rgb * 1.15f;
-    lighting *= 2.5f;
+    lighting *= 3.0;
 
     FragColor = vec4(lighting, 1.0);
 }

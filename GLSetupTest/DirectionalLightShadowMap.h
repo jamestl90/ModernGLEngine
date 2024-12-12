@@ -18,7 +18,8 @@ namespace JLEngine
 		void ShadowMapPassSetup(const glm::mat4& lightSpaceMatrix);
 
 		uint32 GetShadowMapID() { return m_shadowMap; }
-
+		float& GetBias() { return m_bias; }
+		
 		void SetModelMatrix(glm::mat4& model);
 
 	protected:
@@ -26,7 +27,8 @@ namespace JLEngine
 		ShaderProgram* m_shadowMapShader;
 		uint32 m_shadowMap;
 		uint32 m_shadowFBO;
-		int m_shadowMapSize = 2048;
+		int m_shadowMapSize = 4096;
+		float m_bias = 0.003f;
 
 		Graphics* m_graphics;
 	};

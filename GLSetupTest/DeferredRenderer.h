@@ -12,12 +12,19 @@
 #include "AssetLoader.h"
 #include "Batch.h"
 
-using RenderGroupKey = std::pair<int, std::string>;
+using RenderGroupKey = std::pair<int, JLEngine::VertexAttribKey>;
 using RenderGroupValue = std::pair<JLEngine::Batch*, glm::mat4>;
 using RenderGroupMap = std::map<RenderGroupKey, std::vector<RenderGroupValue>>;
 
 namespace JLEngine
 {
+    enum DebugModes
+    {
+        GBuffer,
+        DirectionalLightShadows,
+        None
+    };
+
     class Material;
     class DirectionalLightShadowMap;
 
@@ -31,12 +38,15 @@ namespace JLEngine
         void Initialize();
         void Resize(int width, int height);
         
-        void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, bool debugGBuffer);
+        void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
         void SetDirectionalShadowDistance(float dist) { m_dlShadowDistance = dist; }
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
+
+        void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
+        void CycleDebugMode();
 
     private:
         void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
@@ -57,14 +67,15 @@ namespace JLEngine
         Graphics* m_graphics;
         AssetLoader* m_assetLoader;
 
+        DebugModes m_debugModes;
+
         int m_width, m_height;
         std::string m_assetFolder;
 
         RenderTarget* m_gBufferTarget;
 
         ShaderProgram* m_gBufferShader;
-        ShaderProgram* m_lightingTestShader;
-         
+        ShaderProgram* m_lightingTestShader;         
         ShaderProgram* m_gBufferDebugShader;
         ShaderProgram* m_textureDebugShader;
 

@@ -21,21 +21,19 @@ namespace JLEngine
 	class Graphics;
 	class AssetLoader;
 
-	struct MaterialAttributeKey
+	struct MaterialVertexAttributeKey
 	{
 		int materialIndex;     // Material index for the primitive
-		std::string attributesKey; // Unique key representing the attribute layout
+		VertexAttribKey attributesKey; // Unique key representing the attribute layout
 
-		MaterialAttributeKey(int matIdx, const std::string& attrKey)
+		MaterialVertexAttributeKey(int matIdx, VertexAttribKey attrKey)
 			: materialIndex(matIdx), attributesKey(attrKey) {}
 
-		bool operator==(const MaterialAttributeKey& other) const
+		bool operator==(const MaterialVertexAttributeKey& other) const
 		{
 			return materialIndex == other.materialIndex &&
 				attributesKey == other.attributesKey;
 		}
-
-		static std::string GetAttributesKey(const std::map<std::string, int>& attributes);
 	};
 
 	class GLBLoader
@@ -51,21 +49,21 @@ namespace JLEngine
 		Material* ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
 		Texture* ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
-		std::shared_ptr<Batch> CreateBatch(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialAttributeKey key);
-		std::shared_ptr<Batch> CreateBatch2(const tinygltf::Model& model, const tinygltf::Primitive& primitives, MaterialAttributeKey key);
+		std::shared_ptr<Batch> CreateBatch(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
+		std::shared_ptr<Batch> CreateBatch2(const tinygltf::Model& model, const tinygltf::Primitive& primitives, MaterialVertexAttributeKey key);
 
 		bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<unsigned int>& indices);
 		bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData);
 		bool LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
+		bool LoadTexCoord2Attribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		bool LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		
 		void SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const;
-		void GenerateMissingAttributes(std::vector<float>& positions, std::vector<float>& normals, const std::vector<float>& texCoords, std::vector<float>& tangents);
-		void BatchLoadAttributes(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& tangents, std::vector<uint32>& indices, uint32& indexOffset);
+		void GenerateMissingAttributes(std::vector<float>& positions, std::vector<float>& normals, const std::vector<float>& texCoords, std::vector<float>& tangents, const std::vector<uint32>& indices, VertexAttribKey key);
+		void BatchLoadAttributes(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& texCoords2, std::vector<float>& tangents, std::vector<uint32>& indices, uint32& indexOffset, VertexAttribKey key);
 		void LoadAttributes(const tinygltf::Model& model, const tinygltf::Primitive* primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& tangents, std::vector<uint32>& indices, uint32& indexOffset);
 		
-
 		glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue);
 		glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue);
 
@@ -83,11 +81,15 @@ namespace JLEngine
 namespace std
 {
 	template <>
-	struct hash<JLEngine::MaterialAttributeKey>
+	struct hash<JLEngine::MaterialVertexAttributeKey>
 	{
-		size_t operator()(const JLEngine::MaterialAttributeKey& key) const
+		size_t operator()(const JLEngine::MaterialVertexAttributeKey& key) const
 		{
-			return std::hash<int>()(key.materialIndex) ^ std::hash<std::string>()(key.attributesKey);
+			size_t seed = 0;
+			hash<int> hasher;
+			seed ^= hasher(key.materialIndex) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			seed ^= hasher(key.attributesKey) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+			return seed;
 		}
 	};
 }
