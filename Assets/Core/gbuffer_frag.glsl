@@ -82,7 +82,7 @@ vec3 getNormal()
     vec3 worldNormal = normalize(v_Normal);
 
     // Encode the world-space normal to [0, 1] for storage
-    return v_Normal;
+    return worldNormal * 0.5 + 0.5;
 }
 
 float getAmbientOcclusion() 

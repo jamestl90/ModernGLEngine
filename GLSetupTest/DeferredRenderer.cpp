@@ -23,7 +23,7 @@ namespace JLEngine
     
     void DeferredRenderer::Initialize() 
     {
-        m_directionalLight.position = glm::vec3(0, 10.0f, 10.0f);
+        m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
         auto finalAssetPath = m_assetFolder + "Core/";
@@ -265,7 +265,16 @@ namespace JLEngine
         static float lightAngle = 0.0f;  // Rotation angle in degrees
         static float lightRadius = 30.0f; // Distance from the center
         ImGui::Begin("Shadow Controls");
-
+        if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees")) 
+        {
+            float radians = glm::radians(lightAngle); 
+            m_directionalLight.position = glm::vec3(
+                lightRadius * cos(radians),
+                30.0f,                     
+                lightRadius * sin(radians) 
+            );
+            m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
+        }
         ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.001f, 0.008f, "%.6f");
         ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
         ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");

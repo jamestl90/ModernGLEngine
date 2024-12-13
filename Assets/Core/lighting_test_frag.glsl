@@ -60,16 +60,16 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
 
     // Optional: Percentage Closer Filtering (PCF)
-    //float pcfShadow = 0.0;
-    //float texelSize = 1.0 / 4096.0;
-    //for (int x = -2; x <= 2; ++x) {
-    //    for (int y = -2; y <= 2; ++y) {
-    //        vec2 offset = vec2(x, y) * texelSize;
-    //        float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
-    //        pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
-    //    }
-    //}
-    //shadow = pcfShadow / 25.0; // Average the 3x3 PCF kernel
+    float pcfShadow = 0.0;
+    float texelSize = 1.0 / 4096.0;
+    for (int x = -2; x <= 2; ++x) {
+        for (int y = -2; y <= 2; ++y) {
+            vec2 offset = vec2(x, y) * texelSize;
+            float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
+            pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
+        }
+    }
+    shadow = pcfShadow / 25.0; // Average the 3x3 PCF kernel
 
     return shadow;
 }
@@ -132,7 +132,7 @@ void main()
 {
     // Sample G-buffer
     float depth = texture(gDepth, v_TexCoords).r;
-    float linearDepth = LinearizeDepth(depth, u_Near, u_Far);
+    //float linearDepth = LinearizeDepth(depth, u_Near, u_Far);
     vec3 worldPos = ReconstructWorldPosition(v_TexCoords, depth);
 
     vec4 albedoAO = texture(gAlbedoAO, v_TexCoords);
