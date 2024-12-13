@@ -41,7 +41,6 @@ namespace JLEngine
         void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
-        void SetDirectionalShadowDistance(float dist) { m_dlShadowDistance = dist; }
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
@@ -50,7 +49,7 @@ namespace JLEngine
 
     private:
         void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
+        void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
         void GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
@@ -83,7 +82,6 @@ namespace JLEngine
         GLuint m_triangleVAO;
 
         DirectionalLightShadowMap* m_dlShadowMap;
-        float m_dlShadowDistance;
         Light m_directionalLight;
         bool m_enableDLShadows;
 

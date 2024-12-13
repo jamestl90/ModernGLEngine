@@ -33,6 +33,8 @@ uniform sampler2D emissiveTexture;                // Emissive map
 uniform bool useEmissiveTexture = false;          // Flag to use texture
 uniform vec3 emissiveFactor = vec3(0.0);          // Emissive factor
 
+uniform float m_AlphaCutoff;
+
 // Constants 
 const float DEFAULT_AO = 1.0;                    // Default ambient occlusion
 
@@ -106,6 +108,12 @@ void main()
 {
     // Retrieve material properties
     vec4 baseColor = getBaseColor();
+
+    if (baseColor.a <= m_AlphaCutoff)
+    {
+        discard;
+    }
+
     vec2 metallicRoughness = getMetallicRoughness();
     vec3 normal = getNormal();
     float ao = getAmbientOcclusion();

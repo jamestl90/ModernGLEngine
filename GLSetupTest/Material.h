@@ -7,10 +7,18 @@
 
 #include "Types.h"
 #include "Resource.h"
+#include "JLHelpers.h"
 
 namespace JLEngine
 {
     class Texture; 
+
+    enum class AlphaMode
+    {
+        JL_OPAQUE,
+        MASK,
+        BLEND
+    };
 
     class Material : public Resource
     {
@@ -35,7 +43,7 @@ namespace JLEngine
         glm::vec3 emissiveFactor;            // Emissive color
 
         // Alpha properties
-        std::string alphaMode;               // Alpha mode: "OPAQUE", "MASK", "BLEND"
+        AlphaMode alphaMode;               // Alpha mode: "OPAQUE", "MASK", "BLEND"
         float alphaCutoff;                   // Alpha cutoff for "MASK" mode
         bool doubleSided;                    // Double-sided rendering flag
 
@@ -49,6 +57,8 @@ namespace JLEngine
     private:
         // Helper methods to handle material properties can be added here
     };
+
+    AlphaMode AlphaModeFromString(const std::string& alphaMode);
 }
 
 #endif

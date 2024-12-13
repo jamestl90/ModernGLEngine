@@ -19,8 +19,12 @@ namespace JLEngine
 
 		uint32 GetShadowMapID() { return m_shadowMap; }
 		float& GetBias() { return m_bias; }
+		float& GetSize() { return m_size; }
+		float& GetShadowDistance() { return m_dlShadowDistance; }
 		
 		void SetModelMatrix(glm::mat4& model);
+		void SetSize(float size) { m_size = size; }
+		void SetShadowDistance(float dist) { m_dlShadowDistance = dist; }
 
 	protected:
 
@@ -29,6 +33,8 @@ namespace JLEngine
 		uint32 m_shadowFBO;
 		int m_shadowMapSize = 4096;
 		float m_bias = 0.003f;
+		float m_size = 10.0f;
+		float m_dlShadowDistance;
 
 		Graphics* m_graphics;
 	};

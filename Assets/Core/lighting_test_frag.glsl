@@ -24,7 +24,7 @@ uniform vec3 u_CameraPos;      // Camera position for view direction
 
 out vec4 FragColor;
 
-const vec3 ambientColor = vec3(0.03); // Low ambient lighting
+const vec3 ambientColor = vec3(0.05); // Low ambient lighting
 
 // Linearize depth from non-linear clip space
 float LinearizeDepth(float depth, float near, float far) 
@@ -60,17 +60,16 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
 
     // Optional: Percentage Closer Filtering (PCF)
-    //const float texelSize = 1.0 / 2048.0; // Shadow map resolution (e.g., 2048x2048)
-    float pcfShadow = 0.0;
-    float texelSize = 1.0 / 4096.0;
-    for (int x = -2; x <= 2; ++x) {
-        for (int y = -2; y <= 2; ++y) {
-            vec2 offset = vec2(x, y) * texelSize;
-            float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
-            pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
-        }
-    }
-    shadow = pcfShadow / 25.0; // Average the 3x3 PCF kernel
+    //float pcfShadow = 0.0;
+    //float texelSize = 1.0 / 4096.0;
+    //for (int x = -2; x <= 2; ++x) {
+    //    for (int y = -2; y <= 2; ++y) {
+    //        vec2 offset = vec2(x, y) * texelSize;
+    //        float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
+    //        pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
+    //    }
+    //}
+    //shadow = pcfShadow / 25.0; // Average the 3x3 PCF kernel
 
     return shadow;
 }

@@ -462,7 +462,7 @@ namespace JLEngine
 		}
 
 		// Alpha properties
-		material->alphaMode = gltfMaterial.alphaMode;
+		material->alphaMode = AlphaModeFromString(gltfMaterial.alphaMode);
 		material->alphaCutoff = static_cast<float>(gltfMaterial.alphaCutoff);
 		material->doubleSided = gltfMaterial.doubleSided;
 

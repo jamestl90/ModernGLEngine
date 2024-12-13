@@ -12,7 +12,7 @@ namespace JLEngine
 {
     DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
         : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_textureDebugShader(nullptr),
-        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(), m_dlShadowDistance(100.0f),
+        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), m_skybox(nullptr),
         m_enableDLShadows(true), m_debugModes(DebugModes::None) {}
 
@@ -23,7 +23,7 @@ namespace JLEngine
     
     void DeferredRenderer::Initialize() 
     {
-        m_directionalLight.position = glm::vec3(0, 25.0f, 25.0f);
+        m_directionalLight.position = glm::vec3(0, 10.0f, 10.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
         auto finalAssetPath = m_assetFolder + "Core/";
@@ -86,7 +86,7 @@ namespace JLEngine
     glm::mat4 DeferredRenderer::DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         glm::mat4 lightSpaceMatrix = GetLightMatrix(m_directionalLight.position,
-            m_directionalLight.direction, 25.0f, 0.01f, m_dlShadowDistance);
+            m_directionalLight.direction, m_dlShadowMap->GetSize(), 0.01f, m_dlShadowMap->GetShadowDistance());
 
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
 
@@ -142,6 +142,15 @@ namespace JLEngine
         // Emissive
         m_gBufferShader->SetUniform("emissiveFactor", mat->emissiveFactor);
         m_graphics->BindTexture(m_gBufferShader, "emissiveTexture", "useEmissiveTexture", mat->emissiveTexture, 4);
+
+        if (mat->alphaMode == AlphaMode::MASK)
+        {
+            m_gBufferShader->SetUniformf("u_AlphaCutoff", mat->alphaCutoff);
+        }
+        else
+        {
+            m_gBufferShader->SetUniformf("u_AlphaCutoff", 1.0);
+        }
     }
 
     void DeferredRenderer::DebugGBuffer(int debugMode) 
@@ -230,7 +239,7 @@ namespace JLEngine
         m_textureDebugShader->SetUniformi("debugTexture", 0);
         m_textureDebugShader->SetUniformi("u_Linearize", 0);
         m_textureDebugShader->SetUniformf("u_Near", 0.01f);
-        m_textureDebugShader->SetUniformf("u_Far", m_dlShadowDistance);
+        m_textureDebugShader->SetUniformf("u_Far", m_dlShadowMap->GetShadowDistance());
 
         RenderScreenSpaceTriangle();
 
@@ -254,21 +263,12 @@ namespace JLEngine
         GroupRenderables(sceneRoot, renderGroups);
         
         static float lightAngle = 0.0f;  // Rotation angle in degrees
-        static float lightRadius = 10.0f; // Distance from the center
-        ImGui::Begin("Lighting Controls");
-        if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees")) {
-            float radians = glm::radians(lightAngle);
+        static float lightRadius = 30.0f; // Distance from the center
+        ImGui::Begin("Shadow Controls");
 
-            // Compute light position (circular path around Y-axis)
-            m_directionalLight.position = glm::vec3(
-                lightRadius * cos(radians), // X
-                5.0f,                       // Y (height)
-                lightRadius * sin(radians)  // Z
-            );
-
-            // Compute light direction (toward the origin)
-            m_directionalLight.direction = glm::normalize(-m_directionalLight.position);            
-        }
+        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.001f, 0.008f, "%.6f");
+        ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
+        ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
         ImGui::End();
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(renderGroups, eyePos, viewMatrix, projMatrix);
@@ -291,7 +291,7 @@ namespace JLEngine
         }
         else
         {
-            TestLightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
+            LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
     }
 
@@ -336,7 +336,7 @@ namespace JLEngine
         m_graphics->SetDepthMask(GL_TRUE);
     }
 
-    void DeferredRenderer::TestLightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
+    void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
     {
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -370,10 +370,6 @@ namespace JLEngine
         m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
 
         m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
-
-        ImGui::Begin("Lighting Controls");
-        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.001f, 0.008f, "%.6f");
-        ImGui::End();
 
         RenderScreenSpaceTriangle();
     }
