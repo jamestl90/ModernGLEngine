@@ -35,6 +35,15 @@ namespace JLEngine
         return scene;
     }
 
+    Texture* AssetLoader::CreateEmptyTexture(const std::string& name)
+    {
+        return m_textureManager->Add(name, [&]()
+            {
+                auto texture = std::make_unique<Texture>(name);
+                return texture;
+            });
+    }
+
     Texture* AssetLoader::CreateTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
     {
         return m_textureManager->Add(name, [&]()
@@ -78,6 +87,51 @@ namespace JLEngine
                 auto texture = std::make_unique<Texture>(name, width, height, data.data(), channels);
                 texture->InitFromData(data, width, height, channels, clamped, mipmaps);
                 texture->UploadToGPU(m_graphics, true);
+                return texture;
+            });
+    }
+
+    Texture* AssetLoader::CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath)
+    {
+        if (fileNames.size() != 6)
+        {
+            std::cerr << "Need 6 input fileNames for cubemap" << std::endl;
+            return nullptr;
+        }
+
+        return m_textureManager->Add(name, [&]()
+            {
+                auto finalAssetPath = [&](auto index) { return folderPath + fileNames[index]; };
+
+                float* data[6];
+                int tWidth, tHeight, tChannels;
+
+                for (int i = 0; i < 6; ++i)
+                {
+                    data[i] = stbi_loadf(finalAssetPath(i).c_str(), &tWidth, &tHeight, &tChannels, 0);
+                    if (!data[i])
+                    {
+                        std::cerr << "Failed to load HDR image: " << finalAssetPath(i) << std::endl;
+                        for (int j = 0; j < i; ++j) stbi_image_free(data[j]); // Free any previously loaded textures
+                        throw std::runtime_error("Failed to load HDR image");
+                    }
+                }
+
+                auto texture = std::make_unique<Texture>(name);
+                texture->SetSize(tWidth, tHeight);
+                if (tChannels == 3)
+                    texture->SetFormat(GL_RGB16F, GL_RGB, GL_FLOAT);
+                else if (tChannels == 4)
+                    texture->SetFormat(GL_RGBA16F, GL_RGBA, GL_FLOAT);
+                texture->SetCubemap(true);
+                texture->SetClamped(true);
+                texture->EnableMipmaps(false);
+                texture->UploadCubemapsToGPU(m_graphics, data);
+
+                for (auto i = 0; i < 6; i++)
+                {
+                    stbi_image_free(data[i]);
+                }
                 return texture;
             });
     }

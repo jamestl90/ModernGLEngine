@@ -639,7 +639,7 @@ namespace JLEngine
 		}
 
 		// Bind the index buffer
-		auto ibo = batch.GetIndexBuffer();
+		auto& ibo = batch.GetIndexBuffer();
 		if (ibo != nullptr)
 		{
 			CreateIndexBuffer(*ibo);
@@ -648,6 +648,12 @@ namespace JLEngine
 
 		// Unbind the VAO to prevent accidental modifications
 		BindVertexArray(0);
+	}
+
+	void Graphics::DisposeBatch(Batch& batch)
+	{
+		DisposeVertexBuffer(*batch.GetVertexBuffer().get());
+		DisposeIndexBuffer(*batch.GetIndexBuffer());
 	}
 
 	void Graphics::CreateVertexBuffer( VertexBuffer& vbo )
@@ -683,16 +689,6 @@ namespace JLEngine
 		glBindBuffer(ibo.Type(), id);
 		glBufferData(ibo.Type(), ibo.Size() * sizeof(uint32), ibo.Array(), ibo.DrawType());
 		ibo.SetId(id);
-	}
-
-	void Graphics::CreateMesh( Mesh* mesh )
-	{
-
-	}
-
-	void Graphics::DisposeMesh( Mesh* mesh )
-	{
-
 	}
 
 	void Graphics::CreateTexture( Texture* texture )
@@ -742,6 +738,41 @@ namespace JLEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		}
+	}
+
+	void Graphics::CreateCubemap(Texture* texture, float** data)
+	{
+		auto width = texture->GetWidth();
+		auto height = texture->GetHeight();
+
+		// Generate texture ID
+		GLuint hdrTexture;
+		glGenTextures(1, &hdrTexture);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, hdrTexture);
+
+		texture->SetGPUID(hdrTexture);
+
+		// Upload cubemap data (for each face)
+		for (unsigned int i = 0; i < 6; ++i)
+		{
+			glTexImage2D(
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, // Target for each face
+				0,                                  // Mipmap level
+				texture->GetInternalFormat(),       // Internal format
+				width,                              // Width
+				height,                             // Height
+				0,                                  // Border (must be 0)
+				texture->GetFormat(),               // Format of the data
+				GL_FLOAT,                           // Data type
+				data[i]                             // Pointer to the texture data
+			);
+		}
+
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
 
 	void Graphics::DisposeTexture(Texture* texture)
@@ -824,13 +855,12 @@ namespace JLEngine
 
 	void Graphics::DisposeVertexBuffer( VertexBuffer& vbo )
 	{
-		GLuint id = vbo.GetId();
-		glDeleteBuffers(1, &id);
-	}
+		if (vbo.GetVAO() > 0)
+		{
+			GLuint id = vbo.GetVAO();
+			glDeleteVertexArrays(1, &id);
+		}
 
-	void Graphics::DisposeVertexBuffer(GLuint vao, VertexBuffer& vbo)
-	{
-		glDeleteVertexArrays(1, &vao);
 		GLuint id = vbo.GetId();
 		glDeleteBuffers(1, &id);
 	}

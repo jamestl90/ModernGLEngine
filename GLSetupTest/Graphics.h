@@ -140,6 +140,7 @@ namespace JLEngine
 
 		void DisposeTexture(Texture* texture);
 		void CreateTexture(Texture* texture);
+		void CreateCubemap(Texture* texture, float** data);
 		void CreateTextures(uint32 count, uint32& id);
 		void BindTexture(uint32 target, uint32 id);
 		void BindTexture(ShaderProgram* shader, const std::string& uniformName,
@@ -151,14 +152,11 @@ namespace JLEngine
 		void CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms);
 		void DisposeInstanceBuffer(InstanceBuffer& instancedBO);
 		void CreateBatch(Batch& batch);
+		void DisposeBatch(Batch& batch);
 		void CreateVertexBuffer(VertexBuffer& vbo);
 		void CreateIndexBuffer(IndexBuffer& ibo);
 		void DisposeVertexBuffer(VertexBuffer& vbo);
-		void DisposeVertexBuffer(GLuint vao, VertexBuffer& vbo);
 		void DisposeIndexBuffer(IndexBuffer& ibo);
-
-		void CreateMesh(Mesh* mesh);
-		void DisposeMesh(Mesh* mesh);
 
 		// FBO
 		void CreateFrameBuffer(uint32 count, uint32& id);

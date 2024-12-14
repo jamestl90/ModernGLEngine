@@ -6,6 +6,8 @@
 
 namespace JLEngine
 {
+
+
 	class Graphics;
 
     class Texture : public Resource
@@ -14,6 +16,7 @@ namespace JLEngine
         // Constructor for file-based texture
         Texture(uint32_t handle, const std::string& name, const std::string& filename);
         Texture(const std::string& name, const std::string& filename);
+        Texture(const std::string& name);
         // Constructor for raw-data texture
         Texture(const std::string& name, uint32_t width, uint32_t height, void* data, int channels);
         Texture(const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels);
@@ -27,6 +30,7 @@ namespace JLEngine
 
         // Upload texture data to GPU
         void UploadToGPU(Graphics* graphics, bool freeData);
+        void UploadCubemapsToGPU(Graphics* graphics, float** data);
 
         void SetGPUID(uint32 id) { m_id = id; }
         void SetFormat(GLenum internalFormat, GLenum format, GLenum dataType);
@@ -35,7 +39,9 @@ namespace JLEngine
         bool GenerateMipmaps() { return m_mipmaps; }
         void SetImmutable(bool val) { m_immutable = val; }
         const bool IsImmutable() const { return m_immutable; }
-        
+        void SetCubemap(bool cubeMap) { m_isCubeMap = cubeMap; }
+        void SetSize(int width, int height) { m_width = width; m_height = height; }
+
         uint32 GetFormat() const { return m_format; }
         uint32 GetInternalFormat() const { return m_internalFormat; }
         bool IsClamped() const { return m_clamped; }
@@ -44,6 +50,7 @@ namespace JLEngine
         int GetWidth() const { return m_width; }
         int GetHeight() const { return m_height; }
         int GetChannels() const { return m_channels; }
+        int IsCubeMap() const { return m_isCubeMap; }
         const std::vector<unsigned char>& GetData() const { return m_data; }
 
     private:
@@ -64,6 +71,7 @@ namespace JLEngine
 
         uint32_t m_id = 0;               // OpenGL texture ID
         bool m_immutable = true;
+        bool m_isCubeMap = false;
     };
 }
 

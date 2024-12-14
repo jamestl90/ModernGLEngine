@@ -27,6 +27,7 @@ namespace JLEngine
 
     class Material;
     class DirectionalLightShadowMap;
+    class HDRISky;
 
     class DeferredRenderer 
     {
@@ -48,7 +49,8 @@ namespace JLEngine
         void CycleDebugMode();
 
     private:
-        void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void DrawUI();
+        //void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
@@ -85,8 +87,7 @@ namespace JLEngine
         Light m_directionalLight;
         bool m_enableDLShadows;
 
-        Node* m_skybox;
-        ShaderProgram* m_skyboxShader;
+        HDRISky* m_hdriSky;
     };
 }
 

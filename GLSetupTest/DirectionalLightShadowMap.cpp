@@ -9,7 +9,8 @@
 namespace JLEngine
 {
     DirectionalLightShadowMap::DirectionalLightShadowMap(Graphics* graphics, ShaderProgram* shaderProg)
-        : m_shadowMapShader(shaderProg), m_graphics(graphics), m_shadowFBO(0), m_dlShadowDistance(100.0f)
+        : m_shadowMapShader(shaderProg), m_graphics(graphics), m_shadowFBO(0), m_dlShadowDistance(100.0f),
+        m_PCFKernelSize(3)
     {
         
     }

@@ -52,7 +52,13 @@ namespace JLEngine
 	{
 		if (m_graphics)
 		{
-			m_graphics->DisposeMesh(this);
+			for (auto& batch : m_batches)
+			{
+				if (batch->IsValid())
+				{
+					m_graphics->DisposeBatch(*batch);
+				}
+			}
 		}
 	}
 

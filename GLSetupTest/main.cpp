@@ -10,6 +10,7 @@
 #include "Geometry.h"
 #include "DeferredRenderer.h"
 #include "Material.h"
+#include "TextureHelpers.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
@@ -91,9 +92,8 @@ void WindowResizeCallback(int width, int height)
     m_defRenderer->Resize(width, height);
 }
 
-int main(int argc, char* argv[])
+int Main1(std::string assetFolder)
 {
-    std::string assetFolder = argv[1];
     JLEngine::JLEngineCore engine(width, height, "JL Engine", 60, 120);
 
     auto graphics = engine.GetGraphics();
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
     //auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
     //fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
     //fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
-    
+
     cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
     auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
     //sceneRoot->AddChild(potofcoals);
     //sceneRoot->AddChild(fish);
     sceneRoot->AddChild(cardinalDirections);
-    
+
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
         width, height, assetFolder);
     m_defRenderer->Initialize();
@@ -153,4 +153,33 @@ int main(int argc, char* argv[])
     engine.run(gameLogicUpdate, gameRender, fixedUpdate);
 
     return 0;
+}
+
+int Main2(std::string assetFolder)
+{
+    JLEngine::JLEngineCore engine(width, height, "JL Engine", 60, 120);
+
+    auto skyFiles = { "sunnyDayCubemap/sunny_day_clouds_negx.hdr",
+                      "sunnyDayCubemap/sunny_day_clouds_negy.hdr",
+                      "sunnyDayCubemap/sunny_day_clouds_negz.hdr",
+                      "sunnyDayCubemap/sunny_day_clouds_posx.hdr",
+                      "sunnyDayCubemap/sunny_day_clouds_posy.hdr",
+                      "sunnyDayCubemap/sunny_day_clouds_posz.hdr" };
+
+    float* data = JLEngine::TextureHelpers::StitchSky(assetFolder, skyFiles, 2048, 2048, 3);
+    
+    if (JLEngine::TextureHelpers::WriteHDR(assetFolder, "sunnyDayCubemap/sunny_day_clouds_cubemap.hdr", 2048, 2048 * 6, 3, data))
+    {
+        std::cout << "Successfully combined textures" << std::endl;
+    }
+
+    return 0;
+}
+
+int main(int argc, char* argv[])
+{
+    std::string assetFolder = argv[1];
+    
+    return Main1(assetFolder);
+    //return Main2(assetFolder);
 }

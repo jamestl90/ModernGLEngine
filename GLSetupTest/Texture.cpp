@@ -15,6 +15,12 @@ namespace JLEngine
     {
     }
 
+    Texture::Texture(const std::string& name)
+        : Resource(name)
+    {
+
+    }
+
     // Constructor for raw-data texture
     Texture::Texture(const std::string& name, uint32_t width, uint32_t height, void* data, int channels)
         : Resource(name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
@@ -145,5 +151,9 @@ namespace JLEngine
         // Clear raw data after uploading to GPU to free memory
         if (freeData)
             m_data.clear();
+    }
+    void Texture::UploadCubemapsToGPU(Graphics* graphics, float** data)
+    {
+        m_graphics->CreateCubemap(this, data);
     }
 }

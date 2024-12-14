@@ -2,6 +2,7 @@
 #include "Material.h"
 #include "Graphics.h"
 #include "DirectionalLightShadowMap.h"
+#include "HDRISky.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -13,12 +14,17 @@ namespace JLEngine
     DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
         : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_textureDebugShader(nullptr),
         m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
-        m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), m_skybox(nullptr),
-        m_enableDLShadows(true), m_debugModes(DebugModes::None) {}
+        m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), 
+        m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) {}
 
     DeferredRenderer::~DeferredRenderer() 
     {
-        m_graphics->DisposeVertexBuffer(m_triangleVAO, m_triangleVertexBuffer);
+        m_graphics->DisposeVertexBuffer(m_triangleVertexBuffer);
+        
+        m_graphics->DisposeShader(m_textureDebugShader);
+        m_graphics->DisposeShader(m_gBufferDebugShader);
+        m_graphics->DisposeShader(m_gBufferShader);
+        m_graphics->DisposeShader(m_lightingTestShader);
     }
     
     void DeferredRenderer::Initialize() 
@@ -38,7 +44,20 @@ namespace JLEngine
         m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
         m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
         m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
-        m_skyboxShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "skybox_vert.glsl", "skybox_frag.glsl", finalAssetPath);
+        auto skyboxShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", finalAssetPath);
+        
+        std::array<std::string, 6> cubemapFiles = {
+            "sunnyDayCubemap/sunny_day_clouds_posx.hdr",
+            "sunnyDayCubemap/sunny_day_clouds_negx.hdr",
+            "sunnyDayCubemap/sunny_day_clouds_posy.hdr",
+            "sunnyDayCubemap/sunny_day_clouds_negy.hdr",
+            "sunnyDayCubemap/sunny_day_clouds_posz.hdr",
+            "sunnyDayCubemap/sunny_day_clouds_negz.hdr"
+        };
+        auto hdriTexture = m_assetLoader->CreateCubemapFromFile("HDRI Cubemap Texture", cubemapFiles, m_assetFolder);
+
+        m_hdriSky = new HDRISky(hdriTexture, skyboxShader);
+        m_hdriSky->Initialise(m_graphics);
 
         InitScreenSpaceTriangle();
     }
@@ -262,27 +281,16 @@ namespace JLEngine
         RenderGroupMap renderGroups;
         GroupRenderables(sceneRoot, renderGroups);
         
-        static float lightAngle = 0.0f;  // Rotation angle in degrees
-        static float lightRadius = 30.0f; // Distance from the center
-        ImGui::Begin("Shadow Controls");
-        if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees")) 
-        {
-            float radians = glm::radians(lightAngle); 
-            m_directionalLight.position = glm::vec3(
-                lightRadius * cos(radians),
-                30.0f,                     
-                lightRadius * sin(radians) 
-            );
-            m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
-        }
-        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.001f, 0.008f, "%.6f");
-        ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
-        ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
-        ImGui::End();
+        DrawUI();
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(renderGroups, eyePos, viewMatrix, projMatrix);
 
         GBufferPass(renderGroups, sceneRoot, viewMatrix, projMatrix);
+
+        if (m_hdriSky)
+        {
+            m_hdriSky->Render(viewMatrix, projMatrix);
+        }
 
         if (m_debugModes != DebugModes::None)
         {
@@ -315,34 +323,56 @@ namespace JLEngine
             m_debugModes = modes[1];
     }
 
-    void DeferredRenderer::SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    //void DeferredRenderer::SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    //{
+    //    if (!m_skybox) return;
+    //
+    //    auto& batch = m_skybox->mesh->GetBatches()[0];
+    //    auto skyboxTexture = batch->GetMaterial()->baseColorTexture;
+    //    auto& vertexBuffer = batch->GetVertexBuffer();
+    //    auto& indexBuffer = batch->GetIndexBuffer();
+    //
+    //    //m_graphics->BindFrameBuffer(0);
+    //    m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
+    //    m_graphics->SetDepthMask(GL_FALSE);
+    //    m_graphics->Enable(GL_DEPTH_TEST);
+    //
+    //    m_graphics->BindShader(m_skyboxShader->GetProgramId());
+    //    m_skyboxShader->SetUniform("u_Model", m_skybox->GetGlobalTransform());
+    //    m_skyboxShader->SetUniform("u_View", glm::mat4(glm::mat3(viewMatrix)));
+    //    m_skyboxShader->SetUniform("u_Projection", projMatrix);
+    //    m_graphics->SetActiveTexture(0);
+    //    m_graphics->BindTexture(GL_TEXTURE_2D, skyboxTexture->GetGPUID());
+    //    m_skyboxShader->SetUniformi("u_SkyboxTexture", 0);
+    //
+    //    m_graphics->BindVertexArray(vertexBuffer->GetVAO());
+    //    m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->GetId());
+    //
+    //    m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)indexBuffer->Size(), GL_UNSIGNED_INT, nullptr);
+    //
+    //    m_graphics->SetDepthMask(GL_TRUE);
+    //}
+
+    void DeferredRenderer::DrawUI()
     {
-        if (!m_skybox) return;
-
-        auto& batch = m_skybox->mesh->GetBatches()[0];
-        auto skyboxTexture = batch->GetMaterial()->baseColorTexture;
-        auto& vertexBuffer = batch->GetVertexBuffer();
-        auto& indexBuffer = batch->GetIndexBuffer();
-
-        //m_graphics->BindFrameBuffer(0);
-        m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
-        m_graphics->SetDepthMask(GL_FALSE);
-        m_graphics->Enable(GL_DEPTH_TEST);
-
-        m_graphics->BindShader(m_skyboxShader->GetProgramId());
-        m_skyboxShader->SetUniform("u_Model", m_skybox->GetGlobalTransform());
-        m_skyboxShader->SetUniform("u_View", glm::mat4(glm::mat3(viewMatrix)));
-        m_skyboxShader->SetUniform("u_Projection", projMatrix);
-        m_graphics->SetActiveTexture(0);
-        m_graphics->BindTexture(GL_TEXTURE_2D, skyboxTexture->GetGPUID());
-        m_skyboxShader->SetUniformi("u_SkyboxTexture", 0);
-
-        m_graphics->BindVertexArray(vertexBuffer->GetVAO());
-        m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->GetId());
-
-        m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)indexBuffer->Size(), GL_UNSIGNED_INT, nullptr);
-
-        m_graphics->SetDepthMask(GL_TRUE);
+        static float lightAngle = 0.0f;  // Rotation angle in degrees
+        static float lightRadius = 30.0f; // Distance from the center
+        ImGui::Begin("Shadow Controls");
+        if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees"))
+        {
+            float radians = glm::radians(lightAngle);
+            m_directionalLight.position = glm::vec3(
+                lightRadius * cos(radians),
+                30.0f,
+                lightRadius * sin(radians)
+            );
+            m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
+        }
+        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00020f, 0.0009f, "%.6f");
+        ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
+        ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
+        ImGui::SliderInt("PCF Kernel Size", &m_dlShadowMap->GetPCFKernelSize(), 0, 5);
+        ImGui::End();
     }
 
     void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
@@ -379,6 +409,7 @@ namespace JLEngine
         m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
 
         m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
+        m_lightingTestShader->SetUniformi("u_PCFKernelSize", m_dlShadowMap->GetPCFKernelSize());
 
         RenderScreenSpaceTriangle();
     }
@@ -424,10 +455,10 @@ namespace JLEngine
                 renderGroups[key].emplace_back(batch.get(), worldMatrix);
             }
         }
-        if (node->GetTag() == NodeTag::Skybox && node->mesh)
-        {
-            m_skybox = node;
-        }
+        //if (node->GetTag() == NodeTag::Skybox && node->mesh)
+        //{
+        //    m_skybox = node;
+        //}
 
         // Recursively process child nodes
         for (auto& child : node->children)

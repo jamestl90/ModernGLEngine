@@ -141,6 +141,15 @@
     <ClCompile Include="imgui\backends\imgui_impl_opengl3.cpp">
       <Filter>Source Files\IMGUI</Filter>
     </ClCompile>
+    <ClCompile Include="HDRISky.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Baking.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -255,6 +264,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IMGuiManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HDRISky.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Baking.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureHelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

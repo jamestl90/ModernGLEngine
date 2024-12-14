@@ -1,4 +1,3 @@
-
 #ifndef ASSET_LOADER_H
 #define ASSET_LOADER_H
 
@@ -57,12 +56,14 @@ namespace JLEngine
 		void SetGlobalGenerationSettings(AssetGenerationSettings& settings) { m_settings = settings; }
 
 		// Texture Loading ///////////////////////////////////
+		Texture* CreateEmptyTexture(const std::string& name);
 		Texture* CreateTextureFromFile(const std::string& name, const std::string& filename,
 			bool clamped = false, bool mipmaps = false);
 		Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32 height, int channels, void* data,
 			int internalFormat, int format, int dataType, bool clamped = false, bool mipmaps = false);
 		Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32 height, int channels, vector<unsigned char>& data,
 			bool clamped = false, bool mipmaps = false);
+		Texture* CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
 
 		// Shader Loading ///////////////////////////////////
 		ShaderProgram* CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
@@ -93,6 +94,8 @@ namespace JLEngine
 		// SSBO Loading ///////////////////////////////////
 		ShaderStorageBuffer* CreateSSBO(const std::string& name, size_t size);
 		void UpdateSSBO(const std::string& name, const void* data, size_t size);
+
+		Graphics* GetGraphics() { return m_graphics; }
 	protected:
 
 		AssetGenerationSettings m_settings;

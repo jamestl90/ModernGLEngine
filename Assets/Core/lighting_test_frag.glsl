@@ -13,6 +13,7 @@ uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
 uniform mat4 u_ProjectionInverse;
 
+uniform int u_PCFKernelSize;
 uniform float u_Bias;
 
 uniform float u_Near;
@@ -42,45 +43,45 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     // Transform to [0, 1] range for shadow map sampling
     projCoords = projCoords * 0.5 + 0.5;
 
-    // Check if the fragment is outside the shadow map bounds
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) {
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) 
+    {
         return 1.0; // Outside the shadow map, fully lit
     }
 
-    // Sample depth from shadow map
     float closestDepth = texture(gDLShadowMap, projCoords.xy).r;
-
-    // Current fragment depth in light space
     float currentDepth = projCoords.z;
-
-    // Bias to prevent shadow acne
-    float bias = clamp(max(u_Bias * (1.0 - dot(normal, lightDir)), 0.0001), 0.0, 0.01);
-
-    // Basic shadow test
+    float bias = max(u_Bias * tan(acos(dot(normal, lightDir))), 0.0001);
     float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
 
     // Optional: Percentage Closer Filtering (PCF)
-    float pcfShadow = 0.0;
-    float texelSize = 1.0 / 4096.0;
-    for (int x = -2; x <= 2; ++x) {
-        for (int y = -2; y <= 2; ++y) {
-            vec2 offset = vec2(x, y) * texelSize;
-            float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
-            pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
+    if (u_PCFKernelSize != 0)
+    {
+        float pcfShadow = 0.0;
+        float texelSize = 1.0 / 4096.0;
+        for (int x = -u_PCFKernelSize; x <= u_PCFKernelSize; ++x) 
+        {
+            for (int y = -u_PCFKernelSize; y <= u_PCFKernelSize; ++y) 
+            {
+                vec2 offset = vec2(x, y) * texelSize;
+                float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
+                pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
+            }
         }
+        shadow = pcfShadow / float((2 * u_PCFKernelSize + 1) * (2 * u_PCFKernelSize + 1));
     }
-    shadow = pcfShadow / 25.0; // Average the 3x3 PCF kernel
-
     return shadow;
 }
 
 // Fresnel-Schlick approximation for specular reflection
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) 
+{
+    // return F0 + (vec3(1.0) - F0) * pow(1.0 - cosTheta, 5.0);
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
 // GGX Normal Distribution Function
-float ggxNDF(float NdotH, float roughness) {
+float ggxNDF(float NdotH, float roughness) 
+{
     float a = roughness * roughness;
     float a2 = a * a;
     float NdotH2 = NdotH * NdotH;
@@ -109,6 +110,7 @@ vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 li
     float NDF = ggxNDF(max(dot(normal, halfDir), 0.0), roughness);
     float G = geometrySmith(max(dot(normal, viewDir), 0.0), max(dot(normal, lightDir), 0.0), roughness);
     vec3 specular = F * NDF * G / (4.0 * max(dot(normal, viewDir), 0.01) * max(dot(normal, lightDir), 0.01));
+    specular = clamp(specular, 0.0, 1.0);
     vec3 diffuse = (1.0 - F) * albedo / 3.14159265359;
 
     vec3 lighting = (diffuse + specular) * lightColor * max(dot(normal, lightDir), 0.0);
@@ -154,8 +156,10 @@ void main()
     lighting *= shadow;
 
     lighting += ambientColor * albedo;
-    lighting += texture(gEmissive, v_TexCoords).rgb * 1.15f;
-    lighting *= 3.0;
+    lighting += texture(gEmissive, v_TexCoords).rgb;
+    
+    lighting = lighting / (lighting + vec3(1.0));
+    lighting = pow(lighting, vec3(1.0/2.2));
 
     FragColor = vec4(lighting, 1.0);
 }

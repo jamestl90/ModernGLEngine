@@ -95,6 +95,75 @@ namespace JLEngine
         return nullptr;
 	}
 
+    VertexBuffer Geometry::CreateSkybox(Graphics* graphics)
+    {
+        const float skyboxVertices[] =
+        {
+            // Positions          
+            -1.0f,  1.0f, -1.0f,
+            -1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            -1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f, -1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+
+            1.0f, -1.0f, -1.0f,
+            1.0f, -1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f, -1.0f, -1.0f,
+
+            -1.0f, -1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f, -1.0f,  1.0f,
+            -1.0f, -1.0f,  1.0f,
+
+            -1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f, -1.0f,
+            1.0f,  1.0f,  1.0f,
+            1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f,  1.0f,
+            -1.0f,  1.0f, -1.0f,
+
+            -1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+             1.0f, -1.0f, -1.0f,
+             1.0f, -1.0f, -1.0f,
+            -1.0f, -1.0f,  1.0f,
+             1.0f, -1.0f,  1.0f
+        };
+
+        std::vector<float> verts;
+        verts.insert(verts.end(), std::begin(skyboxVertices), std::end(skyboxVertices));
+
+        VertexBuffer skyboxVBO;
+
+        skyboxVBO.SetDataType(GL_FLOAT);
+        skyboxVBO.SetType(GL_ARRAY_BUFFER);
+        skyboxVBO.SetDrawType(GL_STATIC_DRAW);
+
+        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 3);
+        skyboxVBO.AddAttribute(posAttri);
+        skyboxVBO.Set(verts);
+        skyboxVBO.CalcStride();
+
+        skyboxVBO.SetVAO(graphics->CreateVertexArray());
+        graphics->CreateVertexBuffer(skyboxVBO);
+        graphics->BindVertexArray(0);
+
+        return skyboxVBO;
+    }
+
     Mesh* Geometry::GenerateBoxMesh(Graphics* graphics, std::string name, float width, float length, float height)
     {
         std::vector<glm::vec3> positions;
