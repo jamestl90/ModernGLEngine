@@ -50,17 +50,17 @@ namespace JLEngine
             {
                 TextureReader reader;
                 std::vector<unsigned char> data;
-                int width, height, channels;
 
-                if (!reader.ReadTexture(filename, data, width, height, channels))
+                auto imgData = TextureReader::LoadTexture(filename, false, false);
+                if (!imgData.IsValid())
                 {
                     std::cerr << "Failed to load texture: " << filename << std::endl;
                     return std::unique_ptr<Texture>(nullptr);
                 }
 
-                // Create a new Texture object
-                auto texture = std::make_unique<Texture>(name, width, height, data.data(), channels);
-                texture->InitFromData(data, width, height, channels, clamped, mipmaps);
+                // Use imgData.data for texture initialization
+                auto texture = std::make_unique<Texture>(name, imgData.width, imgData.height, imgData.data.data(), imgData.channels);
+                texture->InitFromData(imgData.data, imgData.width, imgData.height, imgData.channels, clamped, mipmaps);
                 texture->UploadToGPU(m_graphics, true);
                 return texture;
             });
@@ -103,35 +103,19 @@ namespace JLEngine
             {
                 auto finalAssetPath = [&](auto index) { return folderPath + fileNames[index]; };
 
-                float* data[6];
-                int tWidth, tHeight, tChannels;
-
-                for (int i = 0; i < 6; ++i)
-                {
-                    data[i] = stbi_loadf(finalAssetPath(i).c_str(), &tWidth, &tHeight, &tChannels, 0);
-                    if (!data[i])
-                    {
-                        std::cerr << "Failed to load HDR image: " << finalAssetPath(i) << std::endl;
-                        for (int j = 0; j < i; ++j) stbi_image_free(data[j]); // Free any previously loaded textures
-                        throw std::runtime_error("Failed to load HDR image");
-                    }
-                }
+                auto imgData = TextureReader::LoadCubeMapHDR(folderPath, fileNames);
 
                 auto texture = std::make_unique<Texture>(name);
-                texture->SetSize(tWidth, tHeight);
-                if (tChannels == 3)
+                texture->SetSize(imgData.at(0).width, imgData.at(0).height);
+                if (imgData.at(0).channels == 3)
                     texture->SetFormat(GL_RGB16F, GL_RGB, GL_FLOAT);
-                else if (tChannels == 4)
+                else if (imgData.at(0).channels == 4)
                     texture->SetFormat(GL_RGBA16F, GL_RGBA, GL_FLOAT);
                 texture->SetCubemap(true);
                 texture->SetClamped(true);
                 texture->EnableMipmaps(false);
-                texture->UploadCubemapsToGPU(m_graphics, data);
+                texture->UploadCubemapsToGPU(m_graphics, imgData);
 
-                for (auto i = 0; i < 6; i++)
-                {
-                    stbi_image_free(data[i]);
-                }
                 return texture;
             });
     }

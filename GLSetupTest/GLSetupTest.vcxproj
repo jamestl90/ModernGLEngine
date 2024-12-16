@@ -108,7 +108,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)stb\;$(ProjectDir)tiny_gltf\;$(ProjectDir)imgui\</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,7 +136,7 @@
       <SubType>
       </SubType>
     </ClCompile>
-    <ClCompile Include="Baking.cpp">
+    <ClCompile Include="Baker.cpp">
       <SubType>
       </SubType>
     </ClCompile>
@@ -209,11 +209,11 @@
     </ClCompile>
     <ClCompile Include="Singleton.cpp" />
     <ClCompile Include="Texture.cpp" />
-    <ClCompile Include="TextureHelpers.cpp">
+    <ClCompile Include="TextureReader.cpp" />
+    <ClCompile Include="TextureWriter.cpp">
       <SubType>
       </SubType>
     </ClCompile>
-    <ClCompile Include="TextureReader.cpp" />
     <ClCompile Include="VertexBuffers.cpp" />
     <ClCompile Include="VertexStructures.cpp" />
     <ClCompile Include="ViewFrustum.cpp" />
@@ -224,7 +224,7 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Baking.h">
+    <ClInclude Include="Baker.h">
       <SubType>
       </SubType>
     </ClInclude>
@@ -254,6 +254,7 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="ImageData.h" />
     <ClInclude Include="IMGuiManager.h">
       <SubType>
       </SubType>
@@ -292,11 +293,11 @@
     </ClInclude>
     <ClInclude Include="Singleton.h" />
     <ClInclude Include="Texture.h" />
-    <ClInclude Include="TextureHelpers.h">
+    <ClInclude Include="TextureReader.h" />
+    <ClInclude Include="TextureWriter.h">
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="TextureReader.h" />
     <ClInclude Include="Transform3.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="VertexBuffers.h" />

@@ -7,6 +7,7 @@
 #include "Batch.h"
 
 #include <set>
+#include <array>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 
@@ -537,6 +538,31 @@ namespace JLEngine
 		glActiveTexture(GL_TEXTURE0 + texunit);
 	}
 
+	uint32 Graphics::GetInternalFormat(uint32 texId, uint32 texTarget)
+	{
+		glBindTexture(texTarget, texId);
+
+		GLint internalFormat = 0;
+		glGetTexLevelParameteriv(texTarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+		glBindTexture(texTarget, 0);
+		return internalFormat;
+	}
+
+	inline std::string Graphics::InternalFormatToString(GLint internalFormat)
+	{
+		switch (internalFormat)
+		{
+		case GL_RGB8: return "GL_RGB8";
+		case GL_RGBA8: return "GL_RGBA8";
+		case GL_RGB16F: return "GL_RGB16F";
+		case GL_RGBA16F: return "GL_RGBA16F";
+		case GL_RGB32F: return "GL_RGB32F";
+		case GL_RGBA32F: return "GL_RGBA32F";
+		case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
+		default: return "Unknown Format";
+		}
+	}
+
 	void Graphics::CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms)
 	{
 		if (instancedBO.Uploaded()) return;
@@ -693,6 +719,11 @@ namespace JLEngine
 
 	void Graphics::CreateTexture( Texture* texture )
 	{
+		if (!texture)
+		{
+			throw std::runtime_error("Invalid texture!");
+		}
+
 		GLuint image;
 		glGenTextures(1, &image); 
 		glBindTexture(GL_TEXTURE_2D, image);
@@ -740,32 +771,207 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::CreateCubemap(Texture* texture, float** data)
+	void Graphics::ReadTexture2D(uint32 texId, ImageData& imgData, bool useFramebuffer)
 	{
-		auto width = texture->GetWidth();
-		auto height = texture->GetHeight();
+		GLenum format = (imgData.channels == 3) ? GL_RGB : GL_RGBA;
+		GLenum type = imgData.isHDR ? GL_FLOAT : GL_UNSIGNED_BYTE;
+
+		if (useFramebuffer)
+		{
+			// Use a framebuffer to read the texture
+			GLuint fbo;
+			glGenFramebuffers(1, &fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texId, 0);
+
+			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			{
+				glDeleteFramebuffers(1, &fbo);
+				throw std::runtime_error("Framebuffer is incomplete for Texture2D.");
+			}
+
+			// Allocate storage for pixel data
+			size_t dataSize = imgData.width * imgData.height * imgData.channels;
+			if (imgData.isHDR)
+			{
+				imgData.hdrData.resize(dataSize);
+				glReadPixels(0, 0, imgData.width, imgData.height, format, type, imgData.hdrData.data());
+			}
+			else
+			{
+				imgData.data.resize(dataSize);
+				glReadPixels(0, 0, imgData.width, imgData.height, format, type, imgData.data.data());
+			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glDeleteFramebuffers(1, &fbo);
+		}
+		else
+		{
+			// Use glGetTexImage to read the texture
+			glBindTexture(GL_TEXTURE_2D, texId);
+
+			GLint internalFormat;
+			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+
+			size_t dataSize = imgData.width * imgData.height * imgData.channels;
+			if (imgData.isHDR)
+			{
+				imgData.hdrData.resize(dataSize);
+				glGetTexImage(GL_TEXTURE_2D, 0, format, type, imgData.hdrData.data());
+			}
+			else
+			{
+				imgData.data.resize(dataSize);
+				glGetTexImage(GL_TEXTURE_2D, 0, format, type, imgData.data.data());
+			}
+		}
+
+		GLenum errorCode = glGetError();
+		if (errorCode != GL_NO_ERROR)
+		{
+			throw std::runtime_error("Failed to read Texture2D. GL Error: " + std::to_string(errorCode));
+		}
+
+		std::cout << "Successfully read Texture2D with " << (imgData.isHDR ? "HDR" : "LDR") << " data." << std::endl;
+	}
+
+	void Graphics::ReadCubemap(uint32 texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer)
+	{
+		GLenum format = channels == 3 ? GL_RGB : GL_RGBA;
+		GLenum type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+
+		if (useFramebuffer)
+		{
+			// Use a framebuffer to read each cubemap face
+			GLuint fbo;
+			glGenFramebuffers(1, &fbo);
+			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+			for (int i = 0; i < 6; ++i)
+			{
+				imgData.at(i).width = width;
+				imgData.at(i).height = height;
+				imgData.at(i).channels = channels;
+				imgData.at(i).isHDR = hdr;
+				size_t faceSize = width * height * imgData.at(i).channels;
+
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texId, 0);
+
+				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+				{
+					glDeleteFramebuffers(1, &fbo);
+					throw std::runtime_error("Framebuffer is incomplete for cubemap face: " + std::to_string(i));
+				}
+
+				if (imgData.at(i).isHDR)
+				{
+					std::vector<float> faceData(faceSize);
+					glReadPixels(0, 0, width, height, format, type, faceData.data());
+					imgData.at(i).hdrData = std::move(faceData);
+				}
+				else
+				{
+					std::vector<unsigned char> faceData(faceSize);
+					glReadPixels(0, 0, width, height, format, type, faceData.data());
+					imgData.at(i).data = std::move(faceData);
+				}
+
+				GLenum errorCode = glGetError();
+				if (errorCode != GL_NO_ERROR)
+				{
+					glDeleteFramebuffers(1, &fbo);
+					throw std::runtime_error("Failed to read cubemap face " + std::to_string(i) +
+						" using framebuffer. GL Error: " + std::to_string(errorCode));
+				}
+			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glDeleteFramebuffers(1, &fbo);
+		}
+		else
+		{
+			// Use glGetTexImage to read each cubemap face
+			glBindTexture(GL_TEXTURE_CUBE_MAP, texId);
+
+			for (int i = 0; i < 6; ++i)
+			{
+				auto internalFormat = GetInternalFormat(texId, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
+				if (internalFormat == GL_RGB16F || internalFormat == GL_RGBA16F) 
+				{
+					if (type != GL_FLOAT) 
+						throw std::runtime_error("Type mismatch for HDR cubemap face " + std::to_string(i));
+				}
+
+				size_t faceSize = width * height * channels;
+				imgData.at(i).width = width;
+				imgData.at(i).height = height;
+				imgData.at(i).channels = channels;
+				imgData.at(i).isHDR = hdr;
+
+				if (hdr)
+				{
+					std::vector<float> faceData(faceSize);
+					glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
+					imgData.at(i).hdrData = std::move(faceData);
+				}
+				else
+				{
+					std::vector<unsigned char> faceData(faceSize);
+					glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
+					imgData.at(i).data = std::move(faceData);
+				}
+			}
+		}
+
+		std::cout << "Successfully read Cubemap with " << (imgData.at(0).isHDR ? "HDR" : "LDR") << " data." << std::endl;
+	}
+
+	int Graphics::CreateCubemap(std::array<ImageData, 6>& cubeFaceData)
+	{
+		auto width = cubeFaceData.at(0).width;
+		auto height = cubeFaceData.at(0).height;;
+
+		auto format = cubeFaceData.at(0).channels == 3 ? GL_RGB : GL_RGBA;
+		auto internalFormat = cubeFaceData.at(0).channels == 3 ? GL_RGB16F : GL_RGBA16F;
 
 		// Generate texture ID
 		GLuint hdrTexture;
 		glGenTextures(1, &hdrTexture);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, hdrTexture);
 
-		texture->SetGPUID(hdrTexture);
-
 		// Upload cubemap data (for each face)
 		for (unsigned int i = 0; i < 6; ++i)
 		{
-			glTexImage2D(
-				GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, // Target for each face
-				0,                                  // Mipmap level
-				texture->GetInternalFormat(),       // Internal format
-				width,                              // Width
-				height,                             // Height
-				0,                                  // Border (must be 0)
-				texture->GetFormat(),               // Format of the data
-				GL_FLOAT,                           // Data type
-				data[i]                             // Pointer to the texture data
-			);
+			auto& imgData = cubeFaceData.at(i);
+			if (imgData.isHDR)
+			{
+				glTexImage2D(
+					GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+					0,
+					internalFormat, // Internal format
+					width,
+					height,
+					0,
+					format,      // Data format
+					GL_FLOAT,
+					imgData.hdrData.data()
+				);
+			}
+			else
+			{
+				glTexImage2D(
+					GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+					0,
+					internalFormat, // Internal format
+					width,
+					height,
+					0,
+					format,      // Data format
+					GL_UNSIGNED_BYTE,
+					imgData.data.data()
+				);
+			}
 		}
 
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -773,6 +979,8 @@ namespace JLEngine
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		return hdrTexture;
 	}
 
 	void Graphics::DisposeTexture(Texture* texture)
@@ -786,17 +994,6 @@ namespace JLEngine
 	{
 		glDeleteTextures(count, textures);
 	}
-
-	//void Graphics::UpdateViewport()
-	//{
-	//	// did the user resize the IWindow?
-	//	if (m_window->NeedResize())
-	//	{
-	//		glViewport(0, 0, m_window->GetWidth(), m_window->GetHeight());	// set the new view port
-	//
-	//		m_window->SetResized(false);	// the IWindow doesn't need a resize anymore
-	//	}
-	//}
 
 	void Graphics::Clear(uint32 flags)
 	{

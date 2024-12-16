@@ -3,11 +3,12 @@
 
 #include "Resource.h"
 #include "Graphics.h"
+#include "ImageData.h"
+
+#include <array>
 
 namespace JLEngine
 {
-
-
 	class Graphics;
 
     class Texture : public Resource
@@ -30,7 +31,7 @@ namespace JLEngine
 
         // Upload texture data to GPU
         void UploadToGPU(Graphics* graphics, bool freeData);
-        void UploadCubemapsToGPU(Graphics* graphics, float** data);
+        void UploadCubemapsToGPU(Graphics* graphics, std::array<ImageData, 6>& data);
 
         void SetGPUID(uint32 id) { m_id = id; }
         void SetFormat(GLenum internalFormat, GLenum format, GLenum dataType);

@@ -2,9 +2,10 @@
 #define TEXTURE_READER_H
 
 #include <string>
-#include <vector>
+#include <array>
 
 #include "Types.h"
+#include "ImageData.h"
 
 namespace JLEngine
 {
@@ -14,11 +15,9 @@ namespace JLEngine
         TextureReader();
         ~TextureReader();
 
-        bool ReadTexture(const std::string& texture, std::vector<unsigned char>& outData,
-            int& outWidth, int& outHeight, int& outChannels);
-
-    private:
-
+        static ImageData LoadTexture(const std::string& filePath, bool isHDR = false, bool forceGrayscale = false);
+        static std::array<ImageData, 6> LoadCubeMapHDR(const std::string& folderPath, const std::array<std::string, 6>& fileNames);
+        static float* StitchSky(const std::string& assetPath, std::initializer_list<const char*> fileNames, int width, int height, int channels);
     };
 }
 

@@ -499,7 +499,10 @@ namespace JLEngine
 		std::vector<unsigned char> data = imageData.image; // Raw pixel data
 
 		// Create a new texture
-		auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data, true, true);
+		//auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data, true, true);
+		auto jltexture = m_assetLoader->CreateEmptyTexture(finalName);
+		jltexture->InitFromData(imageData.image, width, height, channels, true, true);
+		jltexture->UploadToGPU(m_graphics, true);
 
 		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;

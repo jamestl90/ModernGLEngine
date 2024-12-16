@@ -16,6 +16,7 @@
 #include "Transform3.h"
 #include "RenderTarget.h"
 #include "Node.h"
+#include "ImageData.h"
 
 //#define BUFFER_OFFSET(i) ((char*)NULL + (i))
 
@@ -140,13 +141,18 @@ namespace JLEngine
 
 		void DisposeTexture(Texture* texture);
 		void CreateTexture(Texture* texture);
-		void CreateCubemap(Texture* texture, float** data);
+		void ReadTexture2D(uint32 texId, ImageData& imgData, bool useFramebuffer = false);
+		void ReadCubemap(uint32 texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
+		int CreateCubemap(std::array<ImageData, 6>& cubeFaceData);
 		void CreateTextures(uint32 count, uint32& id);
 		void BindTexture(uint32 target, uint32 id);
 		void BindTexture(ShaderProgram* shader, const std::string& uniformName,
 			const std::string& flagName, Texture* texture, int textureUnit);
 		void DisposeTexture(uint32 count, uint32* textures);
 		void SetActiveTexture(uint32 texunit);
+
+		uint32 GetInternalFormat(uint32 texId, uint32 texTarget);
+		std::string InternalFormatToString(GLint internalFormat);
 
 		// Buffer objects
 		void CreateInstanceBuffer(InstanceBuffer& instancedBO, const std::vector<glm::mat4>& instanceTransforms);

@@ -286,12 +286,10 @@ namespace JLEngine
         auto lightSpaceMatrix = DirectionalShadowMapPass(renderGroups, eyePos, viewMatrix, projMatrix);
 
         GBufferPass(renderGroups, sceneRoot, viewMatrix, projMatrix);
-
         if (m_hdriSky)
         {
             m_hdriSky->Render(viewMatrix, projMatrix);
         }
-
         if (m_debugModes != DebugModes::None)
         {
             if (m_debugModes == DebugModes::GBuffer)
@@ -310,6 +308,8 @@ namespace JLEngine
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
+
+
     }
 
     void DeferredRenderer::CycleDebugMode()

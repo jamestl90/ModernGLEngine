@@ -10,7 +10,9 @@
 #include "Geometry.h"
 #include "DeferredRenderer.h"
 #include "Material.h"
-#include "TextureHelpers.h"
+#include "TextureReader.h"
+#include "TextureWriter.h"
+#include "Baker.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
@@ -109,37 +111,37 @@ int Main1(std::string assetFolder)
 
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
-    //auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    //auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
-    //mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
-    //planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
-    //planeNode->translation -= glm::vec3(0, 2.5f, 0);
-    //
-    //auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
-    //metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    //
-    //auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    //
-    //auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
-    //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
-    //potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
-    //
-    //auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
-    //fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
-    //fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
+    auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
+    auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
+    mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
+    planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
+    planeNode->translation -= glm::vec3(0, 2.5f, 0);
+    
+    auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    metallicSpheres->translation += glm::vec3(0, 2.5, -5);
+    
+    auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    
+    auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
+    potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
+    potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
+    
+    auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
+    fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
+    fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
 
     cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
-    auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
+    //auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
     //auto virtualCity = engine.GetAssetLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
 
-    sceneRoot->AddChild(bistroScene);
+    //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    //sceneRoot->AddChild(planeNode);
-    //sceneRoot->AddChild(metallicSpheres);
-    //sceneRoot->AddChild(helmet);
-    //sceneRoot->AddChild(potofcoals);
-    //sceneRoot->AddChild(fish);
+    sceneRoot->AddChild(planeNode);
+    sceneRoot->AddChild(metallicSpheres);
+    sceneRoot->AddChild(helmet);
+    sceneRoot->AddChild(potofcoals);
+    sceneRoot->AddChild(fish);
     sceneRoot->AddChild(cardinalDirections);
 
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
@@ -159,18 +161,27 @@ int Main2(std::string assetFolder)
 {
     JLEngine::JLEngineCore engine(width, height, "JL Engine", 60, 120);
 
-    auto skyFiles = { "sunnyDayCubemap/sunny_day_clouds_negx.hdr",
-                      "sunnyDayCubemap/sunny_day_clouds_negy.hdr",
-                      "sunnyDayCubemap/sunny_day_clouds_negz.hdr",
-                      "sunnyDayCubemap/sunny_day_clouds_posx.hdr",
-                      "sunnyDayCubemap/sunny_day_clouds_posy.hdr",
-                      "sunnyDayCubemap/sunny_day_clouds_posz.hdr" };
+    std::array<std::string, 6> skyFiles = { "sunnyDayCubemap/sunny_day_clouds_negx.hdr",
+                                              "sunnyDayCubemap/sunny_day_clouds_negy.hdr",
+                                              "sunnyDayCubemap/sunny_day_clouds_negz.hdr",
+                                              "sunnyDayCubemap/sunny_day_clouds_posx.hdr",
+                                              "sunnyDayCubemap/sunny_day_clouds_posy.hdr",
+                                              "sunnyDayCubemap/sunny_day_clouds_posz.hdr" };
+    auto graphics = engine.GetGraphics();
 
-    float* data = JLEngine::TextureHelpers::StitchSky(assetFolder, skyFiles, 2048, 2048, 3);
+    auto baker = new JLEngine::Baker(assetFolder, engine.GetAssetLoader());
+    auto cubemapData = JLEngine::TextureReader::LoadCubeMapHDR(assetFolder, skyFiles);
     
-    if (JLEngine::TextureHelpers::WriteHDR(assetFolder, "sunnyDayCubemap/sunny_day_clouds_cubemap.hdr", 2048, 2048 * 6, 3, data))
+    uint32 cubeMapID = graphics->CreateCubemap(cubemapData);
+    auto irradianceId = baker->GenerateIrradianceCubemap(cubeMapID, 32);
+
+    std::array<JLEngine::ImageData, 6> irradianceData;
+    graphics->ReadCubemap(irradianceId, cubemapData.at(0).width, cubemapData.at(0).height, cubemapData.at(0).channels, true, irradianceData);
+
+    for (size_t i = 0; i < irradianceData.size(); ++i) 
     {
-        std::cout << "Successfully combined textures" << std::endl;
+        std::string facePath = assetFolder + "sunnyDayCubemap/sunny_day_clouds_irradiance_" + std::to_string(i) + ".hdr";
+        JLEngine::TextureWriter::WriteTexture(facePath, irradianceData.at(i));
     }
 
     return 0;
@@ -180,6 +191,6 @@ int main(int argc, char* argv[])
 {
     std::string assetFolder = argv[1];
     
-    return Main1(assetFolder);
-    //return Main2(assetFolder);
+    //return Main1(assetFolder);
+    return Main2(assetFolder);
 }

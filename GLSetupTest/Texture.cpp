@@ -34,7 +34,7 @@ namespace JLEngine
         }
     }
 
-    Texture::Texture(const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels) 
+    Texture::Texture(const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels)
         : Resource(name), m_width(width), m_height(height), m_channels(channels), m_clamped(false),
         m_mipmaps(false), m_internalFormat(GL_RGBA8), m_format(GL_RGBA), m_dataType(GL_UNSIGNED_BYTE), m_id(0)
     {
@@ -140,20 +140,16 @@ namespace JLEngine
     {
         m_graphics = graphics;
 
-        if (m_data.empty())
-        {
-            std::cerr << "No texture data to upload to GPU!" << std::endl;
-            return;
-        }
-
         m_graphics->CreateTexture(this);
 
         // Clear raw data after uploading to GPU to free memory
         if (freeData)
-            m_data.clear();
+        {
+            FreeData();
+        }
     }
-    void Texture::UploadCubemapsToGPU(Graphics* graphics, float** data)
+    void Texture::UploadCubemapsToGPU(Graphics* graphics, std::array<ImageData, 6>& data)
     {
-        m_graphics->CreateCubemap(this, data);
+        SetGPUID(m_graphics->CreateCubemap(data));
     }
 }
