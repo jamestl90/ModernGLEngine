@@ -16,15 +16,15 @@ namespace JLEngine
 
 		int GetType() { return m_type; }
 
-		void SetShaderId(uint32 id) { m_shaderId = id; }
-		uint32 GetShaderId() { return m_shaderId; }
+		void SetShaderId(uint32_t id) { m_shaderId = id; }
+		uint32_t GetShaderId() { return m_shaderId; }
 
 		void SetName(std::string name) { m_name = name; }
 		std::string GetName() const { return m_name; }
 
 	protected: 
 
-		uint32 m_shaderId;
+		uint32_t m_shaderId;
 		int m_type;
 
 		std::string m_name;

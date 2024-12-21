@@ -23,21 +23,21 @@ namespace JLEngine
 
 		void UnloadFromGPU();
 
-		void SetGPUID(uint32 id) { m_instanceId = id; m_uploadedToGPU = true; }
-		void SetInstanceCount(uint32 instanceCount) { m_instanceCount = instanceCount; }
+		void SetGPUID(uint32_t id) { m_instanceId = id; m_uploadedToGPU = true; }
+		void SetInstanceCount(uint32_t instanceCount) { m_instanceCount = instanceCount; }
 
-		uint32 GetGPUID() const { return m_instanceId; }
-		uint32 GetInstanceCount() const { return m_instanceCount; }
+		uint32_t GetGPUID() const { return m_instanceId; }
+		uint32_t GetInstanceCount() const { return m_instanceCount; }
 		bool IsStatic() const { return m_static; }
 		bool Uploaded() const { return m_uploadedToGPU; }
 
-		static constexpr uint32 INSTANCE_MATRIX_LOCATION = 3;
+		static constexpr uint32_t INSTANCE_MATRIX_LOCATION = 3;
 	protected:
 		bool m_uploadedToGPU = false;
 		Graphics* m_graphics = nullptr;
 		bool m_static = false;
-		uint32 m_instanceId = 0;
-		uint32 m_instanceCount = 0;
+		uint32_t m_instanceId = 0;
+		uint32_t m_instanceCount = 0;
 	};
 }
 

@@ -135,7 +135,7 @@ namespace JLEngine
 	class SmallArray
 	{
 	public:
-		SmallArray(T* data, uint32 size)
+		SmallArray(T* data, uint32_t size)
 			: m_data(data), m_size(size)
 		{
 			if (data == nullptr)
@@ -144,7 +144,7 @@ namespace JLEngine
 			}
 		}
 		
-		SmallArray(uint32 size)
+		SmallArray(uint32_t size)
 			: m_size(size), m_data(new T[size]{})
 		{
 		}
@@ -159,7 +159,7 @@ namespace JLEngine
 			delete[] m_data;
 		}
 
-		void Create(T* data, uint32 size)
+		void Create(T* data, uint32_t size)
 		{
 			if (m_data != nullptr)
 				delete[] m_data;
@@ -168,7 +168,7 @@ namespace JLEngine
 			m_data = data;
 		}
 
-		void Create(uint32 size)
+		void Create(uint32_t size)
 		{
 			if (m_data != nullptr)
 				delete[] m_data;
@@ -177,7 +177,7 @@ namespace JLEngine
 			m_data = new T[m_size]{};
 		}
 
-		void Insert(T value, uint32 idx)
+		void Insert(T value, uint32_t idx)
 		{
 			if (idx >= m_size)
 			{
@@ -187,7 +187,7 @@ namespace JLEngine
 		}
 
 		// Getter for size
-		uint32 Size() const { return m_size; }
+		uint32_t Size() const { return m_size; }
 
 		// Access operator for convenience
 		T& operator[](uint32_t idx)
@@ -214,7 +214,7 @@ namespace JLEngine
 
 	protected:
 		T* m_data = nullptr;
-		uint32 m_size = 0;
+		uint32_t m_size = 0;
 	};
 }
 

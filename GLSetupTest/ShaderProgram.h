@@ -27,8 +27,8 @@ namespace JLEngine
 
 		void UploadToGPU(Graphics* graphics);
 
-		void SetProgramId(uint32 id) { m_programId = id; }
-		uint32 GetProgramId() { return m_programId; }
+		void SetProgramId(uint32_t id) { m_programId = id; }
+		uint32_t GetProgramId() { return m_programId; }
 
 		void AddShader(Shader& shader) { m_shaders.push_back(shader); }
 		void AddShader(Shader& shader, string source);
@@ -44,14 +44,14 @@ namespace JLEngine
 		void SetUniform(const std::string& name, const glm::vec4& vector);
 		void SetUniform(const std::string& name, const glm::vec3& vector);
 		void SetUniformf(const std::string& name, float value);
-		void SetUniformi(const std::string& name, uint32 value);
+		void SetUniformi(const std::string& name, uint32_t value);
 
 		void UnloadFromGraphics();
 
 	private:
 
 		std::vector<std::string> m_shaderTexts;
-		uint32 m_programId;
+		uint32_t m_programId;
 		std::vector<std::string> m_activeUniforms;
 		std::string m_filename;
 		std::vector<Shader> m_shaders;

@@ -95,7 +95,7 @@ namespace JLEngine
         return nullptr;
 	}
 
-    VertexBuffer Geometry::CreateSkybox(Graphics* graphics)
+    VertexBuffer Geometry::CreateBox(Graphics* graphics)
     {
         const float skyboxVertices[] =
         {
@@ -164,55 +164,78 @@ namespace JLEngine
         return skyboxVBO;
     }
 
-    Mesh* Geometry::GenerateBoxMesh(Graphics* graphics, std::string name, float width, float length, float height)
+    VertexBuffer Geometry::CreateScreenSpaceTriangle(Graphics* graphics)
     {
-        std::vector<glm::vec3> positions;
-        std::vector<glm::vec3> normals;
-        std::vector<uint32> indices;
-        std::vector<glm::vec2> uvs;
+        const float triangleVertices[] =
+        {
+            // Positions        // UVs
+            -1.0f, -3.0f,       0.0f, 2.0f,
+             3.0f,  1.0f,       2.0f, 0.0f,
+            -1.0f,  1.0f,       0.0f, 0.0f
+        };
+        std::vector<float> triVerts;
+        triVerts.insert(triVerts.end(), std::begin(triangleVertices), std::end(triangleVertices));
 
-        std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&> geomData = std::tie(positions, normals, uvs, indices);
+        VertexBuffer vbo;
+        vbo.SetDataType(GL_FLOAT);
+        vbo.SetType(GL_ARRAY_BUFFER);
+        vbo.SetDrawType(GL_STATIC_DRAW);
 
-        glm::vec3 center(0.0f); 
-        int triCount = 0;
-        Polygon::AddBox(geomData, triCount, center, width, length, height);
-
-        // Interleave vertex data: positions, normals (calculated), and UVs
-        std::vector<float> vertices;
-        for (size_t i = 0; i < positions.size(); ++i) {
-            // Add position
-            vertices.push_back(positions[i].x);
-            vertices.push_back(positions[i].y);
-            vertices.push_back(positions[i].z);
-
-            vertices.push_back(normals[i].x);
-            vertices.push_back(normals[i].y);
-            vertices.push_back(normals[i].z);
-
-            // Add UV
-            vertices.push_back(uvs[i].x);
-            vertices.push_back(uvs[i].y);
-        }
-
-        // Create the VertexBuffer
-        JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-        vbo.Set(vertices);
-
-        JLEngine::VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 3); // Position attribute
-        JLEngine::VertexAttribute normAttri(JLEngine::AttributeType::NORMAL, sizeof(float) * 3, 3); // Normal attribute
-        JLEngine::VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, sizeof(float) * 6, 2); // UV attribute
-        
+        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 2);
+        VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, 2 * sizeof(float), 2);
         vbo.AddAttribute(posAttri);
-        vbo.AddAttribute(normAttri);
         vbo.AddAttribute(uvAttri);
+        vbo.Set(triVerts);
         vbo.CalcStride();
 
-        // Create the IndexBuffer
-        JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-        ibo.Set(indices);
+        vbo.SetVAO(graphics->CreateVertexArray());
+        graphics->CreateVertexBuffer(vbo);
+        graphics->BindVertexArray(0);
+        return vbo;
+    }
 
-        // Build the Mesh
-        throw std::exception("Need to create a new mesh here");
+    std::tuple<VertexBuffer, IndexBuffer> Geometry::CreateScreenSpaceQuad(Graphics* graphics)
+    {
+        const float quadVerticesArray[] = 
+        {
+            -1.0f, -1.0f,   0.0f, 0.0f, // Bottom-left
+             1.0f, -1.0f,   1.0f, 0.0f, // Bottom-right
+            -1.0f,  1.0f,   0.0f, 1.0f, // Top-left
+             1.0f,  1.0f,   1.0f, 1.0f  // Top-right
+        };
+
+        const unsigned int quadIndicesArray[] = 
+        {
+            0, 1, 2, 
+            1, 3, 2  
+        };
+
+        std::vector<float> quadVerts;
+        quadVerts.insert(quadVerts.end(), std::begin(quadVerticesArray), std::end(quadVerticesArray));
+
+        VertexBuffer vbo;
+        vbo.SetDataType(GL_FLOAT);
+        vbo.SetType(GL_ARRAY_BUFFER);
+        vbo.SetDrawType(GL_STATIC_DRAW);
+
+        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 2);
+        VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, 2 * sizeof(float), 2);
+        vbo.AddAttribute(posAttri);
+        vbo.AddAttribute(uvAttri);
+        vbo.Set(quadVerts);
+        vbo.CalcStride();
+
+        vbo.SetVAO(graphics->CreateVertexArray());
+        graphics->CreateVertexBuffer(vbo);        
+
+        std::vector<uint32_t> quadIndices;
+        quadIndices.insert(quadIndices.end(), std::begin(quadIndicesArray), std::end(quadIndicesArray));
+        IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+        ibo.Set(quadIndices);
+        graphics->CreateIndexBuffer(ibo);
+        graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
+
+        return std::tuple<VertexBuffer, IndexBuffer>(vbo, ibo);
     }
 
     void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
@@ -309,7 +332,7 @@ namespace JLEngine
         }
     }
 
-    std::vector<glm::vec3> Geometry::CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32>& indices) 
+    std::vector<glm::vec3> Geometry::CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32_t>& indices) 
     {
         // Map to store accumulated normals for each vertex
         std::unordered_map<glm::vec3, glm::vec3, Vec3Hash> vertexNormals;
@@ -542,7 +565,7 @@ namespace JLEngine
     std::vector<float> Geometry::CalculateTangents(const std::vector<float>& positions,
         const std::vector<float>& normals,
         const std::vector<float>& uvs,
-        const std::vector<uint32>& indices)
+        const std::vector<uint32_t>& indices)
     {
         if (positions.size() % 3 != 0 || normals.size() % 3 != 0 || uvs.size() % 2 != 0)
         {
@@ -689,7 +712,7 @@ namespace JLEngine
         return flatTangents;
     }
 
-    uint32 Polygon::AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
+    uint32_t Polygon::AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32_t>&>& geomData,
         int lastTriCount, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, 
         glm::vec3 p4, glm::vec3 normal, glm::vec2 uvBotLeft, glm::vec2 uvOffset, bool flip)
     {
@@ -713,26 +736,26 @@ namespace JLEngine
         uvs.push_back(uvBotLeft + glm::vec2(0.0f, uvOffset.y));
         uvs.push_back(uvBotLeft + uvOffset);
 
-        uint32 bLeft = lastTriCount++; 
-        uint32 bRight = lastTriCount++;
-        uint32 tLeft = lastTriCount++;
-        uint32 tRight = lastTriCount++;
+        uint32_t bLeft = lastTriCount++; 
+        uint32_t bRight = lastTriCount++;
+        uint32_t tLeft = lastTriCount++;
+        uint32_t tRight = lastTriCount++;
 
         if (flip) 
         {
-            std::array<uint32, 6> triIndices = { bLeft, bRight, tLeft, bRight, tRight, tLeft };
+            std::array<uint32_t, 6> triIndices = { bLeft, bRight, tLeft, bRight, tRight, tLeft };
             indices.insert(indices.end(), triIndices.begin(), triIndices.end());
         }
         else 
         {
-            std::array<uint32, 6> triIndices = { bLeft, tLeft, bRight, bRight, tLeft, tRight };
+            std::array<uint32_t, 6> triIndices = { bLeft, tLeft, bRight, bRight, tLeft, tRight };
             indices.insert(indices.end(), triIndices.begin(), triIndices.end());
         }
 
         return lastTriCount;
     }
 
-    uint32 Polygon::AddBox(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
+    uint32_t Polygon::AddBox(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32_t>&>& geomData,
         int triCount, const glm::vec3& center, float width, float length, float height)
     {
         float halfWidth = width * 0.5f;

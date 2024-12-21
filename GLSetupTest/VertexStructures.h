@@ -20,17 +20,17 @@ namespace JLEngine
 		COUNT		= 6			// num elements in this enum 
 	};
 
-	using VertexAttribKey = uint32;
+	using VertexAttribKey = uint32_t;
 
 	struct VertexAttribute
 	{
 	public:
-		VertexAttribute(AttributeType type, uint16 offset, uint16 count) 
+		VertexAttribute(AttributeType type, uint16_t offset, uint16_t count) 
 			: m_type(type), m_offset(offset), m_count(count) {}
 
 		AttributeType m_type;
-		uint16 m_offset;
-		uint16 m_count;
+		uint16_t m_offset;
+		uint16_t m_count;
 
 		// for use in std::set
 		friend bool operator < (const VertexAttribute& lhs, const VertexAttribute& rhs)
@@ -45,9 +45,9 @@ namespace JLEngine
 
 	void AddToVertexAttribKey(VertexAttribKey& key, AttributeType type);
 	void RemoveFromVertexAttribKey(VertexAttribKey& key, AttributeType type);
-	bool HasVertexAttribKey(uint32 mask, AttributeType attribute);
+	bool HasVertexAttribKey(uint32_t mask, AttributeType attribute);
 
-	uint32 CalculateStride(VertexAttribKey vertexAttribKey);
+	uint32_t CalculateStride(VertexAttribKey vertexAttribKey);
 
 }
 

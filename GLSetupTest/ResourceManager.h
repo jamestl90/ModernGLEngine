@@ -17,7 +17,7 @@ namespace JLEngine
     class ResourceManager
     {
     public:
-        T* Get(uint32 id)
+        T* Get(uint32_t id)
         {
             std::scoped_lock lock(m_mutex);
             auto it = m_resourcesById.find(id);
@@ -31,7 +31,7 @@ namespace JLEngine
             return (it != m_nameToId.end()) ? Get(it->second) : nullptr;
         }
 
-        uint32 Add(const std::string& name, T* existingResource)
+        uint32_t Add(const std::string& name, T* existingResource)
         {
             std::scoped_lock lock(m_mutex);
             if (m_nameToId.find(name) != m_nameToId.end())
@@ -39,7 +39,7 @@ namespace JLEngine
                 return m_nameToId[name];
             }
 
-            uint32 id = GenerateHandle();
+            uint32_t id = GenerateHandle();
             existingResource->SetHandle(id);
 
             m_resourcesById[id] = std::unique_ptr<T>(existingResource);
@@ -56,7 +56,7 @@ namespace JLEngine
             auto nameToIdIt = m_nameToId.find(name);
             if (nameToIdIt != m_nameToId.end())
             {
-                uint32 id = nameToIdIt->second;
+                uint32_t id = nameToIdIt->second;
                 return m_resourcesById[id].get();
             }
 
@@ -66,7 +66,7 @@ namespace JLEngine
                 throw std::runtime_error("Failed to load resource: " + name);
             }
 
-            uint32 id = GenerateHandle();
+            uint32_t id = GenerateHandle();
             resource->SetHandle(id);
 
             T* rawPtr = resource.get();
@@ -77,7 +77,7 @@ namespace JLEngine
             return rawPtr;
         }
 
-        void Remove(uint32 id)
+        void Remove(uint32_t id)
         {
             std::scoped_lock lock(m_mutex);
             auto it = m_resourcesById.find(id);
@@ -118,18 +118,18 @@ namespace JLEngine
             m_idToName.clear();
         }
 
-        const std::unordered_map<uint32, std::unique_ptr<T>>& GetResources() const
+        const std::unordered_map<uint32_t, std::unique_ptr<T>>& GetResources() const
         {
             std::scoped_lock lock(m_mutex);
             return m_resourcesById;
         }
 
     protected:
-        uint32 GenerateHandle()
+        uint32_t GenerateHandle()
         {
             if (!m_freeHandles.empty())
             {
-                uint32 handle = m_freeHandles.top();
+                uint32_t handle = m_freeHandles.top();
                 m_freeHandles.pop();
                 return handle;
             }
@@ -137,11 +137,11 @@ namespace JLEngine
         }
 
     private:
-        std::unordered_map<uint32, std::unique_ptr<T>> m_resourcesById;
-        std::unordered_map<std::string, uint32> m_nameToId;
-        std::unordered_map<uint32, std::string> m_idToName; // Reverse lookup
-        std::stack<uint32> m_freeHandles;
-        uint32 m_nextHandle = 1;
+        std::unordered_map<uint32_t, std::unique_ptr<T>> m_resourcesById;
+        std::unordered_map<std::string, uint32_t> m_nameToId;
+        std::unordered_map<uint32_t, std::string> m_idToName; // Reverse lookup
+        std::stack<uint32_t> m_freeHandles;
+        uint32_t m_nextHandle = 1;
         mutable std::mutex m_mutex;
     };
 }

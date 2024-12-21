@@ -33,7 +33,7 @@ namespace JLEngine
         void UploadToGPU(Graphics* graphics, bool freeData);
         void UploadCubemapsToGPU(Graphics* graphics, std::array<ImageData, 6>& data);
 
-        void SetGPUID(uint32 id) { m_id = id; }
+        void SetGPUID(uint32_t id) { m_id = id; }
         void SetFormat(GLenum internalFormat, GLenum format, GLenum dataType);
         void SetClamped(bool clamped) { m_clamped = clamped; }
         void EnableMipmaps(bool enable) { m_mipmaps = enable; }
@@ -43,8 +43,8 @@ namespace JLEngine
         void SetCubemap(bool cubeMap) { m_isCubeMap = cubeMap; }
         void SetSize(int width, int height) { m_width = width; m_height = height; }
 
-        uint32 GetFormat() const { return m_format; }
-        uint32 GetInternalFormat() const { return m_internalFormat; }
+        uint32_t GetFormat() const { return m_format; }
+        uint32_t GetInternalFormat() const { return m_internalFormat; }
         bool IsClamped() const { return m_clamped; }
         uint32_t GetGPUID() const { return m_id; }
         int GetDataType() const { return m_dataType; }

@@ -17,6 +17,11 @@ namespace JLEngine
         void EndFrame();
 
         void Shutdown();
+
+        bool Initialised() { return m_initialised; }
+
+    private:
+        bool m_initialised = false;
     };
 
 }

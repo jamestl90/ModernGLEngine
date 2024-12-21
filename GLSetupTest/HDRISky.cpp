@@ -23,7 +23,7 @@ namespace JLEngine
     {
         m_graphics = graphics;
 
-        m_skyboxVBO = Geometry::CreateSkybox(m_graphics);
+        m_skyboxVBO = Geometry::CreateBox(m_graphics);
     }
 
     void HDRISky::Render(const glm::mat4& viewMatrix, const glm::mat4& projMatrix) 

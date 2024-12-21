@@ -57,7 +57,7 @@ namespace JLEngine
 
 		GLint maxUnits;
 		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxUnits);
-		m_boundTextures = std::vector<uint32>(maxUnits);
+		m_boundTextures = std::vector<uint32_t>(maxUnits);
 	}
 
 	Graphics::~Graphics()
@@ -104,15 +104,15 @@ namespace JLEngine
 		glCompileShader(vertId);
 		glShaderSource(fragId, 1, &cStrFrag, NULL);
 		glCompileShader(fragId);
-		ShaderCompileErrorCheck(vertId, false);
-		ShaderCompileErrorCheck(fragId, false);
+		ShaderCompileErrorCheck(vertId);
+		ShaderCompileErrorCheck(fragId);
 
 		m_defaultShader = glCreateProgram();
 
 		glAttachShader(m_defaultShader, vertId);
 		glAttachShader(m_defaultShader, fragId);
 		glLinkProgram(m_defaultShader);
-		ShaderCompileErrorCheck(m_defaultShader, false);
+		ShaderProgramLinkErrorCheck(m_defaultShader);
 
 		GeneratePrimitives();
 	}
@@ -123,7 +123,7 @@ namespace JLEngine
 		m_clearColour = glm::vec4(x, y, z, w);
 	}
 
-	void Graphics::ClearColor()
+	void Graphics::ClearColour()
 	{
 		glClearColor(m_clearColour.x, m_clearColour.y, m_clearColour.z, m_clearColour.w);
 	}
@@ -152,51 +152,43 @@ namespace JLEngine
 		return m_usingMSAA;
 	}
 
-	bool Graphics::ShaderCompileErrorCheck(uint32 id, bool compileCheck)
+	bool Graphics::ShaderCompileErrorCheck(uint32_t id)
 	{
 		GLint compileStatus;
-
-		glGetShaderiv(id, GL_LINK_STATUS, &compileStatus);
-
-		if (compileStatus == GL_FALSE)
-		{
-			int maxLength;
-
-			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
-
-			GLchar* infoLog = new char[maxLength];
-
-			glGetShaderInfoLog(id, maxLength, &maxLength, infoLog);
-
-			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
-
-			delete[] infoLog;
-
-			return false;
-		}
-
 		glGetShaderiv(id, GL_COMPILE_STATUS, &compileStatus);
 
 		if (compileStatus == GL_FALSE)
 		{
 			int maxLength;
-
 			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
-
 			GLchar* infoLog = new char[maxLength];
-
 			glGetShaderInfoLog(id, maxLength, &maxLength, infoLog);
-
 			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
-
 			delete[] infoLog;
-
 			return false;
 		}
 		return true;
 	}
 
-	std::vector<std::tuple<std::string, int>> Graphics::GetActiveUniforms(uint32 programId)
+	bool Graphics::ShaderProgramLinkErrorCheck(uint32_t programId)
+	{
+		GLint linkStatus;
+		glGetProgramiv(programId, GL_LINK_STATUS, &linkStatus);
+
+		if (linkStatus == GL_FALSE)
+		{
+			int maxLength;
+			glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &maxLength);
+			GLchar* infoLog = new char[maxLength];
+			glGetShaderInfoLog(programId, maxLength, &maxLength, infoLog);
+			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
+			delete[] infoLog;
+			return false;
+		}
+		return true;
+	}
+
+	std::vector<std::tuple<std::string, int>> Graphics::GetActiveUniforms(uint32_t programId)
 	{
 		std::vector<std::tuple<std::string, int>> activeUniforms;
 		GLint nUniforms, maxLen;
@@ -215,7 +207,7 @@ namespace JLEngine
 		return activeUniforms;
 	}
 
-	void Graphics::PrintActiveUniforms( uint32 programId )
+	void Graphics::PrintActiveUniforms( uint32_t programId )
 	{
 		GLint nUniforms, maxLen;
 		glGetProgramiv(programId, GL_ACTIVE_UNIFORM_MAX_LENGTH, &maxLen);
@@ -236,7 +228,7 @@ namespace JLEngine
 	void Graphics::CreateShaderFromFile(ShaderProgram* program)
 	{
 		auto shaders = program->GetShaders();
-		for (uint32 i = 0; i < shaders.size(); i++)
+		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			Shader& s = shaders.at(i);
 
@@ -254,27 +246,27 @@ namespace JLEngine
 			glShaderSource(shaderId, 1, &cStr, NULL);
 			glCompileShader(shaderId);
 
-			ShaderCompileErrorCheck(shaderId, false);
+			ShaderCompileErrorCheck(shaderId);
 		}
 
 		GLuint programID = glCreateProgram();
 		program->SetProgramId(programID);
 
-		for (uint32 i = 0; i < shaders.size(); i++)
+		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			glAttachShader(programID, shaders.at(i).GetShaderId());
 		}
 
 		glLinkProgram(programID);
 
-		if (!ShaderCompileErrorCheck(programID, true))
+		if (!ShaderProgramLinkErrorCheck(programID))
 		{
 			DisposeShader(program);
 		}
 		else
 		{
 			// another loop to delete :( not sure if i can delete the shader before linking, probably not
-			for (uint32 i = 0; i < shaders.size(); i++)
+			for (uint32_t i = 0; i < shaders.size(); i++)
 			{
 				glDeleteShader(shaders.at(i).GetShaderId());
 			}
@@ -291,7 +283,7 @@ namespace JLEngine
 			return;
 		}
 
-		for (uint32 i = 0; i < shaders.size(); i++)
+		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			Shader& s = shaders.at(i);
 
@@ -304,27 +296,27 @@ namespace JLEngine
 			glShaderSource(shaderId, 1, &cStr, NULL);
 			glCompileShader(shaderId);
 
-			ShaderCompileErrorCheck(shaderId, false);
+			ShaderCompileErrorCheck(shaderId);
 		}
 
 		GLuint programID = glCreateProgram();
 		program->SetProgramId(programID);
 
-		for (uint32 i = 0; i < shaders.size(); i++)
+		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			glAttachShader(programID, shaders.at(i).GetShaderId());
 		}
 
 		glLinkProgram(programID);
 
-		if (!ShaderCompileErrorCheck(programID, true))
+		if (!ShaderProgramLinkErrorCheck(programID))
 		{
 			DisposeShader(program);
 		}
 		else
 		{
 			// another loop to delete :( not sure if i can delete the shader before linking, probably not
-			for (uint32 i = 0; i < shaders.size(); i++)
+			for (uint32_t i = 0; i < shaders.size(); i++)
 			{
 				glDeleteShader(shaders.at(i).GetShaderId());
 			}
@@ -344,77 +336,77 @@ namespace JLEngine
 		glDeleteProgram(program->GetProgramId());
 	}
 
-	void Graphics::SetUniform(uint32 location, uint32 x)
+	void Graphics::SetUniform(uint32_t location, uint32_t x)
 	{
 		glUniform1i(location, x);
 	}
 
-	void Graphics::SetUniform(uint32 location, uint32 x, uint32 y)
+	void Graphics::SetUniform(uint32_t location, uint32_t x, uint32_t y)
 	{
 		glUniform2i(location, x, y);
 	}
 
-	void Graphics::SetUniform(uint32 location, uint32 x, uint32 y, uint32 z)
+	void Graphics::SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z)
 	{
 		glUniform3i(location, x, y, z);
 	}
 
-	void Graphics::SetUniform(uint32 location, uint32 x, uint32 y, uint32 z, uint32 w)
+	void Graphics::SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
 	{
 		glUniform4i(location, x, y, z, w);
 	}
 
-	void Graphics::SetUniform(uint32 location, float x)
+	void Graphics::SetUniform(uint32_t location, float x)
 	{
 		glUniform1f(location, x);
 	}
 
-	void Graphics::SetUniform(uint32 location, float x, float y)
+	void Graphics::SetUniform(uint32_t location, float x, float y)
 	{
 		glUniform2f(location, x, y);
 	}
 
-	void Graphics::SetUniform(uint32 location, float x, float y, float z)
+	void Graphics::SetUniform(uint32_t location, float x, float y, float z)
 	{
 		glUniform3f(location, x, y, z);
 	}
 
-	void Graphics::SetUniform(uint32 location, float x, float y, float z, float w)
+	void Graphics::SetUniform(uint32_t location, float x, float y, float z, float w)
 	{
 		glUniform4f(location, x, y, z, w);
 	}
 
-	void Graphics::SetUniform(uint32 location, const glm::vec2& vec)
+	void Graphics::SetUniform(uint32_t location, const glm::vec2& vec)
 	{
 		glUniform2fv(location, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 location, const glm::vec3& vec)
+	void Graphics::SetUniform(uint32_t location, const glm::vec3& vec)
 	{
 		glUniform3fv(location, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 location, const glm::vec4& vec)
+	void Graphics::SetUniform(uint32_t location, const glm::vec4& vec)
 	{
 		glUniform4fv(location, 1, &vec[0]);
 	}
 
-	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat2& mat)
+	void Graphics::SetUniform(uint32_t location, int count, bool transpose, const glm::mat2& mat)
 	{
 		glUniformMatrix2fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
-	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat3& mat)
+	void Graphics::SetUniform(uint32_t location, int count, bool transpose, const glm::mat3& mat)
 	{
 		glUniformMatrix3fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
 	}
 
-	void Graphics::SetUniform(uint32 location, int count, bool transpose, const glm::mat4& mat)
+	void Graphics::SetUniform(uint32_t location, int count, bool transpose, const glm::mat4& mat)
 	{
 		glUniformMatrix4fv(location, count, transpose ? GL_TRUE : GL_FALSE, glm::value_ptr(mat));
 	}
 
-	uint32 Graphics::CreateVertexArray()
+	uint32_t Graphics::CreateVertexArray()
 	{
 		GLuint id;
 		glGenVertexArrays(1, &id);
@@ -422,77 +414,77 @@ namespace JLEngine
 		return id;
 	}
 
-	void Graphics::BindFrameBuffer( uint32 id )
+	void Graphics::BindFrameBuffer( uint32_t id )
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
 	}
 
-	void Graphics::CreateFrameBuffer(uint32 count, uint32& id )
+	void Graphics::CreateFrameBuffer(uint32_t count, uint32_t& id )
 	{
 		glGenFramebuffers(count, &id);
 	}
 
-	void Graphics::BindVertexArray( uint32 vaoID )
+	void Graphics::BindVertexArray( uint32_t vaoID )
 	{
 		glBindVertexArray(vaoID);
 	}
 
-	void Graphics::CreateBuffer(uint32 count, uint32& id)
+	void Graphics::CreateBuffer(uint32_t count, uint32_t& id)
 	{
 		glGenBuffers(count, &id);
 	}
 
-	void Graphics::SetBufferData( uint32 buffType, ptrdiff_t size, void* data, uint32 usage )
+	void Graphics::SetBufferData( uint32_t buffType, ptrdiff_t size, void* data, uint32_t usage )
 	{
 		glBufferData(buffType, size, data, usage);
 	}
 
-	void Graphics::SetBufferSubData( uint32 target, ptrdiff_t offset, int32 size, void* data)
+	void Graphics::SetBufferSubData( uint32_t target, ptrdiff_t offset, int32_t size, void* data)
 	{
 		glBufferSubData(target, offset, size, data);
 	}
 
-	void Graphics::SetAttributePointer( uint32 index, int32 count, uint32 datatype, bool normalise, int32 size, void* offset )
+	void Graphics::SetAttributePointer( uint32_t index, int32_t count, uint32_t datatype, bool normalise, int32_t size, void* offset )
 	{
 		glVertexAttribPointer(index, count, datatype, normalise ? GL_TRUE : GL_FALSE, size, offset);
 	}
 
-	void Graphics::BindBuffer( uint32 buffType, uint32 vboID )
+	void Graphics::BindBuffer( uint32_t buffType, uint32_t vboID )
 	{
 		glBindBuffer(buffType, vboID);
 	}
 
-	void* Graphics::MapBufferData( uint32 target, uint32 access )
+	void* Graphics::MapBufferData( uint32_t target, uint32_t access )
 	{
 		return glMapBuffer(target, access);
 	}
 
-	bool Graphics::UnmapBufferData( uint32 target )
+	bool Graphics::UnmapBufferData( uint32_t target )
 	{
 		return glUnmapBuffer(target) ? true : false;
 	}
 
-	void Graphics::DrawArrayBuffer( uint32 drawMode, uint32 first, uint32 count )
+	void Graphics::DrawArrayBuffer( uint32_t drawMode, uint32_t first, uint32_t count )
 	{
 		glDrawArrays(drawMode, first, count);
 	}
 
-	void Graphics::DrawElementBuffer( uint32 drawMode, int32 count, uint32 dataType, void* offset )
+	void Graphics::DrawElementBuffer( uint32_t drawMode, int32_t count, uint32_t dataType, void* offset )
 	{
 		glDrawElements(drawMode, count, dataType, offset);
 	}
 
-	void Graphics::EnableVertexAttribArray(uint32 pos)
+	void Graphics::EnableVertexAttribArray(uint32_t pos)
 	{
 		glEnableVertexAttribArray(pos);
 	}
 
-	void Graphics::DisableVertexAttribArray(uint32 pos)
+	void Graphics::DisableVertexAttribArray(uint32_t pos)
 	{
 		glDisableVertexAttribArray(pos);
 	}
 
-	void Graphics::BindShader(uint32 programId)
+	void Graphics::BindShader(uint32_t programId)
 	{
 		if (m_activeShaderProgram != programId)
 		{
@@ -506,12 +498,12 @@ namespace JLEngine
 		glUseProgram(0);
 	}
 
-	void Graphics::CreateTextures( uint32 count, uint32& id )
+	void Graphics::CreateTextures( uint32_t count, uint32_t& id )
 	{
 		glGenTextures(count, &id);
 	}
 
-	void Graphics::BindTexture( uint32 target, uint32 id )
+	void Graphics::BindTexture( uint32_t target, uint32_t id )
 	{
 		glBindTexture(target, id);
 	}
@@ -533,18 +525,25 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::SetActiveTexture( uint32 texunit )
+	void Graphics::SetActiveTexture( uint32_t texunit )
 	{
 		glActiveTexture(GL_TEXTURE0 + texunit);
 	}
 
-	uint32 Graphics::GetInternalFormat(uint32 texId, uint32 texTarget)
+	uint32_t Graphics::GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget)
 	{
-		glBindTexture(texTarget, texId);
+		glBindTexture(texType, texId);
 
 		GLint internalFormat = 0;
 		glGetTexLevelParameteriv(texTarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
-		glBindTexture(texTarget, 0);
+
+		GLenum error = glGetError();
+		if (error != GL_NO_ERROR)
+		{
+			std::cerr << "OpenGL Error: " << error << " in GetInternalFormat" << std::endl;
+		}
+
+		glBindTexture(texType, 0);
 		return internalFormat;
 	}
 
@@ -552,14 +551,14 @@ namespace JLEngine
 	{
 		switch (internalFormat)
 		{
-		case GL_RGB8: return "GL_RGB8";
-		case GL_RGBA8: return "GL_RGBA8";
-		case GL_RGB16F: return "GL_RGB16F";
-		case GL_RGBA16F: return "GL_RGBA16F";
-		case GL_RGB32F: return "GL_RGB32F";
-		case GL_RGBA32F: return "GL_RGBA32F";
-		case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
-		default: return "Unknown Format";
+			case GL_RGB8: return "GL_RGB8";
+			case GL_RGBA8: return "GL_RGBA8";
+			case GL_RGB16F: return "GL_RGB16F";
+			case GL_RGBA16F: return "GL_RGBA16F";
+			case GL_RGB32F: return "GL_RGB32F";
+			case GL_RGBA32F: return "GL_RGBA32F";
+			case GL_DEPTH_COMPONENT: return "GL_DEPTH_COMPONENT";
+			default: return "Unknown Format";
 		}
 	}
 
@@ -575,7 +574,7 @@ namespace JLEngine
 		auto instanceCount = instanceTransforms.size();
 
 		instancedBO.SetGPUID(bufferID);
-		instancedBO.SetInstanceCount((uint32)instanceCount);
+		instancedBO.SetInstanceCount((uint32_t)instanceCount);
 
 		// Configure vertex attributes for the mat4 (split into 4 vec4 attributes)
 		for (int i = 0; i < 4; ++i) 
@@ -615,9 +614,9 @@ namespace JLEngine
 		auto vertexAttribKey = batch.attributesKey; // Determines the layout
 		uint32_t offset = 0;
 		uint32_t index = 0;
-		uint32 stride = CalculateStride(vertexAttribKey);
+		uint32_t stride = CalculateStride(vertexAttribKey);
 
-		for (uint32 i = 0; i < static_cast<uint32>(AttributeType::COUNT); ++i)
+		for (uint32_t i = 0; i < static_cast<uint32_t>(AttributeType::COUNT); ++i)
 		{
 			if (vertexAttribKey & (1 << i)) 
 			{
@@ -686,7 +685,7 @@ namespace JLEngine
 	{
 		if (vbo.Uploaded()) return;
 
-		uint32 id;
+		uint32_t id;
 		glGenBuffers(1, &id);
 		glBindBuffer(vbo.Type(), id);
 		glBufferData(vbo.Type(), vbo.SizeInBytes(), vbo.Array(), vbo.DrawType());
@@ -694,7 +693,7 @@ namespace JLEngine
 
 		std::set<VertexAttribute> attribs = vbo.GetAttributes();
 
-		uint32 i = 0;
+		uint32_t i = 0;
 
 		for (auto it = vbo.GetAttributes().begin(); it != vbo.GetAttributes().end(); ++it)
 		{
@@ -710,10 +709,10 @@ namespace JLEngine
 	{
 		if (ibo.Uploaded()) return;
 
-		uint32 id;
+		uint32_t id;
 		glGenBuffers(1, &id);
 		glBindBuffer(ibo.Type(), id);
-		glBufferData(ibo.Type(), ibo.Size() * sizeof(uint32), ibo.Array(), ibo.DrawType());
+		glBufferData(ibo.Type(), ibo.Size() * sizeof(uint32_t), ibo.Array(), ibo.DrawType());
 		ibo.SetId(id);
 	}
 
@@ -771,7 +770,7 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::ReadTexture2D(uint32 texId, ImageData& imgData, bool useFramebuffer)
+	void Graphics::ReadTexture2D(uint32_t texId, ImageData& imgData, bool useFramebuffer)
 	{
 		GLenum format = (imgData.channels == 3) ? GL_RGB : GL_RGBA;
 		GLenum type = imgData.isHDR ? GL_FLOAT : GL_UNSIGNED_BYTE;
@@ -836,10 +835,14 @@ namespace JLEngine
 		std::cout << "Successfully read Texture2D with " << (imgData.isHDR ? "HDR" : "LDR") << " data." << std::endl;
 	}
 
-	void Graphics::ReadCubemap(uint32 texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer)
+	void Graphics::ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer)
 	{
 		GLenum format = channels == 3 ? GL_RGB : GL_RGBA;
 		GLenum type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+		size_t faceSize = width * height * channels;
+
+		GLint originalViewport[4];
+		glGetIntegerv(GL_VIEWPORT, originalViewport);
 
 		if (useFramebuffer)
 		{
@@ -854,16 +857,15 @@ namespace JLEngine
 				imgData.at(i).height = height;
 				imgData.at(i).channels = channels;
 				imgData.at(i).isHDR = hdr;
-				size_t faceSize = width * height * imgData.at(i).channels;
-
+				
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texId, 0);
-
+				glViewport(0, 0, width, height);
 				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 				{
 					glDeleteFramebuffers(1, &fbo);
 					throw std::runtime_error("Framebuffer is incomplete for cubemap face: " + std::to_string(i));
 				}
-
+				glPixelStorei(GL_PACK_ALIGNMENT, 1);
 				if (imgData.at(i).isHDR)
 				{
 					std::vector<float> faceData(faceSize);
@@ -876,14 +878,9 @@ namespace JLEngine
 					glReadPixels(0, 0, width, height, format, type, faceData.data());
 					imgData.at(i).data = std::move(faceData);
 				}
+				glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-				GLenum errorCode = glGetError();
-				if (errorCode != GL_NO_ERROR)
-				{
-					glDeleteFramebuffers(1, &fbo);
-					throw std::runtime_error("Failed to read cubemap face " + std::to_string(i) +
-						" using framebuffer. GL Error: " + std::to_string(errorCode));
-				}
+				GL_CHECK_ERROR();
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -891,27 +888,25 @@ namespace JLEngine
 		}
 		else
 		{
-			// Use glGetTexImage to read each cubemap face
-			glBindTexture(GL_TEXTURE_CUBE_MAP, texId);
-
 			for (int i = 0; i < 6; ++i)
 			{
-				auto internalFormat = GetInternalFormat(texId, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
-				if (internalFormat == GL_RGB16F || internalFormat == GL_RGBA16F) 
+				auto internalFormat = GetInternalFormat(texId, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
+				if (internalFormat == GL_RGB16F || internalFormat == GL_RGBA16F ||
+					internalFormat == GL_RGB32F || internalFormat == GL_RGBA32F)
 				{
-					if (type != GL_FLOAT) 
+					if (type != GL_FLOAT)
 						throw std::runtime_error("Type mismatch for HDR cubemap face " + std::to_string(i));
 				}
 
-				size_t faceSize = width * height * channels;
 				imgData.at(i).width = width;
 				imgData.at(i).height = height;
 				imgData.at(i).channels = channels;
 				imgData.at(i).isHDR = hdr;
 
+				glBindTexture(GL_TEXTURE_CUBE_MAP, texId);
 				if (hdr)
 				{
-					std::vector<float> faceData(faceSize);
+					std::vector<float> faceData(width * height * channels);
 					glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
 					imgData.at(i).hdrData = std::move(faceData);
 				}
@@ -921,16 +916,19 @@ namespace JLEngine
 					glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
 					imgData.at(i).data = std::move(faceData);
 				}
+
+				GL_CHECK_ERROR();
 			}
 		}
 
+		glViewport(originalViewport[0], originalViewport[1], originalViewport[2], originalViewport[3]);
 		std::cout << "Successfully read Cubemap with " << (imgData.at(0).isHDR ? "HDR" : "LDR") << " data." << std::endl;
 	}
 
 	int Graphics::CreateCubemap(std::array<ImageData, 6>& cubeFaceData)
 	{
 		auto width = cubeFaceData.at(0).width;
-		auto height = cubeFaceData.at(0).height;;
+		auto height = cubeFaceData.at(0).height;
 
 		auto format = cubeFaceData.at(0).channels == 3 ? GL_RGB : GL_RGBA;
 		auto internalFormat = cubeFaceData.at(0).channels == 3 ? GL_RGB16F : GL_RGBA16F;
@@ -980,6 +978,8 @@ namespace JLEngine
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+		
+
 		return hdrTexture;
 	}
 
@@ -990,12 +990,12 @@ namespace JLEngine
 		glDeleteTextures(1, &id);
 	}
 
-	void Graphics::DisposeTexture( uint32 count, uint32* textures )
+	void Graphics::DisposeTexture( uint32_t count, uint32_t* textures )
 	{
 		glDeleteTextures(count, textures);
 	}
 
-	void Graphics::Clear(uint32 flags)
+	void Graphics::Clear(uint32_t flags)
 	{
 		glClear(flags);
 	}
@@ -1005,47 +1005,47 @@ namespace JLEngine
 		m_window->SwapBuffers();
 	}
 
-	void Graphics::CreateRenderBuffer( uint32 count, uint32& id )
+	void Graphics::CreateRenderBuffer( uint32_t count, uint32_t& id )
 	{
 		glGenRenderbuffers(count, &id);
 	}
 
-	void Graphics::BindRenderBuffer(uint32 id )
+	void Graphics::BindRenderBuffer(uint32_t id )
 	{
 		glBindRenderbuffer(GL_RENDERBUFFER, id);
 	}
 
-	void Graphics::BindFrameBufferToTexture( uint32 type, uint32 attachment, uint32 target, uint32 id, int32 level )
+	void Graphics::BindFrameBufferToTexture( uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level )
 	{
 		glFramebufferTexture2D(type, attachment, target, id, level);
 	}
 
-	void Graphics::BindFrameBufferToRenderbuffer( uint32 type, uint32 attachment, uint32 target, uint32 id)
+	void Graphics::BindFrameBufferToRenderbuffer( uint32_t type, uint32_t attachment, uint32_t target, uint32_t id)
 	{
 		glFramebufferRenderbuffer(type, attachment, target, id);
 	}
 
-	void Graphics::RenderBufferStorage( uint32 type, uint32 internalFormat, uint32 width, uint32 height )
+	void Graphics::RenderBufferStorage( uint32_t type, uint32_t internalFormat, uint32_t width, uint32_t height )
 	{
 		glRenderbufferStorage(type, internalFormat, width, height);
 	}
 
-	void Graphics::DrawBuffers( uint32 count, uint32* targets)
+	void Graphics::DrawBuffers( uint32_t count, uint32_t* targets)
 	{
 		glDrawBuffers(count, targets);
 	}
 
-	void Graphics::DisposeBuffer( uint32 count, uint32* id )
+	void Graphics::DisposeBuffer( uint32_t count, uint32_t* id )
 	{
 		glDeleteBuffers(count, id);
 	}
 
-	uint32 Graphics::CheckFrameBuffer()
+	uint32_t Graphics::CheckFrameBuffer()
 	{
 		return glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	}
 
-	void Graphics::SetViewport( uint32 x, uint32 y, uint32 width, uint32 height )
+	void Graphics::SetViewport( uint32_t x, uint32_t y, uint32_t width, uint32_t height )
 	{
 		glViewport(x, y, width, height);
 	}
@@ -1083,7 +1083,7 @@ namespace JLEngine
 
 		auto& attributes = target->GetTextureAttributes();
 
-		for (uint32 i = 0; i < target->GetNumSources(); i++)
+		for (uint32_t i = 0; i < target->GetNumSources(); i++)
 		{
 			GLuint tex;
 			glGenTextures(1, &tex);
@@ -1145,7 +1145,7 @@ namespace JLEngine
 			std::cerr << std::endl;
 
 			glDeleteFramebuffers(1, &fbo);
-			for (uint32 i = 0; i < target->GetNumSources(); i++)
+			for (uint32_t i = 0; i < target->GetNumSources(); i++)
 			{
 				GLuint tex = target->GetSourceId(i);
 				glDeleteTextures(1, &tex);
@@ -1187,7 +1187,7 @@ namespace JLEngine
 
 		// Resize textures for color attachments
 		auto& attributes = target->GetTextureAttributes();
-		for (uint32 i = 0; i < target->GetNumSources(); i++)
+		for (uint32_t i = 0; i < target->GetNumSources(); i++)
 		{
 			GLuint tex = target->GetSourceId(i);
 			glBindTexture(GL_TEXTURE_2D, tex);
@@ -1256,7 +1256,7 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::DisposeFrameBuffer( uint32 count, uint32* fbo )
+	void Graphics::DisposeFrameBuffer( uint32_t count, uint32_t* fbo )
 	{
 		glDeleteFramebuffers(count, fbo);
 	}
@@ -1271,7 +1271,7 @@ namespace JLEngine
 			0.f, -1.f, -1.f,   0.5f, -0.866f, -1.f,   0.866f, -0.5f, -1.f,
 			1.f, 0.f, -1.f,   0.866f, 0.5f, -1.f,   0.5f, 0.866f, -1.f,
 		};
-		uint32 coneInds[22 * 3] = 
+		uint32_t coneInds[22 * 3] = 
 		{
 			0, 1, 2,   0, 2, 3,   0, 3, 4,   0, 4, 5,   0, 5, 6,   0, 6, 7,
 			0, 7, 8,   0, 8, 9,   0, 9, 10,   0, 10, 11,   0, 11, 12,   0, 12, 1,
@@ -1289,7 +1289,7 @@ namespace JLEngine
 			 0.0f, -1.0f,  0.0f   
 		};
 
-		uint32 octahedronInds[24] = 
+		uint32_t octahedronInds[24] = 
 		{
 			0, 1, 2, 
 			0, 2, 3,
@@ -1318,7 +1318,7 @@ namespace JLEngine
 		vbo.AddAttribute(posAttri);
 		vbo.AddAttribute(uvAttri);
 		vbo.CalcStride();
-		uint32 vao;
+		uint32_t vao;
 		vao = CreateVertexArray();
 		CreateVertexBuffer(vbo);
 
@@ -1326,7 +1326,7 @@ namespace JLEngine
 		CreatePrimitiveBuffers(coneVerts, sizeof(coneVerts), coneInds, sizeof(coneInds), m_coneGeom);
 	}
 
-	void Graphics::CreatePrimitiveBuffers( float vertices[], uint32 vertSize, uint32 indices[], uint32 indSize, uint32 ids[] )
+	void Graphics::CreatePrimitiveBuffers( float vertices[], uint32_t vertSize, uint32_t indices[], uint32_t indSize, uint32_t ids[] )
 	{
 		glGenVertexArrays(1, &ids[0]);
 		glBindVertexArray(ids[0]);
@@ -1338,11 +1338,11 @@ namespace JLEngine
 		glGenBuffers(1, &ids[2]);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ids[2]);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indSize, indices, GL_STATIC_DRAW);
-		ids[3] = indSize / sizeof(uint32);
+		ids[3] = indSize / sizeof(uint32_t);
 		glBindVertexArray(0);
 	}
 
-	void Graphics::CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 ids[])
+	void Graphics::CreatePrimitiveBuffers(float vertices[], uint32_t vertSize, uint32_t ids[])
 	{
 		glGenVertexArrays(1, &ids[0]);
 		glBindVertexArray(ids[0]);
@@ -1352,27 +1352,27 @@ namespace JLEngine
 		glEnableVertexAttribArray(0);
 	}
 
-	void Graphics::SetBlendFunc( uint32 first, uint32 second )
+	void Graphics::SetBlendFunc( uint32_t first, uint32_t second )
 	{
 		glBlendFunc(first, second);
 	}
 
-	void Graphics::Enable( uint32 val )
+	void Graphics::Enable( uint32_t val )
 	{
 		glEnable(val);
 	}
 
-	void Graphics::Disable( uint32 val )
+	void Graphics::Disable( uint32_t val )
 	{
 		glDisable(val);
 	}
 
-	void Graphics::SetDepthFunc( uint32 val )
+	void Graphics::SetDepthFunc( uint32_t val )
 	{
 		glDepthFunc(val);
 	}
 
-	void Graphics::SetDepthMask( uint32 val )
+	void Graphics::SetDepthMask( uint32_t val )
 	{
 		glDepthMask(val);
 	}
@@ -1382,7 +1382,7 @@ namespace JLEngine
 		glUseProgram(m_defaultShader);
 	}
 
-	void Graphics::RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId )
+	void Graphics::RenderPrimitive(glm::mat4& mvp, uint32_t type, uint32_t shaderId )
 	{
 		if (shaderId == -1)
 		{	
@@ -1417,7 +1417,7 @@ namespace JLEngine
 		glUseProgram(0);
 	}
 
-	void Graphics::SetCullFace( uint32 face )
+	void Graphics::SetCullFace( uint32_t face )
 	{
 		glCullFace(face);
 	}
@@ -1476,7 +1476,7 @@ namespace JLEngine
 
 //	glGenBuffers(1, &iboID);
 //	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboID);
-//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vbo.getIndexArray().size() * sizeof(uint32), &vbo.getIndexArray()[0], GL_STATIC_DRAW);
+//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vbo.getIndexArray().size() * sizeof(uint32_t), &vbo.getIndexArray()[0], GL_STATIC_DRAW);
 
 //	vbo.setIbo(iboID);
 //}
@@ -1514,7 +1514,7 @@ namespace JLEngine
 
 //	glGenBuffers(1, &iboID);
 //	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboID);
-//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vbo.getIndexArray().size() * sizeof(uint32), &vbo.getIndexArray()[0], GL_STATIC_DRAW);
+//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vbo.getIndexArray().size() * sizeof(uint32_t), &vbo.getIndexArray()[0], GL_STATIC_DRAW);
 
 //	vbo.setIbo(iboID);
 //}

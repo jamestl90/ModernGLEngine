@@ -43,7 +43,7 @@ namespace JLEngine
 
     JLEngineCore::~JLEngineCore()
     {
-        
+
     }
 
     void JLEngineCore::logPerformanceMetrics()

@@ -27,9 +27,9 @@ namespace JLEngine
 
 		GraphicsBuffer(int type, int data, int drawType);
 
-		void SetId(uint32& id) { m_id = id; m_uploadedToGPU = true; }
+		void SetId(uint32_t& id) { m_id = id; m_uploadedToGPU = true; }
 
-		uint32 GetId() const { return m_id; }
+		uint32_t GetId() const { return m_id; }
 
 		void SetType(int type) { m_type = type; }
 
@@ -55,17 +55,17 @@ namespace JLEngine
 
 		bool m_uploadedToGPU = false;
 
-		uint32 m_id;
+		uint32_t m_id;
 	};
 
-	class IndexBuffer : public Buffer<uint32>, public GraphicsBuffer
+	class IndexBuffer : public Buffer<uint32_t>, public GraphicsBuffer
 	{
 	public:
 		IndexBuffer() {}
 
 		IndexBuffer(int type, int data, int draw);
 
-		IndexBuffer(vector<uint32>& indices, int type, int data, int draw);
+		IndexBuffer(vector<uint32_t>& indices, int type, int data, int draw);
 
 		~IndexBuffer();
 	};
@@ -73,7 +73,7 @@ namespace JLEngine
 	class VertexBuffer : public Buffer<float>, public GraphicsBuffer
 	{
 	public:
-		VertexBuffer() : m_stride(0), m_vaoId(0) {}
+		VertexBuffer() : m_stride(0), m_vaoId(0), m_key(0) {}
 
 		VertexBuffer(int type, int data, int draw);
 
@@ -89,12 +89,12 @@ namespace JLEngine
 
 		const std::set<VertexAttribute>& GetAttributes() const;
 
-		uint32 GetStride();
+		uint32_t GetStride();
 
-		uint32 SizeInBytes();
+		uint32_t SizeInBytes();
 
-		void SetVAO(uint32 id) { m_vaoId = id; }
-		uint32 GetVAO() { return m_vaoId; }
+		void SetVAO(uint32_t id) { m_vaoId = id; }
+		uint32_t GetVAO() { return m_vaoId; }
 
 		VertexAttribKey GetAttribKey() { return m_key; }
 		void SetVertexAttribKey(VertexAttribKey key) { m_key = key; }
@@ -103,11 +103,11 @@ namespace JLEngine
 
 		VertexAttribKey m_key;
 
-		uint32 m_vaoId;
+		uint32_t m_vaoId;
 
 		std::set<VertexAttribute> m_attributes;
 
-		uint32 m_stride;
+		uint32_t m_stride;
 	};
 
 	pair<glm::vec3, glm::vec3> findMaxMinPair(VertexBuffer&  vertices);

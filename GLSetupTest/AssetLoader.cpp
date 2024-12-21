@@ -28,6 +28,19 @@ namespace JLEngine
     {
         m_defaultMat = CreateMaterial("DefaultMaterial");
     }
+
+    AssetLoader::~AssetLoader() 
+    {
+        if (m_basicLit)
+            m_shaderManager->Remove(m_basicLit->GetName());
+        if (m_basicUnlit)
+            m_shaderManager->Remove(m_basicUnlit->GetName());
+        if (m_solidColor)
+            m_shaderManager->Remove(m_solidColor->GetName());
+        if (m_screenSpaceQuad)
+            m_shaderManager->Remove(m_screenSpaceQuad->GetName());
+    }
+
     std::shared_ptr<Node> AssetLoader::LoadGLB(const std::string& glbFile)
     {
         auto glbLoader = new GLBLoader(m_graphics, this);
@@ -38,10 +51,10 @@ namespace JLEngine
     Texture* AssetLoader::CreateEmptyTexture(const std::string& name)
     {
         return m_textureManager->Add(name, [&]()
-            {
-                auto texture = std::make_unique<Texture>(name);
-                return texture;
-            });
+        {
+            auto texture = std::make_unique<Texture>(name);
+            return texture;
+        });
     }
 
     Texture* AssetLoader::CreateTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
@@ -66,7 +79,7 @@ namespace JLEngine
             });
     }
 
-    Texture* AssetLoader::CreateTextureFromData(const std::string& name, uint32 width, uint32 height, int channels, void* data,
+    Texture* AssetLoader::CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, void* data,
         int internalFormat, int format, int dataType, bool clamped, bool mipmaps)
     {
         return m_textureManager->Add(name, [&]()
@@ -80,7 +93,7 @@ namespace JLEngine
             });
     }
 
-    Texture* AssetLoader::CreateTextureFromData(const std::string& name, uint32 width, uint32 height, int channels, vector<unsigned char>& data, bool clamped, bool mipmaps)
+    Texture* AssetLoader::CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, vector<unsigned char>& data, bool clamped, bool mipmaps)
     {
         return m_textureManager->Add(name, [&]()
             {
@@ -149,13 +162,11 @@ namespace JLEngine
         return m_shaderManager->Add(name, [&]()
             {
                 auto program = std::make_unique<ShaderProgram>(name);
-
                 Shader vertProgram(GL_VERTEX_SHADER, "vert");
                 Shader fragProgram(GL_FRAGMENT_SHADER, "frag");
-                program->AddShader(vertProgram, vertSource);
+                program->AddShader(vertProgram, vertSource);               
                 program->AddShader(fragProgram, fragSource);
                 program->UploadToGPU(m_graphics);
-
                 return program;
             });
     }
@@ -292,6 +303,47 @@ namespace JLEngine
         return m_solidColor;
     }
 
+    ShaderProgram* AssetLoader::ScreenSpaceQuadShader()
+    {
+        if (m_screenSpaceQuad == nullptr)
+        {
+            std::string vertexShaderSource = R"(
+            #version 460 core
+
+            layout(location = 0) in vec2 a_Position;
+            layout(location = 1) in vec2 a_TexCoords;
+
+            out vec2 v_TexCoords;
+
+            void main() 
+            {
+                v_TexCoords = a_TexCoords;
+                v_TexCoords = vec2(a_TexCoords.x, 1.0 - a_TexCoords.y);
+                gl_Position = vec4(a_Position, 0.0, 1.0);
+            }
+            )";
+
+            std::string fragmentShaderSource = R"(
+            #version 460 core
+
+            in vec2 v_TexCoords;
+
+            layout(binding = 0) uniform sampler2D u_Texture;
+
+            out vec4 FragColor;
+
+            void main() 
+            {
+                vec3 tex = texture(u_Texture, v_TexCoords).rgb;
+                FragColor = vec4(tex, 1.0);
+            }
+            )";
+
+            m_screenSpaceQuad = CreateShaderFromSource("ScreenSpaceQuadShader", vertexShaderSource, fragmentShaderSource);
+        }
+        return m_screenSpaceQuad;
+    }
+
     Material* AssetLoader::CreateMaterial(const std::string& name)
     {
         return m_materialManager->Add(name, [&]()
@@ -338,7 +390,7 @@ namespace JLEngine
         }
     }
 
-    RenderTarget* AssetLoader::CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib, JLEngine::DepthType depthType, uint32 numSources)
+    RenderTarget* AssetLoader::CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetManager->Add(name, [&]()
             {
@@ -352,7 +404,7 @@ namespace JLEngine
             });
     }
     
-    RenderTarget* AssetLoader::CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32 numSources)
+    RenderTarget* AssetLoader::CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetManager->Add(name, [&]()
             {
@@ -361,7 +413,7 @@ namespace JLEngine
                 renderTarget->SetWidth(width);
                 renderTarget->SetHeight(height);
 
-                for (uint32 i = 0; i < numSources; i++)
+                for (uint32_t i = 0; i < numSources; i++)
                 {
                     auto& attrib = texAttribs[i];
                     renderTarget->SetTextureAttribute(i, attrib);

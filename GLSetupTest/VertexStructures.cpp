@@ -33,7 +33,7 @@ namespace JLEngine
 			for (const auto& [name, accessorIndex] : glftAttributes)
 			{
 				auto attribType = AttribTypeFromString(name);
-				key |= static_cast<uint32>(attribType);
+				key |= static_cast<uint32_t>(attribType);
 			}
 		}
 		catch (const std::exception& e)
@@ -45,24 +45,24 @@ namespace JLEngine
 
 	void AddToVertexAttribKey(VertexAttribKey& key, AttributeType type)
 	{
-		key |= static_cast<uint32>(type);
+		key |= static_cast<uint32_t>(type);
 	}
 
 	void RemoveFromVertexAttribKey(VertexAttribKey& key, AttributeType type)
 	{
-		key &= ~static_cast<uint32>(type);
+		key &= ~static_cast<uint32_t>(type);
 	}
 
-	bool HasVertexAttribKey(uint32 mask, AttributeType attribute)
+	bool HasVertexAttribKey(uint32_t mask, AttributeType attribute)
 	{
-		return (mask & static_cast<uint32>(attribute)) != 0;
+		return (mask & static_cast<uint32_t>(attribute)) != 0;
 	}
 
-	uint32 CalculateStride(VertexAttribKey vertexAttribKey)
+	uint32_t CalculateStride(VertexAttribKey vertexAttribKey)
 	{
 		uint32_t stride = 0;
 
-		for (uint32 i = 0; i < 32; ++i)
+		for (uint32_t i = 0; i < 32; ++i)
 		{
 			if (vertexAttribKey & (1 << i)) // Check if the bit is set
 			{

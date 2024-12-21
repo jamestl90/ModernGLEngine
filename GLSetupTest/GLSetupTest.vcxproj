@@ -136,7 +136,7 @@
       <SubType>
       </SubType>
     </ClCompile>
-    <ClCompile Include="Baker.cpp">
+    <ClCompile Include="CubemapBaker.cpp">
       <SubType>
       </SubType>
     </ClCompile>
@@ -155,11 +155,16 @@
     <ClCompile Include="FileHelpers.cpp" />
     <ClCompile Include="FileSystem.cpp" />
     <ClCompile Include="FlyCamera.cpp" />
+    <ClCompile Include="GenerateBRDFLUT.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Geometry.cpp" />
     <ClCompile Include="GLBLoader.cpp">
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="GlobalVars.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="HDRISky.cpp">
       <SubType>
@@ -208,6 +213,8 @@
       </SubType>
     </ClCompile>
     <ClCompile Include="Singleton.cpp" />
+    <ClCompile Include="MainApp.cpp" />
+    <ClCompile Include="BakeCubemapIrradiance.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="TextureReader.cpp" />
     <ClCompile Include="TextureWriter.cpp">
@@ -224,7 +231,7 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Baker.h">
+    <ClInclude Include="CubemapBaker.h">
       <SubType>
       </SubType>
     </ClInclude>
@@ -244,11 +251,16 @@
     <ClInclude Include="FileHelpers.h" />
     <ClInclude Include="FileSystem.h" />
     <ClInclude Include="FlyCamera.h" />
+    <ClInclude Include="GenerateBRDFLUT.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="Geometry.h" />
     <ClInclude Include="GLBLoader.h">
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="GlobalVars.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="HDRISky.h">
       <SubType>
@@ -292,6 +304,8 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Singleton.h" />
+    <ClInclude Include="MainApp.h" />
+    <ClInclude Include="BakeCubemapIrradiance.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TextureReader.h" />
     <ClInclude Include="TextureWriter.h">

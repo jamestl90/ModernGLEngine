@@ -29,14 +29,14 @@ namespace JLEngine
 		m_attributes.insert(attrib);
 	}
 
-	uint32 VertexBuffer::GetStride()
+	uint32_t VertexBuffer::GetStride()
 	{
 		return m_stride;
 	}
 
-	uint32 VertexBuffer::SizeInBytes()
+	uint32_t VertexBuffer::SizeInBytes()
 	{
-		return size_f * (uint32)Size();
+		return size_f * (uint32_t)Size();
 	}
 
 	const std::set<VertexAttribute>& VertexBuffer::GetAttributes() const
@@ -54,7 +54,7 @@ namespace JLEngine
 		//m_stride = m_attributes.size() * 3;
 	}
 
-	IndexBuffer::IndexBuffer( std::vector<uint32>& indices, int type, int data, int draw ) 
+	IndexBuffer::IndexBuffer( std::vector<uint32_t>& indices, int type, int data, int draw ) 
 		: Buffer(indices), GraphicsBuffer(type, data, draw)
 	{
 	}
@@ -84,7 +84,7 @@ namespace JLEngine
 		glm::vec3 max = glm::vec3(vbo.GetBuffer().at(0), vbo.GetBuffer().at(1), vbo.GetBuffer().at(2));
 		glm::vec3 min = glm::vec3(vbo.GetBuffer().at(6), vbo.GetBuffer().at(7), vbo.GetBuffer().at(8));
 
-		for (uint32 i = 0; i < vbo.Size(); i += vbo.GetStride())
+		for (uint32_t i = 0; i < vbo.Size(); i += vbo.GetStride())
 		{
 			float x = vbo.GetBuffer().at(i);
 			float y = vbo.GetBuffer().at(i + 1);

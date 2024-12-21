@@ -28,7 +28,7 @@ namespace JLEngine
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    void ShaderStorageBuffer::Bind(uint32 bindingPoint) 
+    void ShaderStorageBuffer::Bind(uint32_t bindingPoint) 
     {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindingPoint, m_ssboID);
     }

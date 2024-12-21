@@ -232,7 +232,7 @@ namespace JLEngine
 		const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key)
 	{
 		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
-		std::vector<uint32> indices;
+		std::vector<uint32_t> indices;
 
 		// Load attributes from primitives
 		uint32_t indexOffset = 0;
@@ -274,7 +274,7 @@ namespace JLEngine
 		const tinygltf::Primitive& primitives, MaterialVertexAttributeKey key)
 	{
 		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
-		std::vector<uint32> indices;
+		std::vector<uint32_t> indices;
 
 		// Load attributes from primitives
 		uint32_t indexOffset = 0;
@@ -493,8 +493,8 @@ namespace JLEngine
 		const std::string& finalName = name + (texture.name.empty() ? "UnnamedTexture" : texture.name);
 
 		// Extract texture details
-		uint32 width = static_cast<uint32>(imageData.width);
-		uint32 height = static_cast<uint32>(imageData.height);
+		uint32_t width = static_cast<uint32_t>(imageData.width);
+		uint32_t height = static_cast<uint32_t>(imageData.height);
 		int channels = imageData.component;
 		std::vector<unsigned char> data = imageData.image; // Raw pixel data
 
@@ -580,8 +580,8 @@ namespace JLEngine
 		std::vector<float>& texCoords,
 		std::vector<float>& texCoords2,
 		std::vector<float>& tangents,
-		std::vector<uint32>& indices,
-		uint32& indexOffset, 
+		std::vector<uint32_t>& indices,
+		uint32_t& indexOffset, 
 		VertexAttribKey key)
 	{
 		for (const auto* primitive : primitives)
@@ -628,8 +628,8 @@ namespace JLEngine
 		std::vector<float>& normals,
 		std::vector<float>& texCoords,
 		std::vector<float>& tangents,
-		std::vector<uint32>& indices,
-		uint32& indexOffset)
+		std::vector<uint32_t>& indices,
+		uint32_t& indexOffset)
 	{
 
 		uint32_t currentVertexCount = static_cast<uint32_t>(positions.size() / 3); // Before adding new vertices
@@ -666,7 +666,7 @@ namespace JLEngine
 		std::vector<float>& normals,
 		const std::vector<float>& texCoords,
 		std::vector<float>& tangents, 
-		const std::vector<uint32>& indices,
+		const std::vector<uint32_t>& indices,
 		VertexAttribKey key)
 	{
 		// Generate normals if only positions are present

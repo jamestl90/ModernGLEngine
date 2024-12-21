@@ -20,7 +20,7 @@ namespace JLEngine
 	{
 	public:
 		Mesh(const string& name);
-		Mesh(uint32 handle, const string& name);
+		Mesh(uint32_t handle, const string& name);
 		~Mesh();
 
 		void UploadToGPU(Graphics* graphics, bool freeData = false);

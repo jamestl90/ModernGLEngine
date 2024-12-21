@@ -16,6 +16,9 @@
     <Filter Include="Source Files\IMGUI">
       <UniqueIdentifier>{bc5c10cb-7f68-44b6-91b8-55ba2e801ede}</UniqueIdentifier>
     </Filter>
+    <Filter Include="TestApps">
+      <UniqueIdentifier>{d020990c-1933-4f7a-8873-4c7d1fa5f2d5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -144,11 +147,23 @@
     <ClCompile Include="HDRISky.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Baker.cpp">
+    <ClCompile Include="CubemapBaker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TextureWriter.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MainApp.cpp">
+      <Filter>TestApps</Filter>
+    </ClCompile>
+    <ClCompile Include="BakeCubemapIrradiance.cpp">
+      <Filter>TestApps</Filter>
+    </ClCompile>
+    <ClCompile Include="GlobalVars.cpp">
+      <Filter>TestApps</Filter>
+    </ClCompile>
+    <ClCompile Include="GenerateBRDFLUT.cpp">
+      <Filter>TestApps</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -269,7 +284,7 @@
     <ClInclude Include="HDRISky.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Baker.h">
+    <ClInclude Include="CubemapBaker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ImageData.h">
@@ -277,6 +292,18 @@
     </ClInclude>
     <ClInclude Include="TextureWriter.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MainApp.h">
+      <Filter>TestApps</Filter>
+    </ClInclude>
+    <ClInclude Include="BakeCubemapIrradiance.h">
+      <Filter>TestApps</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalVars.h">
+      <Filter>TestApps</Filter>
+    </ClInclude>
+    <ClInclude Include="GenerateBRDFLUT.h">
+      <Filter>TestApps</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

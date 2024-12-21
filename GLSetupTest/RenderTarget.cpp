@@ -4,7 +4,7 @@
 
 namespace JLEngine
 {
-	RenderTarget::RenderTarget(const string& name, uint32 numSources)
+	RenderTarget::RenderTarget(const string& name, uint32_t numSources)
 		: Resource(name), m_fbo(0), m_dbo(0), m_numSources(numSources),
 		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
 	{
@@ -12,13 +12,13 @@ namespace JLEngine
 		m_sources.Create(numSources);
 		m_drawBuffers.Create(numSources);
 
-		for (uint32 i = 0; i < m_numSources; i++)
+		for (uint32_t i = 0; i < m_numSources; i++)
 		{
 			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
 		}
 	}
 
-	RenderTarget::RenderTarget(uint32 handle, const string& name, uint32 numSources)
+	RenderTarget::RenderTarget(uint32_t handle, const string& name, uint32_t numSources)
 		: Resource(handle, name), m_fbo(0), m_dbo(0), m_numSources(numSources),
 		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
 	{
@@ -26,7 +26,7 @@ namespace JLEngine
 		m_sources.Create(numSources);
 		m_drawBuffers.Create(numSources);
 
-		for (uint32 i = 0; i < m_numSources; i++)
+		for (uint32_t i = 0; i < m_numSources; i++)
 		{
 			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
 		}
@@ -73,9 +73,9 @@ namespace JLEngine
 
 	void RenderTarget::BindTextures()
 	{
-		for (uint32 i = 0; i < m_numSources; i++)
+		for (uint32_t i = 0; i < m_numSources; i++)
 		{
-			uint32 activeTex = GL_TEXTURE0 + i;
+			uint32_t activeTex = GL_TEXTURE0 + i;
 			glActiveTexture(activeTex);
 			glBindTexture(GL_TEXTURE_2D, m_sources[i]);
 		}
@@ -83,9 +83,9 @@ namespace JLEngine
 
 	void RenderTarget::Unbind() const
 	{
-		for (uint32 i = 0; i < m_numSources; i++)
+		for (uint32_t i = 0; i < m_numSources; i++)
 		{
-			uint32 activeTex = GL_TEXTURE0 + i;
+			uint32_t activeTex = GL_TEXTURE0 + i;
 			glActiveTexture(activeTex);
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
@@ -102,20 +102,20 @@ namespace JLEngine
 		m_graphics->ResizeRenderTarget(this, newWidth, newHeight);
 	}
 
-	void RenderTarget::SetNumSources( uint32 numSources )
+	void RenderTarget::SetNumSources( uint32_t numSources )
 	{
 		m_numSources = numSources;
 
 		m_sources.Create(m_numSources);
 		m_drawBuffers.Create(m_numSources);
 
-		for (uint32 i = 0; i < m_numSources; i++)
+		for (uint32_t i = 0; i < m_numSources; i++)
 		{
 			m_drawBuffers[i] = GL_TEXTURE0 + i;
 		}
 	}
 
-	void RenderTarget::SetTextureAttribute(uint32 index, const TextureAttribute& attributes)
+	void RenderTarget::SetTextureAttribute(uint32_t index, const TextureAttribute& attributes)
 	{
 		if (index < m_attributes.Size())
 		{

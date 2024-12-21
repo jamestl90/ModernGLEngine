@@ -24,9 +24,9 @@ namespace JLEngine
 		}
 		else
 		{
-			m_graphics->SetBufferSubData(GL_ARRAY_BUFFER, 0, (uint32)instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data());
+			m_graphics->SetBufferSubData(GL_ARRAY_BUFFER, 0, (uint32_t)instanceTransforms.size() * sizeof(glm::mat4), instanceTransforms.data());
 		}
-		m_instanceCount = (uint32)instanceTransforms.size();
+		m_instanceCount = (uint32_t)instanceTransforms.size();
 	}
 
 	void InstanceBuffer::UnloadFromGPU()

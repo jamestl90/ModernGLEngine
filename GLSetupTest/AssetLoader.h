@@ -45,6 +45,8 @@ namespace JLEngine
 			ResourceManager<Material>* materialManager, ResourceManager<Texture>* textureManager, ResourceManager<RenderTarget>* rtManager, 
 			ResourceManager<ShaderStorageBuffer>* ssboManager);
 
+		~AssetLoader();
+
 		ResourceManager<ShaderProgram>* GetShaderManager()   const { return m_shaderManager;}
 		ResourceManager<Texture>* GetTextureManager()        const { return m_textureManager; }
 		ResourceManager<Mesh>* GetMeshManager()           const { return m_meshManager; }
@@ -59,9 +61,9 @@ namespace JLEngine
 		Texture* CreateEmptyTexture(const std::string& name);
 		Texture* CreateTextureFromFile(const std::string& name, const std::string& filename,
 			bool clamped = false, bool mipmaps = false);
-		Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32 height, int channels, void* data,
+		Texture* CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, void* data,
 			int internalFormat, int format, int dataType, bool clamped = false, bool mipmaps = false);
-		Texture* CreateTextureFromData(const std::string& name, uint32 width, uint32 height, int channels, vector<unsigned char>& data,
+		Texture* CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, vector<unsigned char>& data,
 			bool clamped = false, bool mipmaps = false);
 		Texture* CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
 
@@ -75,16 +77,17 @@ namespace JLEngine
 		ShaderProgram* BasicUnlitShader();
 		ShaderProgram* BasicLitShader();
 		ShaderProgram* SolidColorShader();
-	    
+		ShaderProgram* ScreenSpaceQuadShader();
+
 		// Shader Loading ///////////////////////////////////
 		Material* CreateMaterial(const std::string& name);
 		Material* GetDefaultMaterial() { return m_defaultMat; }
 
 		// RenderTarget Loading ///////////////////////////////////
 		RenderTarget* CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib,
-			JLEngine::DepthType depthType, uint32 numSources);
+			JLEngine::DepthType depthType, uint32_t numSources);
 		RenderTarget* CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs,
-			JLEngine::DepthType depthType, uint32 numSources);
+			JLEngine::DepthType depthType, uint32_t numSources);
 
 		// Mesh Loading ///////////////////////////////////
 		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo);
@@ -115,15 +118,13 @@ namespace JLEngine
 		float m_pollTimeSeconds = 1.0;
 		float m_accumTime = 0;
 
-		ShaderProgram* m_basicUnlit;
-		ShaderProgram* m_basicLit;
-		ShaderProgram* m_solidColor;
+		ShaderProgram* m_basicUnlit = nullptr;
+		ShaderProgram* m_basicLit = nullptr;
+		ShaderProgram* m_solidColor = nullptr;
+		ShaderProgram* m_screenSpaceQuad = nullptr;
 
 		/*  Material Manager Variables */
 		Material* m_defaultMat;
-
-
-
 	};
 }
 

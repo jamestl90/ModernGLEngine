@@ -32,29 +32,31 @@ namespace JLEngine
         m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
-        auto finalAssetPath = m_assetFolder + "Core/";
+        auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
+        auto textureAssetPath = m_assetFolder + "HDRI/";
 
-        auto dlShader = m_assetLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", finalAssetPath);
+        auto dlShader = m_assetLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath);
         m_dlShadowMap = new DirectionalLightShadowMap(m_graphics, dlShader);
         m_dlShadowMap->Initialise();
 
         SetupGBuffer();
         
-        m_textureDebugShader = m_assetLoader->CreateShaderFromFile("DebugScreenSpaceTriangle", "pos_uv_vert.glsl", "depth_debug_frag.glsl", finalAssetPath);
-        m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "gbuffer_debug_frag.glsl", finalAssetPath);
-        m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", finalAssetPath);
-        m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", finalAssetPath);
-        auto skyboxShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", finalAssetPath);
+        m_textureDebugShader = m_assetLoader->CreateShaderFromFile("DebugScreenSpaceTriangle", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath);
+        m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath);
+        m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath);
+        m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", shaderAssetPath);
+        auto skyboxShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", shaderAssetPath);
         
-        std::array<std::string, 6> cubemapFiles = {
-            "sunnyDayCubemap/sunny_day_clouds_posx.hdr",
-            "sunnyDayCubemap/sunny_day_clouds_negx.hdr",
-            "sunnyDayCubemap/sunny_day_clouds_posy.hdr",
-            "sunnyDayCubemap/sunny_day_clouds_negy.hdr",
-            "sunnyDayCubemap/sunny_day_clouds_posz.hdr",
-            "sunnyDayCubemap/sunny_day_clouds_negz.hdr"
+        std::array<std::string, 6> cubemapFiles = 
+        {
+            "venice_sunset_4k/posx.hdr",
+            "venice_sunset_4k/negx.hdr",
+            "venice_sunset_4k/posy.hdr",
+            "venice_sunset_4k/negy.hdr",
+            "venice_sunset_4k/posz.hdr",
+            "venice_sunset_4k/negz.hdr"
         };
-        auto hdriTexture = m_assetLoader->CreateCubemapFromFile("HDRI Cubemap Texture", cubemapFiles, m_assetFolder);
+        auto hdriTexture = m_assetLoader->CreateCubemapFromFile("HDRI Cubemap Texture", cubemapFiles, textureAssetPath);
 
         m_hdriSky = new HDRISky(hdriTexture, skyboxShader);
         m_hdriSky->Initialise(m_graphics);
@@ -119,7 +121,7 @@ namespace JLEngine
                 glm::mat4 modelMatrix = batch.second;
                 m_dlShadowMap->SetModelMatrix(modelMatrix);
 
-                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
+                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
             }
         }
         m_graphics->BindFrameBuffer(0);
@@ -255,7 +257,7 @@ namespace JLEngine
         m_graphics->BindShader(m_textureDebugShader->GetProgramId());
         m_graphics->SetActiveTexture(0);
         m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
-        m_textureDebugShader->SetUniformi("debugTexture", 0);
+        m_textureDebugShader->SetUniformi("u_DepthTexture", 0);
         m_textureDebugShader->SetUniformi("u_Linearize", 0);
         m_textureDebugShader->SetUniformf("u_Near", 0.01f);
         m_textureDebugShader->SetUniformf("u_Far", m_dlShadowMap->GetShadowDistance());
@@ -265,7 +267,7 @@ namespace JLEngine
         m_graphics->SetViewport((int)(m_width * 0.5f), 0, (int)(m_width * 0.5f), m_height);
 
         m_gBufferTarget->BindDepthTexture(0);
-        m_gBufferDebugShader->SetUniformi("debugTexture", 0);
+        m_gBufferDebugShader->SetUniformi("u_DepthTexture", 0);
         m_textureDebugShader->SetUniformi("u_Linearize", 1);
         auto frustum = m_graphics->GetViewFrustum();
         m_textureDebugShader->SetUniformf("u_Near", frustum->GetNear());
@@ -348,7 +350,7 @@ namespace JLEngine
     //    m_graphics->BindVertexArray(vertexBuffer->GetVAO());
     //    m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->GetId());
     //
-    //    m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)indexBuffer->Size(), GL_UNSIGNED_INT, nullptr);
+    //    m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)indexBuffer->Size(), GL_UNSIGNED_INT, nullptr);
     //
     //    m_graphics->SetDepthMask(GL_TRUE);
     //}
@@ -490,7 +492,7 @@ namespace JLEngine
                 m_gBufferShader->SetUniform("u_Model", modelMatrix);
 
                 // Issue draw call
-                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
+                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
             }
         }
     }

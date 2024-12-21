@@ -22,9 +22,10 @@ namespace JLEngine
 	{
 	public:
 		static Mesh* GenerateSphereMesh(Graphics* graphics, std::string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments);
-		static Mesh* GenerateBoxMesh(Graphics* graphics, std::string name, float width, float length, float height);
 
-		static VertexBuffer CreateSkybox(Graphics* graphics);
+		static VertexBuffer CreateBox(Graphics* graphics);
+		static VertexBuffer CreateScreenSpaceTriangle(Graphics* graphics);
+		static std::tuple<VertexBuffer, IndexBuffer> CreateScreenSpaceQuad(Graphics* graphics);
 
 		static void GenerateInterleavedVertexData(const std::vector<float>& positions,
 			const std::vector<float>& normals,
@@ -32,16 +33,16 @@ namespace JLEngine
 			std::vector<float>& vertexData);
 		static void GenerateInterleavedVertexData(std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& texCoords2, std::vector<float>& tangents, std::vector<float>& vertexData);
 
-		static std::vector<glm::vec3> CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32>& indices);
-		static std::vector<float> CalculateSmoothNormals(const std::vector<float>& positions, const std::vector<uint32>& indices);
-		static std::vector<float> CalculateFlatNormals(const std::vector<float>& positions, const std::vector<uint32>& indices);
+		static std::vector<glm::vec3> CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32_t>& indices);
+		static std::vector<float> CalculateSmoothNormals(const std::vector<float>& positions, const std::vector<uint32_t>& indices);
+		static std::vector<float> CalculateFlatNormals(const std::vector<float>& positions, const std::vector<uint32_t>& indices);
 		static std::vector<float> CalculateSmoothNormals(const std::vector<float>& positions);
 		static std::vector<float> CalculateFlatNormals(const std::vector<float>& positions);
 
 		static std::vector<float> CalculateTangents(const std::vector<float>& positions,
 			const std::vector<float>& normals,
 			const std::vector<float>& uvs,
-			const std::vector<uint32>& indices);
+			const std::vector<uint32_t>& indices);
 		static std::vector<float> CalculateTangents(const std::vector<float>& positions,
 			const std::vector<float>& normals,
 			const std::vector<float>& uvs);
@@ -50,10 +51,10 @@ namespace JLEngine
 	class Polygon
 	{
 	public:
-		static uint32 AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
+		static uint32_t AddFace(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32_t>&>& geomData,
 			int lastTriCount, glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec3 p4, glm::vec3 normal, glm::vec2 ufBotLeft, glm::vec2 uvOffset, bool flip = false);
 
-		static uint32 AddBox(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32>&>& geomData,
+		static uint32_t AddBox(std::tuple<std::vector<glm::vec3>&, std::vector<glm::vec3>&, std::vector<glm::vec2>&, std::vector<uint32_t>&>& geomData,
 			int triCount, const glm::vec3& center, float width, float length, float height);
 	};
 }

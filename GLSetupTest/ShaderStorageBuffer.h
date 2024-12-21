@@ -16,10 +16,10 @@ namespace JLEngine
 
         void Initialize();  // Allocate GPU memory
         void UpdateData(const void* data, size_t size);  // Update SSBO data
-        void Bind(uint32 bindingPoint);  // Bind SSBO to a specific binding point
+        void Bind(uint32_t bindingPoint);  // Bind SSBO to a specific binding point
 
     private:
-        uint32 m_ssboID;   // OpenGL ID for the SSBO
+        uint32_t m_ssboID;   // OpenGL ID for the SSBO
         size_t m_size;     // Size of the buffer
         Graphics* m_graphics;
     };

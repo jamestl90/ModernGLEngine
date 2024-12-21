@@ -16,12 +16,14 @@ namespace JLEngine
         imageData.isHDR = isHDR;
 
         if (isHDR) {
+            stbi_set_flip_vertically_on_load(true);
             float* hdrPixels = stbi_loadf(filePath.c_str(), &imageData.width, &imageData.height, &imageData.channels, forceGrayscale ? 1 : 0);
             if (!hdrPixels) 
             {
                 std::cerr << "Failed to load HDR texture: " << filePath << std::endl;
                 return imageData;
             }
+            imageData.isHDR = true;
             imageData.hdrData.assign(hdrPixels, hdrPixels + (imageData.width * imageData.height * imageData.channels));
             stbi_image_free(hdrPixels);
         }
@@ -54,7 +56,7 @@ namespace JLEngine
         {
             for (size_t i = 0; i < 6; ++i)
             {
-                ImageData imgData;                
+                ImageData imgData;      
                 float* stbData = stbi_loadf(finalAssetPath(i).c_str(), &imgData.width, &imgData.height, &imgData.channels, 0);                
                 if (!stbData)
                 {
@@ -115,5 +117,46 @@ namespace JLEngine
             stbi_image_free(hdrData);
         }
         return finalData;
+    }
+
+    ImageData TextureReader::StitchSky(std::array<JLEngine::ImageData, 6>& files, int width, int height, int channels)
+    {
+        int facePixelCount = width * height;
+        int totalPixelCount = facePixelCount * 6;
+
+        std::vector<float> finalData(totalPixelCount * channels);
+
+        for (int faceIndex = 0; faceIndex < 6; ++faceIndex)
+        {
+            const auto& imgData = files[faceIndex];
+
+            if (imgData.hdrData.size() != facePixelCount * channels)
+            {
+                throw std::runtime_error("Input image dimensions do not match the expected width, height, and channels.");
+            }
+
+            int xOffset = faceIndex * width;
+
+            for (int y = 0; y < height; ++y)
+            {
+                int srcOffset = y * width * channels;
+                int dstOffset = (y * (width * 6) + xOffset) * channels;
+
+                std::memcpy(
+                    finalData.data() + dstOffset,
+                    imgData.hdrData.data() + srcOffset,
+                    width * channels * sizeof(float)
+                );
+            }
+        }
+
+        ImageData result;
+        result.hdrData = std::move(finalData); 
+        result.width = width * 6;              
+        result.height = height;                
+        result.channels = channels;
+        result.isHDR = true;
+
+        return result;
     }
 }

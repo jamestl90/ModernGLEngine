@@ -18,12 +18,33 @@
 #include "Node.h"
 #include "ImageData.h"
 
-//#define BUFFER_OFFSET(i) ((char*)NULL + (i))
-
 inline void* BUFFER_OFFSET(std::size_t i) 
 {
 	return reinterpret_cast<void*>(i);
 }
+
+constexpr bool ENABLE_GL_DEBUG =
+#ifdef NDEBUG
+	false; // Release build
+#else
+	true;  // Debug build
+#endif
+
+inline void GLCheckError(const char* file, int line)
+{
+	if constexpr (ENABLE_GL_DEBUG)
+	{
+		GLenum error;
+		while ((error = glGetError()) != GL_NO_ERROR)
+		{
+			std::cerr << "[OpenGL Error] (" << error << ") "
+				<< " in file: " << file
+				<< " at line: " << line << std::endl;
+		}
+	}
+}
+
+#define GL_CHECK_ERROR() GLCheckError(__FILE__, __LINE__)
 
 using std::string;
 
@@ -76,63 +97,64 @@ namespace JLEngine
 		 const string& GetExtensionInfo() { return m_extensionInfo; }
 		 const string& GetShaderInfo()    { return m_shaderInfo; }
 
-		 const int32& GetNumMSAABuffers() { return m_MSAABuffers; }
-		 const int32& GetNumMSAASamples() { return m_MSAASamples; }
+		 const int32_t& GetNumMSAABuffers() { return m_MSAABuffers; }
+		 const int32_t& GetNumMSAASamples() { return m_MSAASamples; }
 
 		 ViewFrustum* GetViewFrustum()    { return m_viewFrustum; }
 		 Window* GetWindow()			 { return m_window; }
 
 		 glm::mat4& CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view);
 
-		 void SetViewport(uint32 x, uint32 y, uint32 width, uint32 height);
+		 void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 		 void SwapBuffers();
-		 void Clear(uint32 flags);
+		 void Clear(uint32_t flags);
 		 void ClearColour(float x, float y, float z, float w);
-		 void ClearColor();
+		 void ClearColour();
 				
 		 // Shader
-		 std::vector<std::tuple<std::string, int>> GetActiveUniforms(uint32 programId);
-		 void PrintActiveUniforms(uint32 programId);
-		 bool ShaderCompileErrorCheck(uint32 id, bool compileCheck);
+		 std::vector<std::tuple<std::string, int>> GetActiveUniforms(uint32_t programId);
+		 void PrintActiveUniforms(uint32_t programId);
+		 bool ShaderCompileErrorCheck(uint32_t id);
+		 bool ShaderProgramLinkErrorCheck(uint32_t programid);
 
 		 void CreateShaderFromFile(ShaderProgram* program);
 		 void CreateShaderFromText(ShaderProgram* program, std::vector<std::string> shaderTexts);
 		 void DisposeShader(ShaderProgram* program);
 
-		 void SetUniform(uint32 location, uint32 x);
-		 void SetUniform(uint32 location, uint32 x, uint32 y);
-		 void SetUniform(uint32 location, uint32 x, uint32 y, uint32 z);
-		 void SetUniform(uint32 location, uint32 x, uint32 y, uint32 z, uint32 w);
+		 void SetUniform(uint32_t location, uint32_t x);
+		 void SetUniform(uint32_t location, uint32_t x, uint32_t y);
+		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z);
+		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w);
 						
-		 void SetUniform(uint32 location, float x);
-		 void SetUniform(uint32 location, float x, float y);
-		 void SetUniform(uint32 location, float x, float y, float z);
-		 void SetUniform(uint32 location, float x, float y, float z, float w);
+		 void SetUniform(uint32_t location, float x);
+		 void SetUniform(uint32_t location, float x, float y);
+		 void SetUniform(uint32_t location, float x, float y, float z);
+		 void SetUniform(uint32_t location, float x, float y, float z, float w);
 						
-		 void SetUniform(uint32 location, const glm::vec2& vec);
-		 void SetUniform(uint32 location, const glm::vec3& vec);
-		 void SetUniform(uint32 location, const glm::vec4& vec);
+		 void SetUniform(uint32_t location, const glm::vec2& vec);
+		 void SetUniform(uint32_t location, const glm::vec3& vec);
+		 void SetUniform(uint32_t location, const glm::vec4& vec);
 						
-		 void SetUniform(uint32 location, int count, bool transpose, const glm::mat2& mat);
-		 void SetUniform(uint32 location, int count, bool transpose, const glm::mat3& mat);
-		 void SetUniform(uint32 location, int count, bool transpose, const glm::mat4& mat);
+		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat2& mat);
+		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat3& mat);
+		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat4& mat);
 
-		 void BindShader(uint32 programId);
+		 void BindShader(uint32_t programId);
 		 void UnbindShader();
 
 		// State modifier
 		void SetMSAA(bool flag);
 		bool UsingMSAA() const;
 
-		void Enable(uint32 val);
-		void Disable(uint32 val);
+		void Enable(uint32_t val);
+		void Disable(uint32_t val);
 
-		void SetDepthFunc(uint32 val);
-		void SetDepthMask(uint32 val);
+		void SetDepthFunc(uint32_t val);
+		void SetDepthMask(uint32_t val);
 
-		void SetBlendFunc(uint32 first, uint32 second);
+		void SetBlendFunc(uint32_t first, uint32_t second);
 
-		void SetCullFace(uint32 face);
+		void SetCullFace(uint32_t face);
 
 		// Texture 
 		bool ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight);
@@ -141,17 +163,17 @@ namespace JLEngine
 
 		void DisposeTexture(Texture* texture);
 		void CreateTexture(Texture* texture);
-		void ReadTexture2D(uint32 texId, ImageData& imgData, bool useFramebuffer = false);
-		void ReadCubemap(uint32 texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
+		void ReadTexture2D(uint32_t texId, ImageData& imgData, bool useFramebuffer = false);
+		void ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
 		int CreateCubemap(std::array<ImageData, 6>& cubeFaceData);
-		void CreateTextures(uint32 count, uint32& id);
-		void BindTexture(uint32 target, uint32 id);
+		void CreateTextures(uint32_t count, uint32_t& id);
+		void BindTexture(uint32_t target, uint32_t id);
 		void BindTexture(ShaderProgram* shader, const std::string& uniformName,
 			const std::string& flagName, Texture* texture, int textureUnit);
-		void DisposeTexture(uint32 count, uint32* textures);
-		void SetActiveTexture(uint32 texunit);
+		void DisposeTexture(uint32_t count, uint32_t* textures);
+		void SetActiveTexture(uint32_t texunit);
 
-		uint32 GetInternalFormat(uint32 texId, uint32 texTarget);
+		uint32_t GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget);
 		std::string InternalFormatToString(GLint internalFormat);
 
 		// Buffer objects
@@ -165,43 +187,43 @@ namespace JLEngine
 		void DisposeIndexBuffer(IndexBuffer& ibo);
 
 		// FBO
-		void CreateFrameBuffer(uint32 count, uint32& id);
-		void BindFrameBuffer(uint32 id);
-		void DisposeFrameBuffer(uint32 count, uint32* fbo);
-		void BindFrameBufferToTexture(uint32 type, uint32 attachment, uint32 target, uint32 id, int32 level = 0);
-		uint32 CheckFrameBuffer();
+		void CreateFrameBuffer(uint32_t count, uint32_t& id);
+		void BindFrameBuffer(uint32_t id);
+		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
+		void BindFrameBufferToTexture(uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level = 0);
+		uint32_t CheckFrameBuffer();
 		// RBO
-		void CreateRenderBuffer(uint32 count, uint32& id);
-		void BindRenderBuffer(uint32 id);
-		void RenderBufferStorage(uint32 type, uint32 internalFormat, uint32 width, uint32 height);
-		void BindFrameBufferToRenderbuffer(uint32 type, uint32 internalFormat, uint32 target, uint32 id);
+		void CreateRenderBuffer(uint32_t count, uint32_t& id);
+		void BindRenderBuffer(uint32_t id);
+		void RenderBufferStorage(uint32_t type, uint32_t internalFormat, uint32_t width, uint32_t height);
+		void BindFrameBufferToRenderbuffer(uint32_t type, uint32_t internalFormat, uint32_t target, uint32_t id);
 		// VAO
-		uint32 CreateVertexArray();
-		//void CreateVertexArray(uint32 count, uint32& id);
-		void BindVertexArray(uint32 vaoID);
+		uint32_t CreateVertexArray();
+		//void CreateVertexArray(uint32_t count, uint32_t& id);
+		void BindVertexArray(uint32_t vaoID);
 		// VBO
-		void CreateBuffer(uint32 count, uint32& id);
-		void DisposeBuffer(uint32 count, uint32* id);
-		void BindBuffer(uint32 buffType, uint32 vboID);
-		void SetBufferData(uint32 buffType, ptrdiff_t size, void* data, uint32 usage);
+		void CreateBuffer(uint32_t count, uint32_t& id);
+		void DisposeBuffer(uint32_t count, uint32_t* id);
+		void BindBuffer(uint32_t buffType, uint32_t vboID);
+		void SetBufferData(uint32_t buffType, ptrdiff_t size, void* data, uint32_t usage);
 
-		void EnableVertexAttribArray(uint32 pos);
-		void DisableVertexAttribArray(uint32 pos);
+		void EnableVertexAttribArray(uint32_t pos);
+		void DisableVertexAttribArray(uint32_t pos);
 
-		void SetBufferSubData( uint32 target, ptrdiff_t offset, int32 size, void* data);
-		void SetAttributePointer(uint32 index, int32 count, uint32 datatype, bool normalise, int32 size, void* offset);
+		void SetBufferSubData( uint32_t target, ptrdiff_t offset, int32_t size, void* data);
+		void SetAttributePointer(uint32_t index, int32_t count, uint32_t datatype, bool normalise, int32_t size, void* offset);
 
-		void* MapBufferData(uint32 target, uint32 access);
-		bool UnmapBufferData(uint32 target);
+		void* MapBufferData(uint32_t target, uint32_t access);
+		bool UnmapBufferData(uint32_t target);
 
 		// Render calls
 		void BeginPrimitiveDraw();
-		void RenderPrimitive(glm::mat4& mvp, uint32 type, uint32 shaderId = -1);
+		void RenderPrimitive(glm::mat4& mvp, uint32_t type, uint32_t shaderId = -1);
 		void EndPrimitiveDraw();
 
-		void DrawArrayBuffer(uint32 drawMode, uint32 first, uint32 count);
-		void DrawElementBuffer(uint32 drawMode, int32 count, uint32 dataType, void* offset);
-		void DrawBuffers(uint32 count, uint32* targets);
+		void DrawArrayBuffer(uint32_t drawMode, uint32_t first, uint32_t count);
+		void DrawElementBuffer(uint32_t drawMode, int32_t count, uint32_t dataType, void* offset);
+		void DrawBuffers(uint32_t count, uint32_t* targets);
 
 		void GeneratePrimitives();
 
@@ -209,8 +231,8 @@ namespace JLEngine
 
 	private:
 
-		void CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 indices[], uint32 indSize, uint32 ids[]);
-		void CreatePrimitiveBuffers(float vertices[], uint32 vertSize, uint32 ids[]);
+		void CreatePrimitiveBuffers(float vertices[], uint32_t vertSize, uint32_t indices[], uint32_t indSize, uint32_t ids[]);
+		void CreatePrimitiveBuffers(float vertices[], uint32_t vertSize, uint32_t ids[]);
 
 		string m_shaderInfo;
 		string m_versionInfo;
@@ -218,18 +240,18 @@ namespace JLEngine
 		string m_rendererInfo;
 		string m_extensionInfo;
 
-		int32 m_MSAABuffers;
-		int32 m_MSAASamples;
+		int32_t m_MSAABuffers;
+		int32_t m_MSAASamples;
 
 		bool m_drawAABB;
 		bool m_usingMSAA;
 
-		uint32 m_coneGeom[4];
-		uint32 m_octahedronGeom[4];
-		uint32 m_defaultShader;
+		uint32_t m_coneGeom[4];
+		uint32_t m_octahedronGeom[4];
+		uint32_t m_defaultShader;
 
-		uint32 m_activeShaderProgram;
-		uint32 m_activeTextureUnit;      
+		uint32_t m_activeShaderProgram;
+		uint32_t m_activeTextureUnit;      
 		std::vector<GLuint> m_boundTextures;
 
 		glm::vec4 m_clearColour;

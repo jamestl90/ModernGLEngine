@@ -9,7 +9,7 @@ namespace JLEngine
 	{
 	}
 
-	Mesh::Mesh(uint32 handle, const string& name)
+	Mesh::Mesh(uint32_t handle, const string& name)
 		: Resource(handle, name), m_graphics(nullptr)
 	{
 
