@@ -10,10 +10,9 @@ namespace JLEngine
         emissiveFactor(0.0f, 0.0f, 0.0f),       
         alphaMode(AlphaMode::JL_OPAQUE),                    
         alphaCutoff(0.5f),                      
-        doubleSided(false),                     
-        usesSpecularGlossinessWorkflow(false),  
-        diffuseFactor(1.0f, 1.0f, 1.0f, 1.0f),  
-        specularFactor(1.0f, 1.0f, 1.0f)        
+        doubleSided(false),   
+        receiveShadows(true),
+        castShadows(true)
     {
         
     }

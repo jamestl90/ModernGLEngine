@@ -106,6 +106,7 @@ namespace JLEngine
 		 glm::mat4& CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view);
 
 		 void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+		 void SetViewport(glm::ivec4& params);
 		 void SwapBuffers();
 		 void Clear(uint32_t flags);
 		 void ClearColour(float x, float y, float z, float w);
@@ -163,13 +164,12 @@ namespace JLEngine
 
 		void DisposeTexture(Texture* texture);
 		void CreateTexture(Texture* texture);
-		void ReadTexture2D(uint32_t texId, ImageData& imgData, bool useFramebuffer = false);
+		uint32_t CreateTexture(ImageData& imgData, bool genMipmaps = false);
+		void ReadTexture2D(uint32_t texId, ImageData& imageData, int width, int height, int channels, bool hdr, bool useFramebuffer);
 		void ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
 		int CreateCubemap(std::array<ImageData, 6>& cubeFaceData);
 		void CreateTextures(uint32_t count, uint32_t& id);
 		void BindTexture(uint32_t target, uint32_t id);
-		void BindTexture(ShaderProgram* shader, const std::string& uniformName,
-			const std::string& flagName, Texture* texture, int textureUnit);
 		void DisposeTexture(uint32_t count, uint32_t* textures);
 		void SetActiveTexture(uint32_t texunit);
 

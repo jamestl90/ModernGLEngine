@@ -35,9 +35,8 @@ namespace JLEngine
 		Shader GetShader(int type);
 		void GetShader(string name, Shader& shader);
 		const std::vector<Shader> GetShaders() { return m_shaders; }
-
+	
 		const std::string GetFilePath() { return m_filename; }
-
 		int GetUniformLocation(const std::string& name);
 
 		void SetUniform(const std::string& name, const glm::mat4& matrix);

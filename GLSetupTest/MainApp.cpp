@@ -98,6 +98,7 @@ int MainApp(std::string assetFolder)
 
     auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
     auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
+    mat->castShadows = false;
     mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
     planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
     planeNode->translation -= glm::vec3(0, 2.5f, 0);
@@ -106,6 +107,7 @@ int MainApp(std::string assetFolder)
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
 
     auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    helmet->mesh->GetBatches()[0]->GetMaterial()->castShadows = false;
 
     auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
     potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);

@@ -3,47 +3,74 @@
 #include "ShaderProgram.h"
 #include "Graphics.h"
 #include "Geometry.h"
+#include "AssetLoader.h"
+#include "TextureReader.h"
 
 namespace JLEngine
 {
-    HDRISky::HDRISky(Texture* enviroMap, ShaderProgram* skyShader)
-        : m_enviroCubeMap(enviroMap), m_skyShader(skyShader), m_graphics(nullptr)
+    HDRISky::HDRISky(AssetLoader* assetLoader)
+        : m_assetLoader(assetLoader)
     {
         
     }
 
     HDRISky::~HDRISky() 
     { 
-        m_graphics->DisposeVertexBuffer(m_skyboxVBO);
-        m_graphics->DisposeShader(m_skyShader);
-        m_graphics->DisposeTexture(m_enviroCubeMap);
+        auto graphics = m_assetLoader->GetGraphics();
+        graphics->DisposeVertexBuffer(m_skyboxVBO);
+        graphics->DisposeShader(m_skyShader);
     }
 
-    void HDRISky::Initialise(Graphics* graphics)
+    void HDRISky::Initialise(const std::string& assetPath, const HdriSkyInitParams& initParams)
     {
-        m_graphics = graphics;
+        auto shaderAssetPath = assetPath + "Core/Shaders/";
+        auto textureAssetPath = assetPath + "HDRI/";
+        auto graphics = m_assetLoader->GetGraphics();
 
-        m_skyboxVBO = Geometry::CreateBox(m_graphics);
+        m_skyShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", shaderAssetPath);
+        m_skyboxVBO = Geometry::CreateBox(graphics);
+
+        m_hdriSkyImageData = TextureReader::LoadTexture(assetPath + "HDRI/" + initParams.fileName, true);
+        int cubemapSize = m_hdriSkyImageData.width / 4;
+
+        graphics->Enable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+        CubemapBaker baker(assetPath, m_assetLoader);
+        m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, true);
+        m_irradianceMap = baker.GenerateIrradianceCubemap(m_hdriSky, initParams.irradianceMapSize);
+        m_prefilteredMap = baker.GeneratePrefilteredEnvMap(m_hdriSky, initParams.prefilteredMapSize, initParams.prefilteredSamples);
+        m_brdfLUTMap = baker.GenerateBRDFLUT(512, 1024);
+
+        m_hdriSkyImageData.hdrData.clear();
     }
 
-    void HDRISky::Render(const glm::mat4& viewMatrix, const glm::mat4& projMatrix) 
+    void HDRISky::Render(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, int debugTexId)
     {
+        if (debugTexId > 2)
+        {
+            std::cout << "Invalid debug tex id for HDRI SKY" << std::endl;
+            return;
+        }
+
+        uint32_t texIds[3] = { m_hdriSky, m_irradianceMap, m_prefilteredMap };
+        auto graphics = m_assetLoader->GetGraphics();
+
         GLint previousDepthFunc;
         glGetIntegerv(GL_DEPTH_FUNC, &previousDepthFunc);
 
-        m_graphics->SetDepthFunc(GL_LEQUAL);
-        m_graphics->BindShader(m_skyShader->GetProgramId());
+        graphics->SetDepthFunc(GL_LEQUAL);
+        graphics->BindShader(m_skyShader->GetProgramId());
         
         m_skyShader->SetUniform("u_Projection", projMatrix);
         m_skyShader->SetUniform("u_View", glm::mat4(glm::mat3(viewMatrix)));
-        m_graphics->SetActiveTexture(0);
-        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_enviroCubeMap->GetGPUID());
+        graphics->SetActiveTexture(0);
+        graphics->BindTexture(GL_TEXTURE_CUBE_MAP, texIds[debugTexId]);
         m_skyShader->SetUniformi("u_Skybox", 0);
 
-        m_graphics->BindVertexArray(m_skyboxVBO.GetVAO());
-        m_graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 36);
+        graphics->BindVertexArray(m_skyboxVBO.GetVAO());
+        graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 36);
 
-        m_graphics->BindVertexArray(0);
-        m_graphics->SetDepthFunc(previousDepthFunc);
+        graphics->BindVertexArray(0);
+        graphics->SetDepthFunc(previousDepthFunc);
     }
 }

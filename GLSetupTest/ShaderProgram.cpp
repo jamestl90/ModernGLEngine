@@ -102,7 +102,7 @@ namespace JLEngine
 			GLint location = glGetUniformLocation(m_programId, name.c_str());
 			if (location == -1)
 			{
-				std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
+				//std::cerr << "Warning: Uniform '" << name << "' not found in shader program!" << std::endl;
 				return -1;
 			}
 			m_uniformLocations[name] = location;

@@ -35,6 +35,9 @@ uniform vec3 emissiveFactor = vec3(0.0);          // Emissive factor
 
 uniform float m_AlphaCutoff;
 
+uniform bool u_CastShadows;
+uniform bool u_ReceiveShadows;
+
 // Constants 
 const float DEFAULT_AO = 1.0;                    // Default ambient occlusion
 
@@ -104,6 +107,11 @@ vec3 getEmissive()
     return emissiveFactor;
 }
 
+float encodeShadowFlags(bool receiveShadows, bool castShadows) 
+{
+    return float(castShadows) + 0.1 * float(receiveShadows);
+}
+
 void main() 
 {
     // Retrieve material properties
@@ -118,10 +126,11 @@ void main()
     vec3 normal = getNormal();
     float ao = getAmbientOcclusion();
     vec3 emissive = getEmissive();
+    float shadowInfo = encodeShadowFlags(u_ReceiveShadows, u_CastShadows);
 
     // Write to G-buffer
     gAlbedoAO = vec4(baseColor.rgb, ao);          // Albedo + Ambient Occlusion
-    gNormalSmooth = vec4(normal, 0.0);            // Normal + Reserved
+    gNormalSmooth = vec4(normal, shadowInfo);            // Normal + Reserved
     gMetallicRoughness = metallicRoughness;       // Metallic + Roughness + Reserved x2
     gEmissive = vec4(emissive, 0.0);              // Emissive + Reserved
 }

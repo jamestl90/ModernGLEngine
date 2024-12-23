@@ -22,6 +22,7 @@ namespace JLEngine
     {
         GBuffer,
         DirectionalLightShadows,
+        HDRISkyTextures,
         None
     };
 
@@ -50,10 +51,12 @@ namespace JLEngine
 
     private:
         void DrawUI();
+        void BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit);
         //void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
+        void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         glm::mat4 DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
@@ -78,7 +81,8 @@ namespace JLEngine
         ShaderProgram* m_gBufferShader;
         ShaderProgram* m_lightingTestShader;         
         ShaderProgram* m_gBufferDebugShader;
-        ShaderProgram* m_textureDebugShader;
+        ShaderProgram* m_shadowDebugShader;
+        ShaderProgram* m_debugTextureShader;
 
         VertexBuffer m_triangleVertexBuffer;
         GLuint m_triangleVAO;

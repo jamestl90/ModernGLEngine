@@ -3,14 +3,27 @@
 
 #include <vector>
 
+#include <glad/glad.h>
+
 namespace JLEngine
 {
 	class ImageData
 	{
     public:
-        int width;
-        int height;
-        int channels;    // Number of channels (1 for grayscale, 3 for RGB, etc.)
+        int width          = 0;
+        int height         = 0;
+        int channels       = 0;
+
+        uint32_t textureType    = GL_TEXTURE_2D;
+        uint32_t internalFormat = GL_RGBA8;
+        uint32_t format         = GL_RGBA;
+        uint32_t dataType       = GL_UNSIGNED_BYTE;
+
+        uint32_t minFilter      = GL_LINEAR;
+        uint32_t maxFilter      = GL_LINEAR;
+        uint32_t wrapS          = GL_CLAMP_TO_EDGE;
+        uint32_t wrapT          = GL_CLAMP_TO_EDGE;
+        uint32_t wrapR          = GL_CLAMP_TO_EDGE;
 
         bool isHDR;      // Whether the image is HDR
         std::vector<unsigned char> data; // Regular texture data
@@ -27,13 +40,23 @@ namespace JLEngine
 
         ImageData& operator=(ImageData&& other) noexcept 
         {
-            if (this != &other) { // Avoid self-assignment
+            if (this != &other) 
+            { // Avoid self-assignment
                 width = other.width;
                 height = other.height;
                 channels = other.channels;
                 isHDR = other.isHDR;
                 data = std::move(other.data);
                 hdrData = std::move(other.hdrData);
+                internalFormat = other.internalFormat;
+                format = other.format;
+                dataType = other.dataType;
+                minFilter = other.minFilter;
+                maxFilter = other.maxFilter;
+                wrapS = other.wrapS;
+                wrapT = other.wrapT;
+                wrapR = other.wrapR;
+                textureType = other.textureType;
             }
             return *this;
         }

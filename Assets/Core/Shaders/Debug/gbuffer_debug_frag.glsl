@@ -14,6 +14,16 @@ uniform float u_Far;
 
 out vec4 FragColor;
 
+bool decodeReceiveShadows(float encodedValue) 
+{
+    return fract(encodedValue) > 0.05; // Fractional part determines receive shadows
+}
+
+bool decodeCastShadows(float encodedValue) 
+{
+    return floor(encodedValue) > 0.5; // Integer part determines cast shadows
+}
+
 void main() 
 {
     if (debugMode == 0) 
@@ -24,7 +34,11 @@ void main()
     else if (debugMode == 1) 
     {
         // Normals (mapped from [-1, 1] to [0, 1])
-        FragColor = vec4(texture(gNormals, v_TexCoords).rgb * 0.5 + 0.5, 1.0);
+        vec4 normalSample = texture(gNormals, v_TexCoords);
+        FragColor = vec4(normalSample.rgb * 0.5 + 0.5, 1.0);
+        //bool receiveShadows = decodeReceiveShadows(normalSample.w);
+        //bool castShadows = decodeCastShadows(normalSample.w);
+        //FragColor = vec4(castShadows ? 1.0 : 0.0, 0.0, 0, 1);
     } 
     else if (debugMode == 2) 
     {

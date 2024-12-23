@@ -9,13 +9,13 @@ namespace JLEngine
 {
 	struct TextureAttribute
 	{
-		GLuint internalFormat = GL_RGBA8; // Internal format (e.g., GL_RGBA8, GL_RGB32F)
-		GLuint format =			GL_RGBA;         // Format (e.g., GL_RGBA, GL_RGB)
-		GLuint dataType =		GL_UNSIGNED_BYTE; // Data type (e.g., GL_UNSIGNED_BYTE, GL_FLOAT)
-		GLuint minFilter =		GL_LINEAR;    // Minification filter
-		GLuint magFilter =		GL_LINEAR;    // Magnification filter
-		GLuint wrapS =			GL_CLAMP_TO_EDGE; // Wrap mode for S
-		GLuint wrapT =			GL_CLAMP_TO_EDGE; // Wrap mode for T
+		GLuint internalFormat = GL_RGBA8;			// Internal format (e.g., GL_RGBA8, GL_RGB32F)
+		GLuint format =			GL_RGBA;			// Format (e.g., GL_RGBA, GL_RGB)
+		GLuint dataType =		GL_UNSIGNED_BYTE;	// Data type (e.g., GL_UNSIGNED_BYTE, GL_FLOAT)
+		GLuint minFilter =		GL_LINEAR;			// Minification filter
+		GLuint magFilter =		GL_LINEAR;			// Magnification filter
+		GLuint wrapS =			GL_CLAMP_TO_EDGE;	// Wrap mode for S
+		GLuint wrapT =			GL_CLAMP_TO_EDGE;	// Wrap mode for T
 	};
 
 	enum class DepthType 

@@ -52,8 +52,8 @@ namespace JLEngine
 
 	void RenderTarget::BindDepthTexture(int texUnit)
 	{
-		glActiveTexture(GL_TEXTURE0 + texUnit);
-		glBindTexture(GL_TEXTURE_2D, m_dbo);
+		m_graphics->SetActiveTexture(texUnit);
+		m_graphics->BindTexture(GL_TEXTURE_2D, m_dbo);
 	}
 
 	void RenderTarget::BindTexture(int texIndex, int texUnit)
@@ -66,8 +66,8 @@ namespace JLEngine
 		GLuint textureId = m_sources[texIndex];
 		if (textureId != 0) 
 		{
-			glActiveTexture(GL_TEXTURE0 + texUnit);
-			glBindTexture(GL_TEXTURE_2D, textureId);
+			m_graphics->SetActiveTexture(texUnit);
+			m_graphics->BindTexture(GL_TEXTURE_2D, textureId);
 		}
 	}
 
@@ -75,9 +75,8 @@ namespace JLEngine
 	{
 		for (uint32_t i = 0; i < m_numSources; i++)
 		{
-			uint32_t activeTex = GL_TEXTURE0 + i;
-			glActiveTexture(activeTex);
-			glBindTexture(GL_TEXTURE_2D, m_sources[i]);
+			m_graphics->SetActiveTexture(i);
+			m_graphics->BindTexture(GL_TEXTURE_2D, m_sources[i]);
 		}
 	}
 
@@ -85,9 +84,8 @@ namespace JLEngine
 	{
 		for (uint32_t i = 0; i < m_numSources; i++)
 		{
-			uint32_t activeTex = GL_TEXTURE0 + i;
-			glActiveTexture(activeTex);
-			glBindTexture(GL_TEXTURE_2D, 0);
+			m_graphics->SetActiveTexture(i);
+			m_graphics->BindTexture(GL_TEXTURE_2D, 0);
 		}
 	}
 

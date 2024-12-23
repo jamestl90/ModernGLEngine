@@ -15,7 +15,8 @@
 namespace JLEngine
 {
     CubemapBaker::CubemapBaker(const std::string& assetPath, AssetLoader* assetLoader)
-        : m_hdrToCubemapShader(nullptr), m_assetLoader(assetLoader), m_irradianceShader(nullptr), m_downsampleCubemapShader(nullptr), m_assetPath(assetPath)
+        : m_hdrToCubemapShader(nullptr), m_assetLoader(assetLoader), m_brdfLutShader(nullptr),
+        m_irradianceShader(nullptr), m_assetPath(assetPath)
     {
     }
 
@@ -24,7 +25,7 @@ namespace JLEngine
         CleanupInternals();
     }
 
-    uint32_t CubemapBaker::HDRtoCubemap(ImageData& imgData, int cubeMapSize, bool genMipmaps)
+    uint32_t CubemapBaker::HDRtoCubemap(ImageData& imgData, int cubeMapSize, bool genMipmaps, float compressionThresh, float maxValue)
     {
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
@@ -87,8 +88,8 @@ namespace JLEngine
         graphics->BindShader(m_hdrToCubemapShader->GetProgramId());
         m_hdrToCubemapShader->SetUniformi("u_EquirectangularMap", 0);
         m_hdrToCubemapShader->SetUniform("u_Projection", captureProjection);
-        m_hdrToCubemapShader->SetUniformf("u_CompressionThreshold", 5.0f);
-        m_hdrToCubemapShader->SetUniformf("u_MaxValue", 10000.0f);
+        m_hdrToCubemapShader->SetUniformf("u_CompressionThreshold", compressionThresh);
+        m_hdrToCubemapShader->SetUniformf("u_MaxValue", maxValue);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, hdrTexture);
         graphics->SetViewport(0, 0, cubeMapSize, cubeMapSize);
@@ -314,6 +315,52 @@ namespace JLEngine
         return prefilteredEnvMap;
     }
 
+    uint32_t CubemapBaker::GenerateBRDFLUT(int lutSize, int numSamples)
+    {
+        auto graphics = m_assetLoader->GetGraphics();
+        auto fullPath = m_assetPath + "Core/Shaders/Baking/";
+        EnsureBRDFLutShaderLoaded(fullPath);
+
+        auto fullscreenQuad = JLEngine::Geometry::CreateScreenSpaceQuad(graphics);
+        auto vbo = std::get<0>(fullscreenQuad);
+        auto ibo = std::get<1>(fullscreenQuad);
+
+        GLuint captureFBO, captureRBO;
+        glGenFramebuffers(1, &captureFBO);
+        glGenRenderbuffers(1, &captureRBO);
+
+        unsigned int brdfLUTTexture;
+        glGenTextures(1, &brdfLUTTexture);
+
+        glBindTexture(GL_TEXTURE_2D, brdfLUTTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, lutSize, lutSize, 0, GL_RG, GL_FLOAT, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+        glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, lutSize, lutSize);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, brdfLUTTexture, 0);
+
+        graphics->SetViewport(0, 0, lutSize, lutSize);
+        graphics->BindShader(m_brdfLutShader->GetProgramId());
+        m_brdfLutShader->SetUniformi("u_NumSamples", numSamples);
+        graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        graphics->BindVertexArray(vbo.GetVAO());
+        graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.Size(), GL_UNSIGNED_INT, nullptr);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        graphics->DisposeVertexBuffer(vbo);
+
+        glDeleteFramebuffers(1, &captureFBO);
+        glDeleteRenderbuffers(1, &captureRBO);
+
+        return brdfLUTTexture;
+    }
+
     uint32_t CubemapBaker::CreateEmptyCubemap(int cubeMapSize)
     {
         GLuint cubemapID;
@@ -342,8 +389,8 @@ namespace JLEngine
         m_assetLoader->GetGraphics()->DisposeShader(m_irradianceShader);
         m_irradianceShader = nullptr;
 
-        m_assetLoader->GetGraphics()->DisposeShader(m_downsampleCubemapShader);
-        m_downsampleCubemapShader = nullptr;
+        m_assetLoader->GetGraphics()->DisposeShader(m_brdfLutShader);
+        m_brdfLutShader = nullptr;
     }
 
     void CubemapBaker::EnsureHDRtoCubemapShadersLoaded(const std::string& fullPath)
@@ -372,19 +419,6 @@ namespace JLEngine
         }
     }
 
-    void CubemapBaker::EnsureDownsampleCubemapShadersLoaded(const std::string& fullPath)
-    {
-        if (m_downsampleCubemapShader == nullptr)
-        {
-            m_downsampleCubemapShader = m_assetLoader->CreateShaderFromFile(
-                "DownsampleCubemapShader",
-                "downsample_cubemap_vert.glsl",
-                "downsample_cubemap_frag.glsl",
-                fullPath
-            );
-        }
-    }
-
     void CubemapBaker::EnsurePrefilteredCubemapShadersLoaded(const std::string& fullPath)
     {
         if (m_prefilteredCubemapShader == nullptr)
@@ -398,29 +432,16 @@ namespace JLEngine
         }
     }
 
-    bool CubemapBaker::SaveCubemapToFile(uint32_t cubemapID, int cubeMapSize, const std::string& outputFilePath)
+    void CubemapBaker::EnsureBRDFLutShaderLoaded(const std::string& fullPath)
     {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapID);
-
-        for (unsigned int i = 0; i < 6; ++i)
+        if (m_brdfLutShader == nullptr)
         {
-            std::vector<float> pixels(cubeMapSize * cubeMapSize * 3);
-            glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, GL_FLOAT, pixels.data());
-
-            ImageData faceData;
-            faceData.width = cubeMapSize;
-            faceData.height = cubeMapSize;
-            faceData.channels = 3;       
-            faceData.isHDR = true;       
-            faceData.hdrData = pixels;   
-
-            std::string facePath = outputFilePath + "_face_" + std::to_string(i) + ".hdr";
-            if (!TextureWriter::WriteTexture(facePath, faceData))
-            {
-                std::cerr << "Failed to write HDR face: " << facePath << std::endl;
-                return false;
-            }
+            m_brdfLutShader = m_assetLoader->CreateShaderFromFile(
+                "BRDFLUTShader", 
+                "generate_brdf_lut_vert.glsl", 
+                "generate_brdf_lut_frag.glsl", 
+                fullPath
+            );
         }
-        return true;
     }
 }

@@ -325,6 +325,8 @@ namespace JLEngine
 
 	void Graphics::DisposeShader(ShaderProgram* program)
 	{
+		if (program == nullptr) return;
+
 		auto shaders = program->GetShaders();
 
 		for (auto it = shaders.begin(); it != shaders.end(); it++)
@@ -506,23 +508,6 @@ namespace JLEngine
 	void Graphics::BindTexture( uint32_t target, uint32_t id )
 	{
 		glBindTexture(target, id);
-	}
-
-	void Graphics::BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit) 
-	{
-		if (texture && texture->GetGPUID() != 0)
-		{
-			shader->SetUniformi(flagName, GL_TRUE);
-			glActiveTexture(GL_TEXTURE0 + textureUnit);
-			glBindTexture(GL_TEXTURE_2D, texture->GetGPUID());
-			shader->SetUniformi(uniformName, textureUnit);
-		}
-		else 
-		{
-			shader->SetUniformi(flagName, GL_FALSE);
-			glActiveTexture(GL_TEXTURE0 + textureUnit);
-			glBindTexture(GL_TEXTURE_2D, 0);
-		}
 	}
 
 	void Graphics::SetActiveTexture( uint32_t texunit )
@@ -770,10 +755,40 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::ReadTexture2D(uint32_t texId, ImageData& imgData, bool useFramebuffer)
+	uint32_t Graphics::CreateTexture(ImageData& imgData, bool genMipmaps)
 	{
-		GLenum format = (imgData.channels == 3) ? GL_RGB : GL_RGBA;
-		GLenum type = imgData.isHDR ? GL_FLOAT : GL_UNSIGNED_BYTE;
+		unsigned int texId;
+		glGenTextures(1, &texId);
+
+		glBindTexture(imgData.textureType, texId);
+		glTexImage2D(imgData.textureType,
+			0, 
+			imgData.internalFormat, 
+			imgData.width, 
+			imgData.height, 
+			0, 
+			imgData.format, 
+			imgData.dataType, 
+			0);
+		glTexParameteri(imgData.textureType, GL_TEXTURE_WRAP_S, imgData.wrapS);
+		glTexParameteri(imgData.textureType, GL_TEXTURE_WRAP_T, imgData.wrapT);
+		glTexParameteri(imgData.textureType, GL_TEXTURE_MIN_FILTER, imgData.minFilter);
+		glTexParameteri(imgData.textureType, GL_TEXTURE_MAG_FILTER, imgData.maxFilter);
+
+		if (genMipmaps) glGenerateMipmap(GL_TEXTURE_2D);
+
+		return texId;
+	}
+
+	void Graphics::ReadTexture2D(uint32_t texId, ImageData& imageData, int width, int height, int channels, bool hdr, bool useFramebuffer)
+	{
+		GLenum format = (channels == 3) ? GL_RGB : GL_RGBA;
+		GLenum type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+
+		imageData.isHDR = hdr;
+		imageData.width = width;
+		imageData.height = height;
+		imageData.channels = channels;
 
 		if (useFramebuffer)
 		{
@@ -790,16 +805,16 @@ namespace JLEngine
 			}
 
 			// Allocate storage for pixel data
-			size_t dataSize = imgData.width * imgData.height * imgData.channels;
-			if (imgData.isHDR)
+			size_t dataSize = imageData.width * imageData.height * imageData.channels;
+			if (imageData.isHDR)
 			{
-				imgData.hdrData.resize(dataSize);
-				glReadPixels(0, 0, imgData.width, imgData.height, format, type, imgData.hdrData.data());
+				imageData.hdrData.resize(dataSize);
+				glReadPixels(0, 0, imageData.width, imageData.height, format, type, imageData.hdrData.data());
 			}
 			else
 			{
-				imgData.data.resize(dataSize);
-				glReadPixels(0, 0, imgData.width, imgData.height, format, type, imgData.data.data());
+				imageData.data.resize(dataSize);
+				glReadPixels(0, 0, imageData.width, imageData.height, format, type, imageData.data.data());
 			}
 
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -810,19 +825,19 @@ namespace JLEngine
 			// Use glGetTexImage to read the texture
 			glBindTexture(GL_TEXTURE_2D, texId);
 
-			GLint internalFormat;
-			glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
+			//GLint internalFormat;
+			//glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &internalFormat);
 
-			size_t dataSize = imgData.width * imgData.height * imgData.channels;
-			if (imgData.isHDR)
+			size_t dataSize = imageData.width * imageData.height * imageData.channels;
+			if (hdr)
 			{
-				imgData.hdrData.resize(dataSize);
-				glGetTexImage(GL_TEXTURE_2D, 0, format, type, imgData.hdrData.data());
+				imageData.hdrData.resize(dataSize);
+				glGetTexImage(GL_TEXTURE_2D, 0, format, type, imageData.hdrData.data());
 			}
 			else
 			{
-				imgData.data.resize(dataSize);
-				glGetTexImage(GL_TEXTURE_2D, 0, format, type, imgData.data.data());
+				imageData.data.resize(dataSize);
+				glGetTexImage(GL_TEXTURE_2D, 0, format, type, imageData.data.data());
 			}
 		}
 
@@ -832,7 +847,7 @@ namespace JLEngine
 			throw std::runtime_error("Failed to read Texture2D. GL Error: " + std::to_string(errorCode));
 		}
 
-		std::cout << "Successfully read Texture2D with " << (imgData.isHDR ? "HDR" : "LDR") << " data." << std::endl;
+		std::cout << "Successfully read Texture2D with " << (imageData.isHDR ? "HDR" : "LDR") << " data." << std::endl;
 	}
 
 	void Graphics::ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer)
@@ -1048,6 +1063,11 @@ namespace JLEngine
 	void Graphics::SetViewport( uint32_t x, uint32_t y, uint32_t width, uint32_t height )
 	{
 		glViewport(x, y, width, height);
+	}
+
+	void Graphics::SetViewport(glm::ivec4& params)
+	{
+		glViewport(params.x, params.y, params.z, params.w);
 	}
 
 	void Graphics::DisposeVertexBuffer( VertexBuffer& vbo )

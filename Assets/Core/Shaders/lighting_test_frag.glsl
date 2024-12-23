@@ -8,6 +8,10 @@ layout(binding = 2) uniform sampler2D gMetallicRoughness;
 layout(binding = 3) uniform sampler2D gEmissive;
 layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 5) uniform sampler2D gDLShadowMap;
+layout(binding = 5) uniform samplerCube gSkyTexture;
+layout(binding = 7) uniform samplerCube gIrradianceMap;
+layout(binding = 8) uniform samplerCube gPrefilteredMap;
+layout(binding = 9) uniform sampler2D gBRDFLUT;
 
 uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
@@ -25,7 +29,19 @@ uniform vec3 u_CameraPos;      // Camera position for view direction
 
 out vec4 FragColor;
 
-const vec3 ambientColor = vec3(0.05); // Low ambient lighting
+struct GBufferData 
+{
+    vec3 albedo;
+    vec3 normal;
+    vec3 worldPos;
+    float ao;
+    float metallic;
+    float roughness;
+    vec3 F0;
+    vec3 emissive;
+    bool castShadows;
+    bool receiveShadows;
+};
 
 // Linearize depth from non-linear clip space
 float LinearizeDepth(float depth, float near, float far) 
@@ -100,23 +116,37 @@ float geometrySmith(float NdotV, float NdotL, float roughness)
     return gV * gL;
 }
 
-// PBR lighting model
-vec3 calculatePBR(vec3 albedo, vec3 normal, vec3 lightDir, vec3 viewDir, vec3 lightColor, float metallic, float roughness, float ao)
+// Direct lighting calculation
+vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDir, vec3 viewDir)
 {
-    vec3 halfDir = normalize(lightDir + viewDir);
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
-    vec3 F = fresnelSchlickRoughness(max(dot(viewDir, halfDir), 0.0), F0, roughness);
+    vec3 halfDir = normalize(lightDir + normalize(u_CameraPos - gData.worldPos));
 
-    float NDF = ggxNDF(max(dot(normal, halfDir), 0.0), roughness);
-    float G = geometrySmith(max(dot(normal, viewDir), 0.0), max(dot(normal, lightDir), 0.0), roughness);
-    vec3 specular = F * NDF * G / (4.0 * max(dot(normal, viewDir), 0.01) * max(dot(normal, lightDir), 0.01));
-    specular = clamp(specular, 0.0, 1.0);
-    vec3 diffuse = (1.0 - F) * albedo / 3.14159265359;
+    vec3 F = fresnelSchlickRoughness(max(dot(viewDir, halfDir), 0.0), gData.F0, gData.roughness);
+    float NDF = ggxNDF(max(dot(gData.normal, halfDir), 0.0), gData.roughness);
+    float G = geometrySmith(max(dot(gData.normal, normalize(u_CameraPos - gData.worldPos)), 0.0), max(dot(gData.normal, lightDir), 0.0), gData.roughness);
 
-    vec3 lighting = (diffuse + specular) * lightColor * max(dot(normal, lightDir), 0.0);
-    lighting *= ao; 
+    vec3 specular = F * NDF * G / (4.0 * max(dot(gData.normal, normalize(u_CameraPos - gData.worldPos)), 0.01) * max(dot(gData.normal, lightDir), 0.01));
+    vec3 diffuse = (1.0 - F) * gData.albedo / 3.14159265359;
 
-    return lighting;
+    return (diffuse + specular) * u_LightColor * max(dot(gData.normal, lightDir), 0.0) * shadow;
+}
+
+// Diffuse IBL calculation
+vec3 CalculateDiffuseIBL(vec3 normal, vec3 albedo)
+{
+    vec3 irradiance = texture(gIrradianceMap, normal).rgb;
+    return irradiance * albedo * 1.0;
+}
+
+// Specular IBL calculation
+vec3 CalculateSpecularIBL(vec3 normal, vec3 viewDir, float roughness, vec3 F0)
+{
+    vec3 reflection = reflect(-viewDir, normal);
+    vec3 prefilteredColor = textureLod(gPrefilteredMap, reflection, roughness * 4.0).rgb;
+    float NdotV = max(dot(normal, viewDir), 0.0);
+    vec2 brdf = texture(gBRDFLUT, vec2(NdotV, roughness)).rg;
+
+    return prefilteredColor * (F0 * brdf.x + brdf.y) * 1.0;
 }
 
 // Reconstruct world position from depth
@@ -130,36 +160,82 @@ vec3 ReconstructWorldPosition(vec2 texCoords, float depth)
     return worldSpacePos.xyz;
 }
 
+bool decodeReceiveShadows(float encodedValue) 
+{
+    return fract(encodedValue) > 0.05; // Fractional part determines receive shadows
+}
+
+bool decodeCastShadows(float encodedValue) 
+{
+    return floor(encodedValue) > 0.5; // Integer part determines cast shadows
+}
+
+GBufferData ExtractGBufferData(vec2 texCoords)
+{
+    GBufferData gData;
+
+    vec4 normalSample = texture(gNormals, texCoords);
+    gData.albedo = texture(gAlbedoAO, texCoords).rgb;
+    gData.ao = texture(gAlbedoAO, texCoords).a;
+    gData.normal = normalize(normalSample.xyz * 2.0 - 1.0);
+    gData.worldPos = ReconstructWorldPosition(texCoords, texture(gDepth, texCoords).r);
+    vec2 metallicRoughness = texture(gMetallicRoughness, texCoords).rg;
+    gData.metallic = metallicRoughness.r;
+    gData.roughness = max(metallicRoughness.g, 0.05);
+    gData.F0 = mix(vec3(0.04), gData.albedo, gData.metallic);
+    gData.emissive = texture(gEmissive, texCoords).rgb;
+    gData.castShadows = decodeCastShadows(normalSample.w);
+    gData.receiveShadows = decodeReceiveShadows(normalSample.w);
+
+    return gData;
+}
+
+vec3 ApplyToneMapping(vec3 color)
+{
+    return color / (color + vec3(1.0));
+}
+
+vec3 ApplyGammaCorrection(vec3 color)
+{
+    return pow(color, vec3(1.0 / 2.2));
+}
+
 void main() 
 {
     // Sample G-buffer
     float depth = texture(gDepth, v_TexCoords).r;
+
     //float linearDepth = LinearizeDepth(depth, u_Near, u_Far);
     vec3 worldPos = ReconstructWorldPosition(v_TexCoords, depth);
-
-    vec4 albedoAO = texture(gAlbedoAO, v_TexCoords);
-    vec3 albedo = albedoAO.rgb;
-    float ao = albedoAO.a;
-
-    vec3 normal = normalize(texture(gNormals, v_TexCoords).xyz * 2.0 - 1.0); // Decode normal
-    vec2 metallicRoughness = texture(gMetallicRoughness, v_TexCoords).rg;
-    float metallic = metallicRoughness.r;
-    float roughness = max(metallicRoughness.g, 0.05);
-
-    vec3 lightDir = normalize(-u_LightDirection);
     vec3 viewDir = normalize(u_CameraPos - worldPos);
 
-    vec3 lighting = calculatePBR(albedo, normal, lightDir, viewDir, u_LightColor, metallic, roughness, ao);
+    // no depth? Render skybox
+    if (depth == 1.0)
+    {
+        FragColor = texture(gSkyTexture, -viewDir);
+        return;
+    }
+
+    GBufferData gData = ExtractGBufferData(v_TexCoords);
+
+    vec3 lightDir = normalize(-u_LightDirection);
 
     vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(worldPos, 1.0);
-    float shadow = ShadowCalculation(fragPosLightSpace, normal, lightDir);
-    lighting *= shadow;
+    float shadow = 1.0;
+    if (gData.receiveShadows)
+    {
+        shadow = ShadowCalculation(fragPosLightSpace, gData.normal, lightDir);
+    }
 
-    lighting += ambientColor * albedo;
-    lighting += texture(gEmissive, v_TexCoords).rgb;
-    
-    //lighting = lighting / (lighting + vec3(1.0));
-    //lighting = pow(lighting, vec3(1.0/2.2));
+    vec3 lighting = CalculateDirectLighting(gData, shadow, lightDir, viewDir);
+    vec3 iblDiffuse = CalculateDiffuseIBL(gData.normal, gData.albedo);
+    vec3 iblSpecular = CalculateSpecularIBL(gData.normal, viewDir, gData.roughness, gData.F0);
 
-    FragColor = vec4(lighting, 1.0);
+    vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
+    totalLighting += gData.emissive;
+
+    //totalLighting = ApplyToneMapping(totalLighting);
+    //totalLighting = ApplyGammaCorrection(totalLighting);
+
+    FragColor = vec4(totalLighting, 1.0);
 }

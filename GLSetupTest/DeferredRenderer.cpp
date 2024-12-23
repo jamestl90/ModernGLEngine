@@ -12,7 +12,7 @@
 namespace JLEngine
 {
     DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
-        : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_textureDebugShader(nullptr),
+        : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_shadowDebugShader(nullptr),
         m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), 
         m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) {}
@@ -21,7 +21,7 @@ namespace JLEngine
     {
         m_graphics->DisposeVertexBuffer(m_triangleVertexBuffer);
         
-        m_graphics->DisposeShader(m_textureDebugShader);
+        m_graphics->DisposeShader(m_shadowDebugShader);
         m_graphics->DisposeShader(m_gBufferDebugShader);
         m_graphics->DisposeShader(m_gBufferShader);
         m_graphics->DisposeShader(m_lightingTestShader);
@@ -41,25 +41,40 @@ namespace JLEngine
 
         SetupGBuffer();
         
-        m_textureDebugShader = m_assetLoader->CreateShaderFromFile("DebugScreenSpaceTriangle", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath);
+        m_shadowDebugShader = m_assetLoader->CreateShaderFromFile("DebugDirShadows", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath);
         m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath);
         m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath);
         m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", shaderAssetPath);
-        auto skyboxShader = m_assetLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", shaderAssetPath);
-        
-        std::array<std::string, 6> cubemapFiles = 
-        {
-            "venice_sunset_4k/posx.hdr",
-            "venice_sunset_4k/negx.hdr",
-            "venice_sunset_4k/posy.hdr",
-            "venice_sunset_4k/negy.hdr",
-            "venice_sunset_4k/posz.hdr",
-            "venice_sunset_4k/negz.hdr"
-        };
-        auto hdriTexture = m_assetLoader->CreateCubemapFromFile("HDRI Cubemap Texture", cubemapFiles, textureAssetPath);
+        m_debugTextureShader = m_assetLoader->CreateShaderFromFile("DebugTexture", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath);
 
-        m_hdriSky = new HDRISky(hdriTexture, skyboxShader);
-        m_hdriSky->Initialise(m_graphics);
+        //std::string hdriFolder = "venice_sunset_4k";
+        //std::array<std::string, 6> hdriFiles = 
+        //{
+        //    hdriFolder + "/posx.hdr",
+        //    hdriFolder + "/negx.hdr",
+        //    hdriFolder + "/posy.hdr",
+        //    hdriFolder + "/negy.hdr",
+        //    hdriFolder + "/posz.hdr",
+        //    hdriFolder + "/negz.hdr"
+        //};
+        //std::array<std::string, 6> irradianceFiles =
+        //{
+        //    hdriFolder + "/irradiance_posx.hdr",
+        //    hdriFolder + "/irradiance_negx.hdr",
+        //    hdriFolder + "/irradiance_posy.hdr",
+        //    hdriFolder + "/irradiance_negy.hdr",
+        //    hdriFolder + "/irradiance_posz.hdr",
+        //    hdriFolder + "/irradiance_negz.hdr"
+        //};
+
+        HdriSkyInitParams params;
+        params.fileName = "rogland_clear_night_4k.hdr";
+        params.irradianceMapSize = 32;
+        params.prefilteredMapSize = 128;
+        params.prefilteredSamples = 2048;
+
+        m_hdriSky = new HDRISky(m_assetLoader);
+        m_hdriSky->Initialise(m_assetFolder, params);
 
         InitScreenSpaceTriangle();
     }
@@ -97,7 +112,7 @@ namespace JLEngine
         // Configure G-buffer render target
         SmallArray<TextureAttribute> attributes(4);
         attributes[0] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };   // Albedo (RGB) + AO (A)
-        attributes[1] = { GL_RGBA16F, GL_RGBA, GL_FLOAT };        // Normals (RGB) + Reserved (A)
+        attributes[1] = { GL_RGBA16F, GL_RGBA, GL_FLOAT };        // Normals (RGB) + Cast/Receive Shadows (A)
         attributes[2] = { GL_RG8, GL_RG, GL_UNSIGNED_BYTE };      // Metallic (R) + Roughness (G)
         attributes[3] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };  // Emissive (RGB) + Reserved (A)
 
@@ -113,6 +128,10 @@ namespace JLEngine
 
         for (const auto& [key, batches] : renderGroups)
         {
+            auto matId = key.first;
+            auto material = m_assetLoader->GetMaterialManager()->Get(matId);
+            if (material->castShadows == false) continue;
+
             for (const auto& batch : batches)
             {
                 m_graphics->BindVertexArray(batch.first->GetVertexBuffer()->GetVAO());
@@ -150,19 +169,19 @@ namespace JLEngine
     void DeferredRenderer::SetUniformsForGBuffer(Material* mat)
     {
         m_gBufferShader->SetUniform("baseColorFactor", mat->baseColorFactor);
-        m_graphics->BindTexture(m_gBufferShader, "baseColorTexture", "useBaseColorTexture", mat->baseColorTexture, 0);
+        BindTexture(m_gBufferShader, "baseColorTexture", "useBaseColorTexture", mat->baseColorTexture, 0);
         
         // Metallic-Roughness
         m_gBufferShader->SetUniformf("metallicFactor", mat->metallicFactor);
         m_gBufferShader->SetUniformf("roughnessFactor", mat->roughnessFactor);
-        m_graphics->BindTexture(m_gBufferShader, "metallicRoughnessTexture", "useMetallicRoughnessTexture", mat->metallicRoughnessTexture, 1);
+        BindTexture(m_gBufferShader, "metallicRoughnessTexture", "useMetallicRoughnessTexture", mat->metallicRoughnessTexture, 1);
         
-        m_graphics->BindTexture(m_gBufferShader, "normalTexture", "useNormalTexture", mat->normalTexture, 2);
-        m_graphics->BindTexture(m_gBufferShader, "occlusionTexture", "useOcclusionTexture", mat->occlusionTexture, 3);
+        BindTexture(m_gBufferShader, "normalTexture", "useNormalTexture", mat->normalTexture, 2);
+        BindTexture(m_gBufferShader, "occlusionTexture", "useOcclusionTexture", mat->occlusionTexture, 3);
         
         // Emissive
         m_gBufferShader->SetUniform("emissiveFactor", mat->emissiveFactor);
-        m_graphics->BindTexture(m_gBufferShader, "emissiveTexture", "useEmissiveTexture", mat->emissiveTexture, 4);
+        BindTexture(m_gBufferShader, "emissiveTexture", "useEmissiveTexture", mat->emissiveTexture, 4);
 
         if (mat->alphaMode == AlphaMode::MASK)
         {
@@ -171,6 +190,26 @@ namespace JLEngine
         else
         {
             m_gBufferShader->SetUniformf("u_AlphaCutoff", 1.0);
+        }
+
+        m_gBufferShader->SetUniformf("u_CastShadows", mat->castShadows ? 1.0f : 0.0f);
+        m_gBufferShader->SetUniformf("u_ReceiveShadows", mat->receiveShadows ? 1.0f : 0.0f);
+    }
+
+    void DeferredRenderer::BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit)
+    {
+        if (texture && texture->GetGPUID() != 0)
+        {
+            shader->SetUniformi(flagName, GL_TRUE);
+            glActiveTexture(GL_TEXTURE0 + textureUnit);
+            glBindTexture(GL_TEXTURE_2D, texture->GetGPUID());
+            shader->SetUniformi(uniformName, textureUnit);
+        }
+        else
+        {
+            shader->SetUniformi(flagName, GL_FALSE);
+            glActiveTexture(GL_TEXTURE0 + textureUnit);
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
     }
 
@@ -254,13 +293,13 @@ namespace JLEngine
         m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        m_graphics->BindShader(m_textureDebugShader->GetProgramId());
+        m_graphics->BindShader(m_shadowDebugShader->GetProgramId());
         m_graphics->SetActiveTexture(0);
         m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
-        m_textureDebugShader->SetUniformi("u_DepthTexture", 0);
-        m_textureDebugShader->SetUniformi("u_Linearize", 0);
-        m_textureDebugShader->SetUniformf("u_Near", 0.01f);
-        m_textureDebugShader->SetUniformf("u_Far", m_dlShadowMap->GetShadowDistance());
+        m_shadowDebugShader->SetUniformi("u_DepthTexture", 0);
+        m_shadowDebugShader->SetUniformi("u_Linearize", 0);
+        m_shadowDebugShader->SetUniformf("u_Near", 0.01f);
+        m_shadowDebugShader->SetUniformf("u_Far", m_dlShadowMap->GetShadowDistance());
 
         RenderScreenSpaceTriangle();
 
@@ -268,14 +307,59 @@ namespace JLEngine
 
         m_gBufferTarget->BindDepthTexture(0);
         m_gBufferDebugShader->SetUniformi("u_DepthTexture", 0);
-        m_textureDebugShader->SetUniformi("u_Linearize", 1);
+        m_shadowDebugShader->SetUniformi("u_Linearize", 1);
         auto frustum = m_graphics->GetViewFrustum();
-        m_textureDebugShader->SetUniformf("u_Near", frustum->GetNear());
-        m_textureDebugShader->SetUniformf("u_Far", frustum->GetFar());
+        m_shadowDebugShader->SetUniformf("u_Near", frustum->GetNear());
+        m_shadowDebugShader->SetUniformf("u_Far", frustum->GetFar());
 
         RenderScreenSpaceTriangle();
 
         m_graphics->SetViewport(0, 0, m_width, m_height);
+    }
+
+    void DeferredRenderer::DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        auto hdriSky = m_hdriSky->GetSkyGPUID();
+        auto irradTex = m_hdriSky->GetIrradianceGPUID();
+        auto brdfLut = m_hdriSky->GetBRDFLutGPUID();
+        auto prefTex = m_hdriSky->GetPrefilteredGPUID();
+
+        std::array<uint32_t, 4> ids =
+        {
+            m_hdriSky->GetSkyGPUID(),
+            m_hdriSky->GetIrradianceGPUID(),
+            m_hdriSky->GetBRDFLutGPUID(),
+            m_hdriSky->GetPrefilteredGPUID()
+        };
+
+        std::array<glm::ivec4, 4> viewports =
+        {
+            glm::ivec4(0, 0, (int)(m_width * 0.5f), (int)(m_height * 0.5f)),
+            glm::ivec4((int)(m_width * 0.5f), 0, (int)(m_width * 0.5f), (int)(m_height * 0.5f)),
+            glm::ivec4(0, (int)(m_height * 0.5f), (int)(m_width * 0.5f), (int)(m_height * 0.5f)),
+            glm::ivec4((int)(m_width * 0.5f), (int)(m_height * 0.5f), (int)(m_width * 0.5f), (int)(m_height * 0.5f))
+        };
+
+        m_graphics->BindFrameBuffer(0);
+
+        m_graphics->SetViewport(viewports[0]);
+
+        m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
+        m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        m_graphics->BindShader(m_debugTextureShader->GetProgramId());
+        m_graphics->SetActiveTexture(0);
+        m_graphics->BindTexture(GL_TEXTURE_2D, brdfLut);
+        m_debugTextureShader->SetUniformi("u_Texture", 0);
+
+        RenderScreenSpaceTriangle();
+
+        m_graphics->SetViewport(viewports[1]);
+        m_hdriSky->Render(viewMatrix, projMatrix, 0);
+        m_graphics->SetViewport(viewports[2]);
+        m_hdriSky->Render(viewMatrix, projMatrix, 1);
+        m_graphics->SetViewport(viewports[3]);
+        m_hdriSky->Render(viewMatrix, projMatrix, 2);
     }
 
     void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -288,14 +372,13 @@ namespace JLEngine
         auto lightSpaceMatrix = DirectionalShadowMapPass(renderGroups, eyePos, viewMatrix, projMatrix);
 
         GBufferPass(renderGroups, sceneRoot, viewMatrix, projMatrix);
-        if (m_hdriSky)
-        {
-            m_hdriSky->Render(viewMatrix, projMatrix);
-        }
+
         if (m_debugModes != DebugModes::None)
         {
+            std::string debugString;
             if (m_debugModes == DebugModes::GBuffer)
             {
+                debugString = "Bottom Left to Top Right:\nGBuffer - Albedo, Normal, Metallic, Occlusion, Depth, Emission";
                 for (int mode = 0; mode < 6; ++mode)
                 {
                     DebugGBuffer(mode);
@@ -303,23 +386,39 @@ namespace JLEngine
             }
             else if (m_debugModes == DebugModes::DirectionalLightShadows)
             {
+                debugString = "Bottom Left to Top Right:\nDirectional Shadowmap Depth, Camera Depth";
                 DebugDirectionalLightShadows();
             }
+            else if (m_debugModes == DebugModes::HDRISkyTextures)
+            {
+                debugString = "Bottom Left to Top Right:\nBRDF, HDR Sky, Irradiance, Prefiltered";
+                DebugHDRISky(viewMatrix, projMatrix);
+            }
+            ImGui::Begin("Debug Views");
+            ImGui::Text(debugString.c_str());
+            ImGui::End(); 
         }
         else
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
-
-
     }
 
     void DeferredRenderer::CycleDebugMode()
     {
-        static DebugModes modes[3] = { DebugModes::GBuffer, DebugModes::DirectionalLightShadows, DebugModes::None };
+        static DebugModes modes[4] = 
+        { 
+            DebugModes::GBuffer, 
+            DebugModes::DirectionalLightShadows, 
+            DebugModes::HDRISkyTextures,
+            DebugModes::None
+        };
+
         if (m_debugModes == modes[1])
             m_debugModes = modes[2];
         else if (m_debugModes == modes[2])
+            m_debugModes = modes[3];
+        else if (m_debugModes == modes[3])
             m_debugModes = modes[0];
         else if (m_debugModes == modes[0])
             m_debugModes = modes[1];
@@ -385,6 +484,7 @@ namespace JLEngine
         m_graphics->BindShader(m_lightingTestShader->GetProgramId());
         m_graphics->SetViewport(0, 0, m_width, m_height);
 
+        // G-Buffer textures
         m_gBufferTarget->BindTexture(0, 0);
         m_lightingTestShader->SetUniformi("gAlbedoAO", 0);
         m_gBufferTarget->BindTexture(1, 1); 
@@ -393,11 +493,26 @@ namespace JLEngine
         m_lightingTestShader->SetUniformi("gMetallicRoughness", 2);
         m_gBufferTarget->BindTexture(3, 3);
         m_lightingTestShader->SetUniformi("gEmissive", 3);
-        m_gBufferTarget->BindDepthTexture(4);
+        // Camera Depth
+        m_gBufferTarget->BindDepthTexture(4);        
         m_lightingTestShader->SetUniformi("gDepth", 4);
+        // Shadowmap Depth
         m_graphics->SetActiveTexture(5);
         m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
         m_lightingTestShader->SetUniformi("gDLShadowMap", 5);
+        // Sky Textures
+        m_graphics->SetActiveTexture(6);
+        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_hdriSky->GetSkyGPUID());
+        m_lightingTestShader->SetUniformi("gSkyTexture", 6);
+        m_graphics->SetActiveTexture(7);
+        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_hdriSky->GetIrradianceGPUID());
+        m_lightingTestShader->SetUniformi("gIrradianceMap", 7);
+        m_graphics->SetActiveTexture(8);
+        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_hdriSky->GetPrefilteredGPUID());
+        m_lightingTestShader->SetUniformi("gPrefilteredMap", 8);
+        m_graphics->SetActiveTexture(9);
+        m_graphics->BindTexture(GL_TEXTURE_2D, m_hdriSky->GetBRDFLutGPUID());
+        m_lightingTestShader->SetUniformi("gBRDFLUT", 9);
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);

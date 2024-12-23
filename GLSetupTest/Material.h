@@ -47,12 +47,8 @@ namespace JLEngine
         float alphaCutoff;                   // Alpha cutoff for "MASK" mode
         bool doubleSided;                    // Double-sided rendering flag
 
-        // Extensions (e.g., KHR_materials_pbrSpecularGlossiness)
-        bool usesSpecularGlossinessWorkflow; // Flag for using specular-glossiness workflow
-        glm::vec4 diffuseFactor;             // Diffuse color (for specular-glossiness)
-        Texture* diffuseTexture;         // Diffuse texture
-        glm::vec3 specularFactor;            // Specular color (for specular-glossiness)
-        Texture* specularGlossinessTexture; // Combined specular-glossiness texture
+        bool castShadows = true;        // does not get rendered in depth pre-pass 
+        bool receiveShadows = true;     // does not receive shadows in lighting pass
 
     private:
         // Helper methods to handle material properties can be added here
