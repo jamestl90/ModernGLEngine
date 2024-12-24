@@ -202,7 +202,6 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
-    <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="Resource.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
@@ -262,6 +261,7 @@
     </ClInclude>
     <ClInclude Include="GlobalVars.h" />
     <ClInclude Include="Graphics.h" />
+    <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="HDRISky.h">
       <SubType>
       </SubType>
@@ -293,7 +293,6 @@
     <ClInclude Include="Node.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="CollisionShapes.h" />
-    <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceManager.h" />
@@ -312,7 +311,6 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Transform3.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="VertexBuffers.h" />
     <ClInclude Include="VertexStructures.h" />

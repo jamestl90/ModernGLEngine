@@ -32,12 +32,14 @@ namespace JLEngine
 
 		for (auto& batch : m_batches) 
 		{
-			if (!batch->IsValid()) {
+			if (!batch->IsValid()) 
+			{
 				std::cerr << "Invalid batch found in Mesh '" << GetName() << "' during upload.\n";
 				continue;
 			}
 			m_graphics->CreateBatch(*batch);
-			if (batch->HasInstanceBuffer()) {
+			if (batch->HasInstanceBuffer()) 
+			{
 				batch->GetInstanceBuffer()->UploadToGPU(m_graphics, {}); 
 			}
 		}

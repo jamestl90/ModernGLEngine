@@ -270,40 +270,6 @@ namespace JLEngine
 		return batch;
 	}
 
-	std::shared_ptr<Batch> GLBLoader::CreateBatch2(const tinygltf::Model& model,
-		const tinygltf::Primitive& primitives, MaterialVertexAttributeKey key)
-	{
-		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
-		std::vector<uint32_t> indices;
-
-		// Load attributes from primitives
-		uint32_t indexOffset = 0;
-		LoadAttributes(model, &primitives, positions, normals, texCoords, tangents, indices, indexOffset);
-
-		// Generate missing normals or tangents if required
-		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
-
-		// Interleave vertex data
-		std::vector<float> interleavedVertexData;
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
-
-		// Create vertex and index buffers
-		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-		vertexBuffer->Set(interleavedVertexData);
-
-		auto indexBuffer = std::make_shared<IndexBuffer>(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-		indexBuffer->Set(indices);
-
-		// Load material
-		auto material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
-
-		// Create and return the batch
-		auto batch = std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
-		batch->attributesKey = key.attributesKey;
-		m_graphics->CreateBatch(*batch);
-		return batch;
-	}
-
 	void GLBLoader::SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const
 	{
 		if (!mesh)

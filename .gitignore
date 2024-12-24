@@ -1,21 +1,12 @@
 
 .vs/GLSetupTest/v17/ipch/AutoPCH/19060b8c2e8709a/SHADER.ipch
-.vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce/MAIN.ipch
-*.ipch
 *.obj
 *.tlog
-*.ipch
-*.ipch
 .vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce/MAIN.ipch
-*.vsidx
 *.vsidx
 /GLSetupTest/x64/Debug
 /.vs/GLSetupTest/v17
-/.vs/GLSetupTest/v17
-*.ipch
 /.vs/GLSetupTest/v17/ipch/AutoPCH/28ca714fa21066ce
-/.vs/GLSetupTest/v17
-*.ipch
 *.ipch
 /GLSetupTest/vcpkg_installed/vcpkg
 /x64
@@ -25,13 +16,7 @@ GLSetupTest/vcpkg_installed/x64-windows/vcpkg/updates/0000000001
 /EngineTests/vcpkg_installed
 /GLSetupTest/x64
 /EngineTests/x64
-/EngineTests/x64
-/EngineTests/x64
-/EngineTests/x64
-/EngineTests/x64
 /EngineTests/x64/Debug
-/EngineTests/x64
-/EngineTests/x64
 Code.zip
 Assets/Bistro_Godot.glb
 Assets/Bistro_Godot2.glb

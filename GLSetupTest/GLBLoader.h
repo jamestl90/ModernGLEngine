@@ -50,8 +50,7 @@ namespace JLEngine
 		Texture* ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
 		std::shared_ptr<Batch> CreateBatch(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
-		std::shared_ptr<Batch> CreateBatch2(const tinygltf::Model& model, const tinygltf::Primitive& primitives, MaterialVertexAttributeKey key);
-
+		
 		bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<unsigned int>& indices);
 		bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData);
 		bool LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
