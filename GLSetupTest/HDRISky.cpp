@@ -1,14 +1,14 @@
 #include "HDRISky.h"
 #include "Texture.h"
 #include "ShaderProgram.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "Geometry.h"
-#include "AssetLoader.h"
+#include "ResourceLoader.h"
 #include "TextureReader.h"
 
 namespace JLEngine
 {
-    HDRISky::HDRISky(AssetLoader* assetLoader)
+    HDRISky::HDRISky(ResourceLoader* assetLoader)
         : m_assetLoader(assetLoader)
     {
         

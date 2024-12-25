@@ -14,7 +14,7 @@
 
 namespace JLEngine
 {
-    CubemapBaker::CubemapBaker(const std::string& assetPath, AssetLoader* assetLoader)
+    CubemapBaker::CubemapBaker(const std::string& assetPath, ResourceLoader* assetLoader)
         : m_hdrToCubemapShader(nullptr), m_assetLoader(assetLoader), m_brdfLutShader(nullptr),
         m_irradianceShader(nullptr), m_assetPath(assetPath)
     {
@@ -33,7 +33,7 @@ namespace JLEngine
         auto fullPath = m_assetPath + "Core/Shaders/Baking/";
         EnsureHDRtoCubemapShadersLoaded(fullPath);
 
-        Graphics* graphics = m_assetLoader->GetGraphics();
+        GraphicsAPI* graphics = m_assetLoader->GetGraphics();
         auto vertexBuffer = Geometry::CreateBox(graphics);
 
         if (cubeMapSize == 0)
@@ -174,7 +174,7 @@ namespace JLEngine
         glGenFramebuffers(1, &captureFBO);
         glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
 
-        Graphics* graphics = m_assetLoader->GetGraphics();
+        GraphicsAPI* graphics = m_assetLoader->GetGraphics();
         graphics->BindShader(m_irradianceShader->GetProgramId());
         m_irradianceShader->SetUniformi("u_EnvironmentMap", 0);
 

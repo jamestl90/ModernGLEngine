@@ -3,7 +3,7 @@
 
 namespace JLEngine 
 {
-    ShaderStorageBuffer::ShaderStorageBuffer(const std::string& name, size_t size, Graphics* graphics)
+    ShaderStorageBuffer::ShaderStorageBuffer(const std::string& name, size_t size, GraphicsAPI* graphics)
         : Resource(name), m_size(size), m_graphics(graphics), m_ssboID(0) {}
 
     ShaderStorageBuffer::~ShaderStorageBuffer() 

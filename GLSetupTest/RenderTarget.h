@@ -57,8 +57,7 @@ namespace JLEngine
 		void SetNumSources(uint32_t numSources);
 		void SetTextureAttribute(uint32_t index, const TextureAttribute& attributes);
 
-		void UploadToGPU(Graphics* graphics);
-		void UnloadFromGraphics();
+		void UploadToGPU(GraphicsAPI* graphics);
 
 		void BindDepthTexture(int texUnit);
 		void BindTexture(int texIndex, int texUnit);
@@ -84,7 +83,7 @@ namespace JLEngine
 		SmallArray<uint32_t> m_drawBuffers;
 		uint32_t m_numSources;
 
-		Graphics* m_graphics;
+		GraphicsAPI* m_graphics;
 	};
 }
 

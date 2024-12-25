@@ -14,7 +14,7 @@ using std::string;
 
 namespace JLEngine
 {
-	class Graphics;
+	class GraphicsAPI;
 
 	class ShaderProgram : public Resource
 	{
@@ -25,7 +25,7 @@ namespace JLEngine
 
 		void ReloadFromFile();
 
-		void UploadToGPU(Graphics* graphics);
+		void UploadToGPU(GraphicsAPI* graphics);
 
 		void SetProgramId(uint32_t id) { m_programId = id; }
 		uint32_t GetProgramId() { return m_programId; }
@@ -56,7 +56,7 @@ namespace JLEngine
 		std::vector<Shader> m_shaders;
 		std::unordered_map<std::string, int> m_uniformLocations;
 
-		Graphics* m_graphics;
+		GraphicsAPI* m_graphics;
 	};
 }
 

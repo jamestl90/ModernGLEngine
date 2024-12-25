@@ -5,10 +5,11 @@
 #include <tuple>
 #include <glm/glm.hpp>
 #include "Mesh.h"
+#include "VertexArrayObject.h"
 
 namespace JLEngine
 {
-	class Graphics;
+	class GraphicsAPI;
 
 	struct Vec3Hash 
 	{
@@ -21,11 +22,11 @@ namespace JLEngine
 	class Geometry
 	{
 	public:
-		static Mesh* GenerateSphereMesh(Graphics* graphics, std::string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments);
+		static void GenerateSphereMesh(VertexArrayObject& vao, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments);
 
-		static VertexBuffer CreateBox(Graphics* graphics);
-		static VertexBuffer CreateScreenSpaceTriangle(Graphics* graphics);
-		static std::tuple<VertexBuffer, IndexBuffer> CreateScreenSpaceQuad(Graphics* graphics);
+		static void CreateBox(VertexArrayObject& vao);
+		static void CreateScreenSpaceTriangle(VertexArrayObject& vao);
+		static void CreateScreenSpaceQuad(VertexArrayObject& vao);
 
 		static void GenerateInterleavedVertexData(const std::vector<float>& positions,
 			const std::vector<float>& normals,

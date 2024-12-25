@@ -28,17 +28,17 @@ namespace JLEngine
 
         // Properties for PBR Metallic-Roughness workflow
         glm::vec4 baseColorFactor;            // Base color (RGBA)
-        Texture* baseColorTexture; // Texture for base color
+        std::shared_ptr<Texture> baseColorTexture; // Texture for base color
 
         float metallicFactor;                // Metalness (0 = dielectric, 1 = metallic)
         float roughnessFactor;               // Surface roughness
 
-        Texture* metallicRoughnessTexture; // Combined metallic-roughness texture
+        std::shared_ptr<Texture> metallicRoughnessTexture; // Combined metallic-roughness texture
 
         // Additional textures
-        Texture* normalTexture;           // Normal map
-        Texture* occlusionTexture;        // Ambient occlusion map
-        Texture* emissiveTexture;         // Emissive map
+        std::shared_ptr<Texture> normalTexture;           // Normal map
+        std::shared_ptr<Texture> occlusionTexture;        // Ambient occlusion map
+        std::shared_ptr<Texture> emissiveTexture;         // Emissive map
 
         glm::vec3 emissiveFactor;            // Emissive color
 

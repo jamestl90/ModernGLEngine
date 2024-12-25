@@ -15,7 +15,7 @@ namespace JLEngine
         TextureReader();
         ~TextureReader();
 
-        static ImageData LoadTexture(const std::string& filePath, bool isHDR = false, bool forceGrayscale = false);
+        static ImageData LoadTexture(const std::string& filePath, int numCompsDesired = 0);
         static std::array<ImageData, 6> LoadCubeMapHDR(const std::string& folderPath, const std::array<std::string, 6>& fileNames);
         static float* StitchSky(const std::string& assetPath, std::initializer_list<const char*> fileNames, int width, int height, int channels);
         static ImageData StitchSky(std::array<JLEngine::ImageData, 6>& files, int width, int height, int channels);

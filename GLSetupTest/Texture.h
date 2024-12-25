@@ -1,78 +1,52 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
-#include "Resource.h"
-#include "Graphics.h"
 #include "ImageData.h"
+#include "GraphicsResource.h"
 
 #include <array>
+#include <string>
 
 namespace JLEngine
 {
-	class Graphics;
+	class GraphicsAPI;
 
-    class Texture : public Resource
+    struct TexParams
+    {
+        bool mipmapEnabled =        false;
+        bool immutable =            false;
+        uint32_t wrapS =            GL_CLAMP_TO_EDGE;
+        uint32_t wrapT =            GL_CLAMP_TO_EDGE;
+        uint32_t wrapR =            GL_CLAMP_TO_EDGE;
+        uint32_t minFilter =        GL_LINEAR;
+        uint32_t magFilter =        GL_LINEAR;
+        uint32_t textureType =      GL_TEXTURE_2D;
+        uint32_t internalFormat =   GL_RGBA8;
+        uint32_t format =           GL_RGBA;
+        uint32_t dataType =         GL_UNSIGNED_BYTE;
+    };
+
+    class Texture : public GraphicsResource
     {
     public:
-        // Constructor for file-based texture
-        Texture(uint32_t handle, const std::string& name, const std::string& filename);
-        Texture(const std::string& name, const std::string& filename);
-        Texture(const std::string& name);
-        // Constructor for raw-data texture
-        Texture(const std::string& name, uint32_t width, uint32_t height, void* data, int channels);
-        Texture(const std::string& name, uint32_t width, uint32_t height, std::vector<unsigned char> data, int channels);
-
+        Texture(const std::string& name, GraphicsAPI* graphics);
         ~Texture();
 
-        // Initialize texture with raw data
-        void InitFromData(const std::vector<unsigned char>& data, int width, int height, int channels, bool clamped, bool mipmaps);
-        void InitFromData(void* data, int width, int height, int channels, int dataType, bool clamped, bool mipmaps);
-        void FreeData() { m_data.clear(); }
+        const ImageData& GetImageData() const { return m_imageData; }
+        ImageData& GetMutableImageData() { return m_imageData; }        
 
-        // Upload texture data to GPU
-        void UploadToGPU(Graphics* graphics, bool freeData);
-        void UploadCubemapsToGPU(Graphics* graphics, std::array<ImageData, 6>& data);
+        void InitFromData(ImageData&& imageData);
 
-        void SetGPUID(uint32_t id) { m_id = id; }
-        void SetFormat(GLenum internalFormat, GLenum format, GLenum dataType);
-        void SetClamped(bool clamped) { m_clamped = clamped; }
-        void EnableMipmaps(bool enable) { m_mipmaps = enable; }
-        bool GenerateMipmaps() { return m_mipmaps; }
-        void SetImmutable(bool val) { m_immutable = val; }
-        const bool IsImmutable() const { return m_immutable; }
-        void SetCubemap(bool cubeMap) { m_isCubeMap = cubeMap; }
-        void SetSize(int width, int height) { m_width = width; m_height = height; }
+        const TexParams& GetParams() const { return m_texParams; }
+        void SetParams(const TexParams& params);
 
-        uint32_t GetFormat() const { return m_format; }
-        uint32_t GetInternalFormat() const { return m_internalFormat; }
-        bool IsClamped() const { return m_clamped; }
-        uint32_t GetGPUID() const { return m_id; }
-        int GetDataType() const { return m_dataType; }
-        int GetWidth() const { return m_width; }
-        int GetHeight() const { return m_height; }
-        int GetChannels() const { return m_channels; }
-        int IsCubeMap() const { return m_isCubeMap; }
-        const std::vector<unsigned char>& GetData() const { return m_data; }
+        void SetFormat(uint32_t dataType, uint32_t internalFormat, uint32_t format);
 
     private:
-        Graphics* m_graphics = nullptr;  // Pointer to Graphics system for texture operations
+        GraphicsAPI* m_graphics = nullptr;  
 
-        std::string m_filename;          // For file-based textures
-
-        uint32_t m_width = 0, m_height = 0; // Texture dimensions
-        int m_channels = 0;              // Number of channels (e.g., 3 for RGB, 4 for RGBA)
-        std::vector<unsigned char> m_data;  // Texture raw data (replacing `void*` for safety)
-
-        bool m_clamped = false;          // Clamping option
-        bool m_mipmaps = false;          // Mipmap option
-
-        GLenum m_internalFormat;         // OpenGL internal format (e.g., GL_RGBA8)
-        GLenum m_format;                 // OpenGL format (e.g., GL_RGBA)
-        GLenum m_dataType;               // OpenGL data type (e.g., GL_UNSIGNED_BYTE)
-
-        uint32_t m_id = 0;               // OpenGL texture ID
-        bool m_immutable = true;
-        bool m_isCubeMap = false;
+        ImageData m_imageData;
+        TexParams m_texParams;
     };
 }
 

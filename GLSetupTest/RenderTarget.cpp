@@ -1,4 +1,5 @@
 #include "RenderTarget.h"
+#include "Graphics.h"
 
 #include <glad/glad.h>
 
@@ -34,10 +35,11 @@ namespace JLEngine
 
 	RenderTarget::~RenderTarget()
 	{
-		UnloadFromGraphics();
+		if (JLEngine::Graphics::Alive())
+			Graphics::DisposeRenderTarget(this);
 	}
 
-	void RenderTarget::UploadToGPU( Graphics* graphics )
+	void RenderTarget::UploadToGPU( GraphicsAPI* graphics )
 	{
 		m_graphics = graphics;
 
@@ -123,10 +125,5 @@ namespace JLEngine
 		{
 			std::cerr << "RenderTarget::SetTextureAttributes: Index out of range!" << std::endl;
 		}
-	}
-
-	void RenderTarget::UnloadFromGraphics()
-	{
-		m_graphics->DisposeRenderTarget(this);
 	}
 }

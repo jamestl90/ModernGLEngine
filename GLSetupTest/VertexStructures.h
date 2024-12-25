@@ -17,7 +17,8 @@ namespace JLEngine
 		COLOUR		= 1 << 3,
 		TANGENT		= 1 << 4,
 		TEX_COORD_1 = 1 << 5,
-		COUNT		= 6			// num elements in this enum 
+		POSITION2F	= 1 << 6,
+		COUNT		= 7			// num elements in this enum 
 	};
 
 	using VertexAttribKey = uint32_t;
@@ -48,7 +49,6 @@ namespace JLEngine
 	bool HasVertexAttribKey(uint32_t mask, AttributeType attribute);
 
 	uint32_t CalculateStride(VertexAttribKey vertexAttribKey);
-
 }
 
 #endif

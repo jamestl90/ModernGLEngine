@@ -13,7 +13,7 @@ JLEngine::ShaderProgram* basicLit;
 JLEngine::DeferredRenderer* m_defRenderer;
 GLFWwindow* window;
 
-void gameRender(JLEngine::Graphics& graphics, double interpolationFactor)
+void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
 {
     float aspect = (float)graphics.GetWindow()->GetWidth() / (float)graphics.GetWindow()->GetHeight();
     glm::mat4 view = flyCamera->GetViewMatrix();
@@ -83,7 +83,7 @@ int MainApp(std::string assetFolder)
 {
     JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120);
 
-    auto graphics = engine.GetGraphics();
+    auto graphics = engine.GetGraphicsAPI();
     window = graphics->GetWindow()->GetGLFWwindow();
     input = engine.GetInput();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
@@ -96,31 +96,31 @@ int MainApp(std::string assetFolder)
 
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
-    auto planeNode = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    auto mat = engine.GetAssetLoader()->CreateMaterial("planeMat");
+    auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
+    auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
     mat->castShadows = false;
-    mat->baseColorTexture = engine.GetAssetLoader()->CreateTextureFromFile("PlaneTexture", assetFolder + "floor_default_grid.png");
+    mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
     planeNode->translation -= glm::vec3(0, 2.5f, 0);
 
-    auto metallicSpheres = engine.GetAssetLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
 
-    auto helmet = engine.GetAssetLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
     helmet->mesh->GetBatches()[0]->GetMaterial()->castShadows = false;
 
-    auto potofcoals = engine.GetAssetLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
+    auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
     potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
     potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
 
-    auto fish = engine.GetAssetLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
+    auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
     fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
     fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
 
-    cardinalDirections = engine.GetAssetLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
+    cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
-    //auto bistroScene = engine.GetAssetLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
-    //auto virtualCity = engine.GetAssetLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
+    //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
+    //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
 
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
@@ -131,7 +131,7 @@ int MainApp(std::string assetFolder)
     sceneRoot->AddChild(fish);
     sceneRoot->AddChild(cardinalDirections);
 
-    m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetAssetLoader(),
+    m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),
         SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
     m_defRenderer->Initialize();
 

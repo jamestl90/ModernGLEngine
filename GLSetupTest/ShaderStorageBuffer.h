@@ -6,12 +6,12 @@
 
 namespace JLEngine 
 {
-    class Graphics;
+    class GraphicsAPI;
 
     class ShaderStorageBuffer : public Resource 
     {
     public:
-        ShaderStorageBuffer(const std::string& name, size_t size, Graphics* graphics);
+        ShaderStorageBuffer(const std::string& name, size_t size, GraphicsAPI* graphics);
         ~ShaderStorageBuffer();
 
         void Initialize();  // Allocate GPU memory
@@ -21,7 +21,7 @@ namespace JLEngine
     private:
         uint32_t m_ssboID;   // OpenGL ID for the SSBO
         size_t m_size;     // Size of the buffer
-        Graphics* m_graphics;
+        GraphicsAPI* m_graphics;
     };
 
 } 

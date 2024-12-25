@@ -4,12 +4,12 @@
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "RenderTarget.h"
 #include "ShaderProgram.h"
 #include "Node.h"
-#include "VertexBuffers.h"
-#include "AssetLoader.h"
+#include "VertexArrayObject.h"
+#include "ResourceLoader.h"
 #include "Batch.h"
 
 using RenderGroupKey = std::pair<int, JLEngine::VertexAttribKey>;
@@ -33,7 +33,7 @@ namespace JLEngine
     class DeferredRenderer 
     {
     public:
-        DeferredRenderer(Graphics* graphics, AssetLoader* assetManager,
+        DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* assetManager,
             int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
@@ -68,8 +68,8 @@ namespace JLEngine
 
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
 
-        Graphics* m_graphics;
-        AssetLoader* m_assetLoader;
+        GraphicsAPI* m_graphics;
+        ResourceLoader* m_assetLoader;
 
         DebugModes m_debugModes;
 
@@ -84,8 +84,7 @@ namespace JLEngine
         ShaderProgram* m_shadowDebugShader;
         ShaderProgram* m_debugTextureShader;
 
-        VertexBuffer m_triangleVertexBuffer;
-        GLuint m_triangleVAO;
+        VertexArrayObject m_triangleVAO;
 
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;

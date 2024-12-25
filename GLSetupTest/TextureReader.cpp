@@ -10,25 +10,26 @@ namespace JLEngine
 
     TextureReader::~TextureReader() {}
 
-    ImageData TextureReader::LoadTexture(const std::string& filePath, bool isHDR, bool forceGrayscale) 
+    ImageData TextureReader::LoadTexture(const std::string& filePath, int numCompsDesired) 
     {
         ImageData imageData;
-        imageData.isHDR = isHDR;
 
-        if (isHDR) {
+        if (filePath.ends_with(".hdr")) 
+        {
+            imageData.isHDR = true;
             stbi_set_flip_vertically_on_load(true);
-            float* hdrPixels = stbi_loadf(filePath.c_str(), &imageData.width, &imageData.height, &imageData.channels, forceGrayscale ? 1 : 0);
+            float* hdrPixels = stbi_loadf(filePath.c_str(), &imageData.width, &imageData.height, &imageData.channels, numCompsDesired);
             if (!hdrPixels) 
             {
                 std::cerr << "Failed to load HDR texture: " << filePath << std::endl;
                 return imageData;
             }
-            imageData.isHDR = true;
             imageData.hdrData.assign(hdrPixels, hdrPixels + (imageData.width * imageData.height * imageData.channels));
             stbi_image_free(hdrPixels);
         }
-        else {
-            unsigned char* pixels = stbi_load(filePath.c_str(), &imageData.width, &imageData.height, &imageData.channels, forceGrayscale ? 1 : 0);
+        else 
+        {
+            unsigned char* pixels = stbi_load(filePath.c_str(), &imageData.width, &imageData.height, &imageData.channels, numCompsDesired);
             if (!pixels) 
             {
                 std::cerr << "Failed to load texture: " << filePath << std::endl;

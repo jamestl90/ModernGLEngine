@@ -1,6 +1,6 @@
 #include "DeferredRenderer.h"
 #include "Material.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "DirectionalLightShadowMap.h"
 #include "HDRISky.h"
 
@@ -11,15 +11,15 @@
 
 namespace JLEngine
 {
-    DeferredRenderer::DeferredRenderer(Graphics* graphics, AssetLoader* assetLoader, int width, int height, const std::string& assetFolder)
-        : m_graphics(graphics), m_assetLoader(assetLoader), m_triangleVAO(0), m_shadowDebugShader(nullptr),
-        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), m_triangleVertexBuffer(),
+    DeferredRenderer::DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* assetLoader, int width, int height, const std::string& assetFolder)
+        : m_graphics(graphics), m_assetLoader(assetLoader), m_shadowDebugShader(nullptr),
+        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), 
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), 
         m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) {}
 
     DeferredRenderer::~DeferredRenderer() 
     {
-        m_graphics->DisposeVertexBuffer(m_triangleVertexBuffer);
+        Graphics::DisposeVertexArray(&m_triangleVAO);
         
         m_graphics->DisposeShader(m_shadowDebugShader);
         m_graphics->DisposeShader(m_gBufferDebugShader);
@@ -88,23 +88,21 @@ namespace JLEngine
              3.0f,  1.0f,       2.0f, 0.0f,  
             -1.0f,  1.0f,       0.0f, 0.0f      
         };
-        std::vector<float> triVerts;
-        triVerts.insert(triVerts.end(), std::begin(triangleVertices), std::end(triangleVertices));
+        std::vector<float> triVerts(std::begin(triangleVertices), std::end(triangleVertices));
 
-        m_triangleVertexBuffer.SetDataType(GL_FLOAT);
-        m_triangleVertexBuffer.SetType(GL_ARRAY_BUFFER);
-        m_triangleVertexBuffer.SetDrawType(GL_STATIC_DRAW);
+        // Initialize the VertexBuffer
+        JLEngine::VertexBuffer triangleVBO(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+        triangleVBO.Set(triVerts);
 
-        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 2);
-        VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, 2 * sizeof(float), 2);
-        m_triangleVertexBuffer.AddAttribute(posAttri);
-        m_triangleVertexBuffer.AddAttribute(uvAttri);
-        m_triangleVertexBuffer.Set(triVerts);
-        m_triangleVertexBuffer.CalcStride();
+        // Add attributes to the VertexArrayObject
+        m_triangleVAO.AddAttribute(JLEngine::AttributeType::POSITION);
+        m_triangleVAO.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
 
-        m_triangleVAO = m_graphics->CreateVertexArray();
-        m_graphics->CreateVertexBuffer(m_triangleVertexBuffer);
-        m_graphics->BindVertexArray(0);
+        // Calculate the stride and associate the buffer with the VAO
+        m_triangleVAO.CalcStride();
+        m_triangleVAO.SetVertexBuffer(triangleVBO);
+
+        Graphics::CreateVertexArray(&m_triangleVAO);
     }
 
     void DeferredRenderer::SetupGBuffer() 
@@ -169,19 +167,19 @@ namespace JLEngine
     void DeferredRenderer::SetUniformsForGBuffer(Material* mat)
     {
         m_gBufferShader->SetUniform("baseColorFactor", mat->baseColorFactor);
-        BindTexture(m_gBufferShader, "baseColorTexture", "useBaseColorTexture", mat->baseColorTexture, 0);
+        BindTexture(m_gBufferShader, "baseColorTexture", "useBaseColorTexture", mat->baseColorTexture.get(), 0);
         
         // Metallic-Roughness
         m_gBufferShader->SetUniformf("metallicFactor", mat->metallicFactor);
         m_gBufferShader->SetUniformf("roughnessFactor", mat->roughnessFactor);
-        BindTexture(m_gBufferShader, "metallicRoughnessTexture", "useMetallicRoughnessTexture", mat->metallicRoughnessTexture, 1);
+        BindTexture(m_gBufferShader, "metallicRoughnessTexture", "useMetallicRoughnessTexture", mat->metallicRoughnessTexture.get(), 1);
         
-        BindTexture(m_gBufferShader, "normalTexture", "useNormalTexture", mat->normalTexture, 2);
-        BindTexture(m_gBufferShader, "occlusionTexture", "useOcclusionTexture", mat->occlusionTexture, 3);
+        BindTexture(m_gBufferShader, "normalTexture", "useNormalTexture", mat->normalTexture.get(), 2);
+        BindTexture(m_gBufferShader, "occlusionTexture", "useOcclusionTexture", mat->occlusionTexture.get(), 3);
         
         // Emissive
         m_gBufferShader->SetUniform("emissiveFactor", mat->emissiveFactor);
-        BindTexture(m_gBufferShader, "emissiveTexture", "useEmissiveTexture", mat->emissiveTexture, 4);
+        BindTexture(m_gBufferShader, "emissiveTexture", "useEmissiveTexture", mat->emissiveTexture.get(), 4);
 
         if (mat->alphaMode == AlphaMode::MASK)
         {
@@ -533,7 +531,7 @@ namespace JLEngine
 
     void DeferredRenderer::RenderScreenSpaceTriangle() 
     {
-        m_graphics->BindVertexArray(m_triangleVAO);
+        m_graphics->BindVertexArray(m_triangleVAO.GetGPUID());
         m_graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
         m_graphics->BindVertexArray(0);
     }
@@ -593,7 +591,7 @@ namespace JLEngine
 
             // Bind material (assuming materials are identified by ID)
             auto material = m_assetLoader->GetMaterialManager()->Get(materialId);
-            SetUniformsForGBuffer(material);
+            SetUniformsForGBuffer(material.get());
 
             // Render all batches in this group
             for (const auto& batch : batches)

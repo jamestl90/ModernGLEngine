@@ -19,12 +19,12 @@ namespace JLEngine
 	};
 
 	class VertexBuffer;
-	class AssetLoader;
+	class ResourceLoader;
 
 	class HDRISky
 	{
 	public:
-		HDRISky(AssetLoader* assetLoader); 
+		HDRISky(ResourceLoader* assetLoader); 
 		~HDRISky();
 
 		void Initialise(const std::string& assetPath, const HdriSkyInitParams& initParams);
@@ -47,7 +47,7 @@ namespace JLEngine
 
         VertexBuffer m_skyboxVBO;
 		ShaderProgram* m_skyShader;
-		AssetLoader* m_assetLoader;
+		ResourceLoader* m_assetLoader;
 
 		ImageData m_hdriSkyImageData;
 	};

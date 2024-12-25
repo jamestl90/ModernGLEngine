@@ -7,12 +7,12 @@
 namespace JLEngine
 {
 	class ShaderProgram;
-	class Graphics;
+	class GraphicsAPI;
 
 	class DirectionalLightShadowMap
 	{
 	public:
-		DirectionalLightShadowMap(Graphics* graphics, ShaderProgram* shader);
+		DirectionalLightShadowMap(GraphicsAPI* graphics, ShaderProgram* shader);
 
 		void Initialise();
 		void ShadowMapPassSetup(const glm::mat4& lightSpaceMatrix);
@@ -39,7 +39,7 @@ namespace JLEngine
 		float m_dlShadowDistance;
 		int m_PCFKernelSize;
 
-		Graphics* m_graphics;
+		GraphicsAPI* m_graphics;
 	};
 }
 

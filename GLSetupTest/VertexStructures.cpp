@@ -16,7 +16,8 @@ namespace JLEngine
 				{"texcoord_0", AttributeType::TEX_COORD_0},
 				{"texcoord_1", AttributeType::TEX_COORD_1},
 				{"color", AttributeType::COLOUR},
-				{"tangent", AttributeType::TANGENT}
+				{"tangent", AttributeType::TANGENT},
+				{"position2f", AttributeType::POSITION2F}
 		};
 
 		auto it = attribMap.find(lowerStr);
@@ -70,6 +71,9 @@ namespace JLEngine
 				{
 				case AttributeType::POSITION:
 					stride += 3 * sizeof(float); // 3 floats
+					break;
+				case AttributeType::POSITION2F:
+					stride += 2 * sizeof(float); // 3 floats
 					break;
 				case AttributeType::NORMAL:
 					stride += 3 * sizeof(float); // 3 floats

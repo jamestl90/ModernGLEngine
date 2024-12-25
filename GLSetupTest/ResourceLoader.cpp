@@ -1,4 +1,4 @@
-#include "AssetLoader.h"
+#include "ResourceLoader.h"
 #include "Geometry.h"
 #include "Node.h"
 #include "GLBLoader.h"
@@ -7,7 +7,6 @@
 #include "Node.h"
 #include "TextureReader.h"
 #include "Material.h"
-#include "ShaderStorageBuffer.h"
 
 #include <glm/glm.hpp>
 
@@ -20,17 +19,35 @@
 
 namespace JLEngine
 {
-    AssetLoader::AssetLoader(Graphics* graphics, ResourceManager<ShaderProgram>* shaderManager, ResourceManager<Mesh>* meshManager,
-        ResourceManager<Material>* materialManager, ResourceManager<Texture>* textureManager, ResourceManager<RenderTarget>* rtManager,
-        ResourceManager<ShaderStorageBuffer>* ssboManager)
-        : m_shaderManager(shaderManager), m_meshManager(meshManager), m_materialManager(materialManager),
-        m_textureManager(textureManager), m_graphics(graphics), m_renderTargetManager(rtManager), m_shaderStorageManager(ssboManager)
+    ResourceLoader::ResourceLoader(GraphicsAPI* graphics)
+        : m_graphics(graphics)
     {
+        m_textureManager = new ResourceManager<Texture>();
+        m_shaderManager = new ResourceManager<ShaderProgram>();
+        m_materialManager = new ResourceManager<Material>();
+        m_renderTargetManager = new ResourceManager<RenderTarget>();
+        m_meshManager = new ResourceManager<Mesh>();
+        m_cubemapManager = new ResourceManager<Cubemap>();
+
+        m_textureFactory = new TextureFactory(m_textureManager, graphics);
+        m_cubemapFactory = new CubemapFactory(m_cubemapManager, graphics);
+        m_shaderFactory = new ShaderFactory(m_shaderManager, graphics);
+
         m_defaultMat = CreateMaterial("DefaultMaterial");
     }
 
-    AssetLoader::~AssetLoader() 
+    ResourceLoader::~ResourceLoader() 
     {
+        delete m_textureFactory;
+        delete m_cubemapFactory;
+
+        delete m_textureManager;
+        delete m_shaderManager;
+        delete m_materialManager;
+        delete m_renderTargetManager;
+        delete m_meshManager;
+        delete m_cubemapManager;
+
         if (m_basicLit)
             m_shaderManager->Remove(m_basicLit->GetName());
         if (m_basicUnlit)
@@ -41,99 +58,36 @@ namespace JLEngine
             m_shaderManager->Remove(m_screenSpaceQuad->GetName());
     }
 
-    std::shared_ptr<Node> AssetLoader::LoadGLB(const std::string& glbFile)
+    std::shared_ptr<Node> ResourceLoader::LoadGLB(const std::string& glbFile)
     {
-        auto glbLoader = new GLBLoader(m_graphics, this);
+        auto glbLoader = new GLBLoader(this);
         auto scene = glbLoader->LoadGLB(glbFile);
         return scene;
     }
 
-    Texture* AssetLoader::CreateEmptyTexture(const std::string& name)
+    std::shared_ptr<Cubemap> ResourceLoader::CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath)
     {
-        return m_textureManager->Add(name, [&]()
-        {
-            auto texture = std::make_unique<Texture>(name);
-            return texture;
-        });
+        return m_cubemapFactory->CreateCubemapFromFiles(name, fileNames, folderPath);
     }
 
-    Texture* AssetLoader::CreateTextureFromFile(const std::string& name, const std::string& filename, bool clamped, bool mipmaps)
+    std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name, const std::string& filePath, const TexParams& texParams, int outputChannels)
     {
-        return m_textureManager->Add(name, [&]()
-            {
-                TextureReader reader;
-                std::vector<unsigned char> data;
-
-                auto imgData = TextureReader::LoadTexture(filename, false, false);
-                if (!imgData.IsValid())
-                {
-                    std::cerr << "Failed to load texture: " << filename << std::endl;
-                    return std::unique_ptr<Texture>(nullptr);
-                }
-
-                // Use imgData.data for texture initialization
-                auto texture = std::make_unique<Texture>(name, imgData.width, imgData.height, imgData.data.data(), imgData.channels);
-                texture->InitFromData(imgData.data, imgData.width, imgData.height, imgData.channels, clamped, mipmaps);
-                texture->UploadToGPU(m_graphics, true);
-                return texture;
-            });
+        return m_textureFactory->CreateFromFile(name, filePath, texParams, outputChannels);
     }
 
-    Texture* AssetLoader::CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, void* data,
-        int internalFormat, int format, int dataType, bool clamped, bool mipmaps)
+    std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name, ImageData& imageData, const TexParams& texParams)
     {
-        return m_textureManager->Add(name, [&]()
-            {
-                auto texture = std::make_unique<Texture>(name, width, height, data, channels);
-                texture->SetFormat(internalFormat, format, dataType);
-                texture->SetClamped(clamped);
-                texture->EnableMipmaps(mipmaps);
-                texture->UploadToGPU(m_graphics, true);
-                return texture;
-            });
+        return m_textureFactory->CreateFromData(name, imageData, texParams);
     }
 
-    Texture* AssetLoader::CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, vector<unsigned char>& data, bool clamped, bool mipmaps)
+    std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name)
     {
-        return m_textureManager->Add(name, [&]()
-            {
-                auto texture = std::make_unique<Texture>(name, width, height, data.data(), channels);
-                texture->InitFromData(data, width, height, channels, clamped, mipmaps);
-                texture->UploadToGPU(m_graphics, true);
-                return texture;
-            });
+        return m_textureFactory->CreateEmpty(name);
     }
 
-    Texture* AssetLoader::CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath)
-    {
-        if (fileNames.size() != 6)
-        {
-            std::cerr << "Need 6 input fileNames for cubemap" << std::endl;
-            return nullptr;
-        }
+    void ResourceLoader::DeleteTexture(const std::string& name) { m_textureFactory->Delete(name); }
 
-        return m_textureManager->Add(name, [&]()
-            {
-                auto finalAssetPath = [&](auto index) { return folderPath + fileNames[index]; };
-
-                auto imgData = TextureReader::LoadCubeMapHDR(folderPath, fileNames);
-
-                auto texture = std::make_unique<Texture>(name);
-                texture->SetSize(imgData.at(0).width, imgData.at(0).height);
-                if (imgData.at(0).channels == 3)
-                    texture->SetFormat(GL_RGB16F, GL_RGB, GL_FLOAT);
-                else if (imgData.at(0).channels == 4)
-                    texture->SetFormat(GL_RGBA16F, GL_RGBA, GL_FLOAT);
-                texture->SetCubemap(true);
-                texture->SetClamped(true);
-                texture->EnableMipmaps(false);
-                texture->UploadCubemapsToGPU(m_graphics, imgData);
-
-                return texture;
-            });
-    }
-
-    ShaderProgram* AssetLoader::CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
+    ShaderProgram* ResourceLoader::CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
     {
         return m_shaderManager->Add(name, [&]()
             {
@@ -157,7 +111,7 @@ namespace JLEngine
             });
     }
 
-    ShaderProgram* AssetLoader::CreateShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
+    ShaderProgram* ResourceLoader::CreateShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
     {
         return m_shaderManager->Add(name, [&]()
             {
@@ -171,7 +125,7 @@ namespace JLEngine
             });
     }
 
-    ShaderProgram* AssetLoader::BasicLitShader()
+    ShaderProgram* ResourceLoader::BasicLitShader()
     {
         if (m_basicLit == nullptr)
         {
@@ -229,7 +183,7 @@ namespace JLEngine
         return m_basicLit;
     }
 
-    ShaderProgram* AssetLoader::BasicUnlitShader()
+    ShaderProgram* ResourceLoader::BasicUnlitShader()
     {
         if (m_basicUnlit == nullptr)
         {
@@ -272,7 +226,7 @@ namespace JLEngine
         return m_basicUnlit;
     }
 
-    ShaderProgram* AssetLoader::SolidColorShader()
+    ShaderProgram* ResourceLoader::SolidColorShader()
     {
         if (m_solidColor == nullptr)
         {
@@ -303,7 +257,7 @@ namespace JLEngine
         return m_solidColor;
     }
 
-    ShaderProgram* AssetLoader::ScreenSpaceQuadShader()
+    ShaderProgram* ResourceLoader::ScreenSpaceQuadShader()
     {
         if (m_screenSpaceQuad == nullptr)
         {
@@ -344,7 +298,7 @@ namespace JLEngine
         return m_screenSpaceQuad;
     }
 
-    Material* AssetLoader::CreateMaterial(const std::string& name)
+    Material* ResourceLoader::CreateMaterial(const std::string& name)
     {
         return m_materialManager->Add(name, [&]()
             {
@@ -354,7 +308,7 @@ namespace JLEngine
             });
     }
 
-    void AssetLoader::PollForChanges(float deltaTime)
+    void ResourceLoader::PollForChanges(float deltaTime)
     {
         if (!m_hotReload) return;
 
@@ -390,7 +344,7 @@ namespace JLEngine
         }
     }
 
-    RenderTarget* AssetLoader::CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib, JLEngine::DepthType depthType, uint32_t numSources)
+    RenderTarget* ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetManager->Add(name, [&]()
             {
@@ -404,7 +358,7 @@ namespace JLEngine
             });
     }
     
-    RenderTarget* AssetLoader::CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
+    RenderTarget* ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetManager->Add(name, [&]()
             {
@@ -423,7 +377,7 @@ namespace JLEngine
             });
     }
 
-    Mesh* JLEngine::AssetLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo)
+    Mesh* JLEngine::ResourceLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo)
     {
         return m_meshManager->Add(name, [&]()
             {
@@ -434,7 +388,7 @@ namespace JLEngine
             });
     }
 
-    Mesh* AssetLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo)
+    Mesh* ResourceLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo)
     {
         return m_meshManager->Add(name, [&]()
             {
@@ -445,31 +399,12 @@ namespace JLEngine
             });
     }
 
-    Mesh* AssetLoader::CreateMesh(const std::string& name)
+    Mesh* ResourceLoader::CreateMesh(const std::string& name)
     {
         return m_meshManager->Add(name, [&]()
             {
                 auto mesh = std::make_unique<Mesh>(name);
                 return mesh;
             });
-    }
-
-    ShaderStorageBuffer* AssetLoader::CreateSSBO(const std::string& name, size_t size)
-    {
-        return m_shaderStorageManager->Add(name, [&]()
-            {
-                auto ssbo = std::make_unique<ShaderStorageBuffer>(name, size, m_graphics);
-                ssbo->Initialize(); // Custom initialization for the SSBO
-                return ssbo;
-            });
-    }
-
-    void AssetLoader::UpdateSSBO(const std::string& name, const void* data, size_t size)
-    {
-        ShaderStorageBuffer* ssbo = m_shaderStorageManager->Get(name);
-        if (ssbo)
-        {
-            ssbo->UpdateData(data, size); // Assuming ShaderStorageBuffer has an UpdateData method
-        }
     }
 }

@@ -7,7 +7,7 @@ int BakeCubemapIrradiance(std::string assetFolder)
     JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120);
     engine.InitIMGUI();
     auto input = engine.GetInput();
-    auto window = engine.GetGraphics()->GetWindow()->GetGLFWwindow();
+    auto window = engine.GetGraphicsAPI()->GetWindow()->GetGLFWwindow();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
 
     bool writeOutHdri = true;
@@ -31,8 +31,8 @@ int BakeCubemapIrradiance(std::string assetFolder)
         "negz"  // -Z
     };
 
-    auto graphics = engine.GetGraphics();
-    auto baker = new JLEngine::CubemapBaker(assetFolder, engine.GetAssetLoader());
+    auto graphics = engine.GetGraphicsAPI();
+    auto baker = new JLEngine::CubemapBaker(assetFolder, engine.GetResourceLoader());
 
     auto hdriImage = JLEngine::TextureReader::LoadTexture(assetFolder + "HDRI/" + hdriTexture + ".hdr", true);
     channels = hdriImage.channels;
@@ -85,11 +85,13 @@ int BakeCubemapIrradiance(std::string assetFolder)
         //JLEngine::TextureWriter::WriteTexture(assetFolder + "HDRI/" + hdriTexture + "/prefiltered_stitched.hdr", data);
     }
 
-    auto box = JLEngine::Geometry::CreateBox(graphics);
-    int vaoId = box.GetVAO();
+    JLEngine::VertexArrayObject vao;
+    JLEngine::Geometry::CreateBox(vao);
+    JLEngine::Graphics::CreateVertexArray(&vao);
+    int vaoId = vao.GetGPUID();
 
     auto flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
-    auto drawSkyboxShader = engine.GetAssetLoader()->CreateShaderFromFile(
+    auto drawSkyboxShader = engine.GetResourceLoader()->CreateShaderFromFile(
         "SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", assetFolder + "core/shaders/"
     );
     graphics->BindShader(drawSkyboxShader->GetProgramId());
@@ -102,7 +104,7 @@ int BakeCubemapIrradiance(std::string assetFolder)
     bool showIbl = false;
     bool regenerate = false;
 
-    auto renderFunc = [&prefilteredEnvMap, &hdriImage, &baker, &regenerate, &showIbl, &graphics, &vaoId, &cmId, &irradianceId, &box, &drawSkyboxShader, &flyCamera, &projMatrix](JLEngine::Graphics& g, double interpolationFac)
+    auto renderFunc = [&prefilteredEnvMap, &hdriImage, &baker, &regenerate, &showIbl, &graphics, &vaoId, &cmId, &irradianceId, &drawSkyboxShader, &flyCamera, &projMatrix](JLEngine::GraphicsAPI& g, double interpolationFac)
         {
             drawSkyboxShader->SetUniform("u_Projection", projMatrix);
             drawSkyboxShader->SetUniform("u_View", glm::mat4(glm::mat3(flyCamera->GetViewMatrix())));
@@ -137,7 +139,7 @@ int BakeCubemapIrradiance(std::string assetFolder)
     input->SetMouseMoveCallback(fn);
     input->SetKeyboardCallback(keyboardCallback);
 
-    /*auto cubemapDebugShader = engine.GetAssetLoader()->CreateShaderFromFile(
+    /*auto cubemapDebugShader = engine.GetResourceLoader()->CreateShaderFromFile(
         "CubemapDebugShader",
         "pos_uv_vert.glsl",
         "/Debug/cubemap_debug_frag.glsl",

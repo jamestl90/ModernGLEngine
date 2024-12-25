@@ -1,5 +1,5 @@
 #include "Mesh.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "Batch.h"
 
 namespace JLEngine
@@ -20,7 +20,7 @@ namespace JLEngine
 		UnloadFromGPU();
 	}
 
-	void Mesh::UploadToGPU(Graphics* graphics, bool freeData)
+	void Mesh::UploadToGPU(GraphicsAPI* graphics, bool freeData)
 	{
 		if (!graphics || m_batches.empty()) 
 		{
@@ -38,10 +38,6 @@ namespace JLEngine
 				continue;
 			}
 			m_graphics->CreateBatch(*batch);
-			if (batch->HasInstanceBuffer()) 
-			{
-				batch->GetInstanceBuffer()->UploadToGPU(m_graphics, {}); 
-			}
 		}
 
 		if (freeData) {
@@ -61,14 +57,6 @@ namespace JLEngine
 					m_graphics->DisposeBatch(*batch);
 				}
 			}
-		}
-	}
-
-	void Mesh::SetInstanceBuffer(std::shared_ptr<InstanceBuffer> instanceBuffer)
-	{
-		for (auto& batch : m_batches)
-		{
-			batch->SetInstanceBuffer(instanceBuffer); // Attach instance buffer
 		}
 	}
 }

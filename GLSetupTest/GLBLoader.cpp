@@ -4,8 +4,8 @@
 #include "Mesh.h"
 #include "Node.h"
 #include "Texture.h"
-#include "Graphics.h"
-#include "AssetLoader.h"
+#include "GraphicsAPI.h"
+#include "ResourceLoader.h"
 #include "InstanceBuffer.h"
 #include "JLHelpers.h"
 
@@ -17,8 +17,8 @@
 
 namespace JLEngine
 {
-    GLBLoader::GLBLoader(Graphics* graphics, AssetLoader* assetLoader) 
-		: m_graphics(graphics), m_assetLoader(assetLoader)
+    GLBLoader::GLBLoader(GraphicsAPI* graphics, ResourceLoader* resourceLoader) 
+		: m_graphics(graphics), m_assetLoader(resourceLoader)
     {
     }
 
@@ -438,7 +438,7 @@ namespace JLEngine
 		return material;
 	}
 
-	Texture* GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex)
+	std::shared_ptr<Texture> GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex)
 	{
 		// Check if the texture index is valid
 		if (textureIndex < 0 || textureIndex >= model.textures.size())
@@ -453,22 +453,24 @@ namespace JLEngine
 
 		// Fetch the texture and its image data
 		const auto& texture = model.textures[textureIndex];
-		const auto& imageData = model.images[texture.source];
+		const auto& glbImageData = model.images[texture.source];
 
 		// Generate a final name for the texture
 		const std::string& finalName = name + (texture.name.empty() ? "UnnamedTexture" : texture.name);
 
 		// Extract texture details
-		uint32_t width = static_cast<uint32_t>(imageData.width);
-		uint32_t height = static_cast<uint32_t>(imageData.height);
-		int channels = imageData.component;
-		std::vector<unsigned char> data = imageData.image; // Raw pixel data
+		uint32_t width = static_cast<uint32_t>(glbImageData.width);
+		uint32_t height = static_cast<uint32_t>(glbImageData.height);
+		int channels = glbImageData.component;
+		ImageData imgData;
+		imgData.width = width;
+		imgData.height = height;
+		imgData.channels = channels;
+		imgData.data = glbImageData.image;
 
 		// Create a new texture
 		//auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data, true, true);
-		auto jltexture = m_assetLoader->CreateEmptyTexture(finalName);
-		jltexture->InitFromData(imageData.image, width, height, channels, true, true);
-		jltexture->UploadToGPU(m_graphics, true);
+		auto jltexture = m_assetLoader->CreateTexture(finalName, imgData);
 
 		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;

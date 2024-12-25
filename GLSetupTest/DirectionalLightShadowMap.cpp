@@ -1,14 +1,14 @@
 #include "DirectionalLightShadowMap.h"
 #include "Node.h"
 #include "ShaderProgram.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 
 #include <glad/glad.h> 
 #include <imgui.h>
 
 namespace JLEngine
 {
-    DirectionalLightShadowMap::DirectionalLightShadowMap(Graphics* graphics, ShaderProgram* shaderProg)
+    DirectionalLightShadowMap::DirectionalLightShadowMap(GraphicsAPI* graphics, ShaderProgram* shaderProg)
         : m_shadowMapShader(shaderProg), m_graphics(graphics), m_shadowFBO(0), m_dlShadowDistance(100.0f),
         m_PCFKernelSize(3)
     {

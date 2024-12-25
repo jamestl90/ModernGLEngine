@@ -19,7 +19,7 @@ namespace JLEngine
 	class MaterialManager;
 	class Mesh;
 	class Graphics;
-	class AssetLoader;
+	class ResourceLoader;
 
 	struct MaterialVertexAttributeKey
 	{
@@ -39,7 +39,7 @@ namespace JLEngine
 	class GLBLoader
 	{
 	public:
-		GLBLoader(Graphics* graphics, AssetLoader* assetLoader);
+		GLBLoader(ResourceLoader* assetLoader);
 
 		std::shared_ptr<Node> LoadGLB(const std::string& fileName);
 
@@ -47,7 +47,7 @@ namespace JLEngine
 		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode);
 		Mesh* ParseMesh(const tinygltf::Model& model, int meshIndex);
 		Material* ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
-		Texture* ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex);
+		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
 		std::shared_ptr<Batch> CreateBatch(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
 		
@@ -69,11 +69,11 @@ namespace JLEngine
 	private:
 		std::unordered_map<int, Mesh*> meshCache;
 		std::unordered_map<int, Material*> materialCache;
-		std::unordered_map<int, Texture*> textureCache;
+		std::unordered_map<int, std::shared_ptr<Texture>> textureCache;
 		std::unordered_map<int, std::vector<std::shared_ptr<Node>>> meshNodeReferences;
 
 		Graphics* m_graphics;
-		AssetLoader* m_assetLoader;
+		ResourceLoader* m_assetLoader;
 	};
 }
 

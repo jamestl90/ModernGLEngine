@@ -10,6 +10,9 @@
 #include "Buffer.h"
 #include "VertexBuffers.h"
 #include "Material.h"
+#include "TextureFactory.h"
+#include "CubemapFactory.h"
+#include "ShaderFactory.h"
 
 namespace JLEngine
 {
@@ -19,7 +22,7 @@ namespace JLEngine
 	class ShaderStorageBuffer;
 	class Mesh;
 	class Node;
-	class Graphics;
+	class GraphicsAPI;
 
 	struct TextureAttribute;
 	
@@ -38,34 +41,29 @@ namespace JLEngine
 		NormalGen NormalGenType = NormalGen::Smooth; // type of normals to generate
 	};
 
-	class AssetLoader
+	class ResourceLoader
 	{
 	public:
-		AssetLoader(Graphics* graphics, ResourceManager<ShaderProgram>* shaderManager, ResourceManager<Mesh>* meshManager,
-			ResourceManager<Material>* materialManager, ResourceManager<Texture>* textureManager, ResourceManager<RenderTarget>* rtManager, 
-			ResourceManager<ShaderStorageBuffer>* ssboManager);
+		ResourceLoader(GraphicsAPI* graphics);
 
-		~AssetLoader();
+		~ResourceLoader();
 
 		ResourceManager<ShaderProgram>* GetShaderManager()   const { return m_shaderManager;}
 		ResourceManager<Texture>* GetTextureManager()        const { return m_textureManager; }
 		ResourceManager<Mesh>* GetMeshManager()           const { return m_meshManager; }
 		ResourceManager<Material>* GetMaterialManager()       const { return m_materialManager; }
 		ResourceManager<RenderTarget>* GetRenderTargetManager()   const { return m_renderTargetManager; }
-		ResourceManager<ShaderStorageBuffer>* GetShaderStorageManager()  const { return m_shaderStorageManager; }
 
-		std::shared_ptr<Node> LoadGLB(const std::string& glbFile);
+		std::shared_ptr<Node> LoadGLB(const std::string& glbFile);		
 		void SetGlobalGenerationSettings(AssetGenerationSettings& settings) { m_settings = settings; }
 
 		// Texture Loading ///////////////////////////////////
-		Texture* CreateEmptyTexture(const std::string& name);
-		Texture* CreateTextureFromFile(const std::string& name, const std::string& filename,
-			bool clamped = false, bool mipmaps = false);
-		Texture* CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, void* data,
-			int internalFormat, int format, int dataType, bool clamped = false, bool mipmaps = false);
-		Texture* CreateTextureFromData(const std::string& name, uint32_t width, uint32_t height, int channels, vector<unsigned char>& data,
-			bool clamped = false, bool mipmaps = false);
-		Texture* CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
+		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath, const TexParams& texParams = TexParams(), int outputChannels = 0);		
+		std::shared_ptr<Texture> CreateTexture(const std::string& name, ImageData& imageData, const TexParams& texParams = TexParams());
+		std::shared_ptr<Texture> CreateTexture(const std::string& name);
+		void DeleteTexture(const std::string& name);
+
+		std::shared_ptr<Cubemap> CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
 
 		// Shader Loading ///////////////////////////////////
 		ShaderProgram* CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
@@ -94,15 +92,11 @@ namespace JLEngine
 		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo);
 		Mesh* CreateMesh(const std::string& name);
 
-		// SSBO Loading ///////////////////////////////////
-		ShaderStorageBuffer* CreateSSBO(const std::string& name, size_t size);
-		void UpdateSSBO(const std::string& name, const void* data, size_t size);
-
-		Graphics* GetGraphics() { return m_graphics; }
+		GraphicsAPI* GetGraphics() { return m_graphics; }
 	protected:
 
 		AssetGenerationSettings m_settings;
-		Graphics* m_graphics;
+		GraphicsAPI* m_graphics;
 
 		/* Managers */
 		ResourceManager<Texture>* m_textureManager;
@@ -110,10 +104,13 @@ namespace JLEngine
 		ResourceManager<Mesh>* m_meshManager;
 		ResourceManager<Material>* m_materialManager;
 		ResourceManager<RenderTarget>* m_renderTargetManager;
-		ResourceManager<ShaderStorageBuffer>* m_shaderStorageManager;
+		ResourceManager<Cubemap>* m_cubemapManager;
+
+		TextureFactory* m_textureFactory;
+		CubemapFactory* m_cubemapFactory;
+		ShaderFactory* m_shaderFactory;
 
 		/* Shader Manager Variables */
-		std::unordered_map<std::string, std::filesystem::file_time_type> m_shaderTimestamps;
 		bool m_hotReload;
 		float m_pollTimeSeconds = 1.0;
 		float m_accumTime = 0;

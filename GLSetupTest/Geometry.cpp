@@ -1,5 +1,5 @@
 #include "Geometry.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "Types.h"
 
 #include <unordered_map>
@@ -13,7 +13,7 @@
 
 namespace JLEngine
 {
-	Mesh* Geometry::GenerateSphereMesh(Graphics* graphics, string name, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments)
+	void Geometry::GenerateSphereMesh(VertexArrayObject& vao, float radius, unsigned int latitudeSegments, unsigned int longitudeSegments)
 	{
         std::vector<float> vertices;
         std::vector<unsigned int> indices;
@@ -78,24 +78,22 @@ namespace JLEngine
             }
         }
 
-        JLEngine::VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
         vbo.Set(vertices);
-        JLEngine::VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 3);
-        JLEngine::VertexAttribute normAttri(JLEngine::AttributeType::NORMAL, sizeof(float) * 3, 3);
-        JLEngine::VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, sizeof(float) * 6, 2);
-        vbo.AddAttribute(posAttri);
-        vbo.AddAttribute(normAttri);
-        vbo.AddAttribute(uvAttri);
-        vbo.CalcStride();
 
-        JLEngine::IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
+        vao.AddAttribute(JLEngine::AttributeType::POSITION);
+        vao.AddAttribute(JLEngine::AttributeType::NORMAL);
+        vao.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
+
+        vao.CalcStride();
+        vao.SetVertexBuffer(vbo);
+
+        IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
         ibo.Set(indices);
-
-        throw std::exception("Need to create a new mesh here");
-        return nullptr;
+        vao.SetIndexBuffer(ibo);
 	}
 
-    VertexBuffer Geometry::CreateBox(Graphics* graphics)
+    void Geometry::CreateBox(VertexArrayObject& vao)
     {
         const float skyboxVertices[] =
         {
@@ -146,25 +144,15 @@ namespace JLEngine
         std::vector<float> verts;
         verts.insert(verts.end(), std::begin(skyboxVertices), std::end(skyboxVertices));
 
-        VertexBuffer skyboxVBO;
+        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
+        vbo.Set(verts);
 
-        skyboxVBO.SetDataType(GL_FLOAT);
-        skyboxVBO.SetType(GL_ARRAY_BUFFER);
-        skyboxVBO.SetDrawType(GL_STATIC_DRAW);
-
-        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 3);
-        skyboxVBO.AddAttribute(posAttri);
-        skyboxVBO.Set(verts);
-        skyboxVBO.CalcStride();
-
-        skyboxVBO.SetVAO(graphics->CreateVertexArray());
-        graphics->CreateVertexBuffer(skyboxVBO);
-        graphics->BindVertexArray(0);
-
-        return skyboxVBO;
+        vao.SetVertexBuffer(vbo);
+        vao.AddAttribute(JLEngine::AttributeType::POSITION);
+        vao.CalcStride();
     }
 
-    VertexBuffer Geometry::CreateScreenSpaceTriangle(Graphics* graphics)
+    void Geometry::CreateScreenSpaceTriangle(VertexArrayObject& vao)
     {
         const float triangleVertices[] =
         {
@@ -176,25 +164,16 @@ namespace JLEngine
         std::vector<float> triVerts;
         triVerts.insert(triVerts.end(), std::begin(triangleVertices), std::end(triangleVertices));
 
-        VertexBuffer vbo;
-        vbo.SetDataType(GL_FLOAT);
-        vbo.SetType(GL_ARRAY_BUFFER);
-        vbo.SetDrawType(GL_STATIC_DRAW);
-
-        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 2);
-        VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, 2 * sizeof(float), 2);
-        vbo.AddAttribute(posAttri);
-        vbo.AddAttribute(uvAttri);
+        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
         vbo.Set(triVerts);
-        vbo.CalcStride();
 
-        vbo.SetVAO(graphics->CreateVertexArray());
-        graphics->CreateVertexBuffer(vbo);
-        graphics->BindVertexArray(0);
-        return vbo;
+        vao.SetVertexBuffer(vbo);
+        vao.AddAttribute(JLEngine::AttributeType::POSITION2F);
+        vao.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
+        vao.CalcStride();
     }
 
-    std::tuple<VertexBuffer, IndexBuffer> Geometry::CreateScreenSpaceQuad(Graphics* graphics)
+    void Geometry::CreateScreenSpaceQuad(VertexArrayObject& vao)
     {
         const float quadVerticesArray[] = 
         {
@@ -213,29 +192,19 @@ namespace JLEngine
         std::vector<float> quadVerts;
         quadVerts.insert(quadVerts.end(), std::begin(quadVerticesArray), std::end(quadVerticesArray));
 
-        VertexBuffer vbo;
-        vbo.SetDataType(GL_FLOAT);
-        vbo.SetType(GL_ARRAY_BUFFER);
-        vbo.SetDrawType(GL_STATIC_DRAW);
-
-        VertexAttribute posAttri(JLEngine::AttributeType::POSITION, 0, 2);
-        VertexAttribute uvAttri(JLEngine::AttributeType::TEX_COORD_0, 2 * sizeof(float), 2);
-        vbo.AddAttribute(posAttri);
-        vbo.AddAttribute(uvAttri);
+        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
         vbo.Set(quadVerts);
-        vbo.CalcStride();
 
-        vbo.SetVAO(graphics->CreateVertexArray());
-        graphics->CreateVertexBuffer(vbo);        
+        vao.AddAttribute(JLEngine::AttributeType::POSITION2F);
+        vao.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
+        vao.CalcStride();
 
         std::vector<uint32_t> quadIndices;
         quadIndices.insert(quadIndices.end(), std::begin(quadIndicesArray), std::end(quadIndicesArray));
+
         IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
         ibo.Set(quadIndices);
-        graphics->CreateIndexBuffer(ibo);
-        graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo.GetId());
-
-        return std::tuple<VertexBuffer, IndexBuffer>(vbo, ibo);
+        vao.SetIndexBuffer(ibo);
     }
 
     void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,

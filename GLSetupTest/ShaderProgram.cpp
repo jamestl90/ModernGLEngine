@@ -1,5 +1,5 @@
 #include "ShaderProgram.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "Platform.h"
 
 namespace JLEngine
@@ -26,7 +26,7 @@ namespace JLEngine
 		UploadToGPU(m_graphics);
 	}
 
-	void ShaderProgram::UploadToGPU(Graphics* graphics)
+	void ShaderProgram::UploadToGPU(GraphicsAPI* graphics)
 	{
 		m_graphics = graphics;
 

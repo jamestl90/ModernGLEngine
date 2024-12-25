@@ -132,7 +132,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AssetLoader.cpp">
+    <ClCompile Include="Cubemap.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="Graphics.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
+    <ClCompile Include="ResourceLoader.cpp">
       <SubType>
       </SubType>
     </ClCompile>
@@ -165,7 +173,7 @@
       </SubType>
     </ClCompile>
     <ClCompile Include="GlobalVars.cpp" />
-    <ClCompile Include="Graphics.cpp" />
+    <ClCompile Include="GraphicsAPI.cpp" />
     <ClCompile Include="HDRISky.cpp">
       <SubType>
       </SubType>
@@ -181,10 +189,6 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="Input.cpp" />
-    <ClCompile Include="InstanceBuffer.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="JLEngine.cpp" />
     <ClCompile Include="JLHelpers.cpp">
       <SubType>
@@ -220,13 +224,29 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="VertexArrayObject.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="VertexBuffers.cpp" />
     <ClCompile Include="VertexStructures.cpp" />
     <ClCompile Include="ViewFrustum.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AssetLoader.h">
+    <ClInclude Include="Cubemap.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="CubemapFactory.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="ResourceLoader.h">
       <SubType>
       </SubType>
     </ClInclude>
@@ -260,7 +280,7 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="GlobalVars.h" />
-    <ClInclude Include="Graphics.h" />
+    <ClInclude Include="GraphicsAPI.h" />
     <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="HDRISky.h">
       <SubType>
@@ -272,10 +292,6 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Input.h" />
-    <ClInclude Include="InstanceBuffer.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="JLEngine.h" />
     <ClInclude Include="JLHelpers.h">
       <SubType>
@@ -297,6 +313,10 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShaderFactory.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="ShaderProgram.h" />
     <ClInclude Include="ShaderStorageBuffer.h">
       <SubType>
@@ -306,12 +326,17 @@
     <ClInclude Include="MainApp.h" />
     <ClInclude Include="BakeCubemapIrradiance.h" />
     <ClInclude Include="Texture.h" />
+    <ClInclude Include="TextureFactory.h" />
     <ClInclude Include="TextureReader.h" />
     <ClInclude Include="TextureWriter.h">
       <SubType>
       </SubType>
     </ClInclude>
     <ClInclude Include="Types.h" />
+    <ClInclude Include="VertexArrayObject.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="VertexBuffers.h" />
     <ClInclude Include="VertexStructures.h" />
     <ClInclude Include="ViewFrustum.h" />

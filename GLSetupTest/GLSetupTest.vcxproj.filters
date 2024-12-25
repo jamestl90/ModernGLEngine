@@ -37,6 +37,9 @@
     <Filter Include="Header Files\Graphics\Rendering\Shadows">
       <UniqueIdentifier>{5a15c969-0b70-4ee0-a629-ca31299beb62}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Core\Factory">
+      <UniqueIdentifier>{1354687e-9688-4a28-be9a-db9d076259b0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -54,7 +57,7 @@
     <ClCompile Include="Resource.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics.cpp">
+    <ClCompile Include="GraphicsAPI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CollisionShapes.cpp">
@@ -111,7 +114,7 @@
     <ClCompile Include="Material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AssetLoader.cpp">
+    <ClCompile Include="ResourceLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DeferredRenderer.cpp">
@@ -124,9 +127,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GLBLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="InstanceBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Batch.cpp">
@@ -180,6 +180,15 @@
     <ClCompile Include="GenerateBRDFLUT.cpp">
       <Filter>TestApps</Filter>
     </ClCompile>
+    <ClCompile Include="Cubemap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexArrayObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainApp.h">
@@ -197,7 +206,7 @@
     <ClInclude Include="DeferredRenderer.h">
       <Filter>Header Files\Graphics\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics.h">
+    <ClInclude Include="GraphicsAPI.h">
       <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h">
@@ -224,7 +233,7 @@
     <ClInclude Include="ShaderProgram.h">
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
-    <ClInclude Include="AssetLoader.h">
+    <ClInclude Include="ResourceLoader.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
     <ClInclude Include="Buffer.h">
@@ -290,9 +299,6 @@
     <ClInclude Include="ViewFrustum.h">
       <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="InstanceBuffer.h">
-      <Filter>Header Files\Graphics\Resources</Filter>
-    </ClInclude>
     <ClInclude Include="ImageData.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
@@ -316,6 +322,24 @@
     </ClInclude>
     <ClInclude Include="GraphicsResource.h">
       <Filter>Header Files\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="Cubemap.h">
+      <Filter>Header Files\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <Filter>Header Files\Graphics\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexArrayObject.h">
+      <Filter>Header Files\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="CubemapFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

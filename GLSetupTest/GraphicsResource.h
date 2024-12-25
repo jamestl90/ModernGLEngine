@@ -7,26 +7,22 @@
 
 namespace JLEngine
 {
-    class Graphics; 
+    class GraphicsAPI; 
 
     class GraphicsResource : public Resource
     {
     public:
-        explicit GraphicsResource(const std::string& name, Graphics* graphics)
+        explicit GraphicsResource(const std::string& name, GraphicsAPI* graphics)
             : Resource(name), m_graphics(graphics) {}
 
         virtual ~GraphicsResource() = default;
 
-        Graphics* GetGraphics() const { return m_graphics; }
-
-        // Mandatory GPU-related functions
-        virtual void UploadToGPU() = 0;
-        virtual void UnloadFromGPU() = 0;
+        GraphicsAPI* GetGraphics() const { return m_graphics; }
 
         void SetGPUID(uint32_t id) { m_gpuID = id; }
         void SetGPUIDs(const std::vector<uint32_t>& ids) { m_gpuID = ids; }
 
-        uint32_t GetSingleGPUID() const
+        uint32_t GetGPUID() const
         {
             return std::get<uint32_t>(m_gpuID);
         }
@@ -40,7 +36,7 @@ namespace JLEngine
         bool IsMultiID() const { return std::holds_alternative<std::vector<uint32_t>>(m_gpuID); }
 
     private:
-        Graphics* m_graphics; // Graphics context
+        GraphicsAPI* m_graphics; // Graphics context
         std::variant<uint32_t, std::vector<uint32_t>> m_gpuID;
     };
 }
