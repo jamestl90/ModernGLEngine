@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <set>
 #include <vector>
+#include <glad/glad.h>
 
 using std::pair;
 using std::vector;
@@ -82,7 +83,7 @@ namespace JLEngine
 		~VertexBuffer();
 
 		uint32_t SizeInBytes();
-	};
+	};	
 
 	pair<glm::vec3, glm::vec3> findMaxMinPair(VertexBuffer&  vertices);
 }

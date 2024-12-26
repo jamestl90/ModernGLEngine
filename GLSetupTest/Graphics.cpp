@@ -1,11 +1,12 @@
 #include "Graphics.h"
-#include "GraphicsAPI.h"
 #include "Texture.h"
 #include "Cubemap.h"
 #include "Window.h"
 #include "VertexArrayObject.h"
 #include "ShaderProgram.h"
 #include "FileHelpers.h"
+#include "VertexBuffers.h"
+#include "GraphicsAPI.h"
 
 namespace JLEngine
 {
@@ -181,63 +182,60 @@ namespace JLEngine
 		glBindVertexArray(vaoID);
 		vao->SetGPUID(vaoID);
 
-		if (vao->GetVBO().GetId() != 0)
+		CreateVertexBuffer(vao->GetVBO());
+
+		auto vertexAttribKey = vao->GetAttribKey();
+		uint32_t offset = 0;
+		uint32_t index = 0;
+		uint32_t stride = CalculateStride(vao);
+
+		for (uint32_t i = 0; i < static_cast<uint32_t>(AttributeType::COUNT); ++i)
 		{
-			CreateVertexBuffer(vao->GetVBO());
-
-			auto vertexAttribKey = vao->GetAttribKey();
-			uint32_t offset = 0;
-			uint32_t index = 0;
-			uint32_t stride = CalculateStride(vertexAttribKey);
-
-			for (uint32_t i = 0; i < static_cast<uint32_t>(AttributeType::COUNT); ++i)
+			if (vertexAttribKey & (1 << i))
 			{
-				if (vertexAttribKey & (1 << i))
+				GLenum type = GL_FLOAT;
+				GLsizei size = 0;
+
+				switch (static_cast<AttributeType>(1 << i))
 				{
-					GLenum type = GL_FLOAT;
-					GLsizei size = 0;
-
-					switch (static_cast<AttributeType>(1 << i))
-					{
-					case AttributeType::POSITION:
-						size = 3;
-						break;
-					case AttributeType::NORMAL:
-						size = 3;
-						break;
-					case AttributeType::TEX_COORD_0:
-						size = 2;
-						break;
-					case AttributeType::TEX_COORD_1:
-						size = 2;
-						break;
-					case AttributeType::COLOUR:
-						size = 4;
-						break;
-					case AttributeType::TANGENT:
-						size = 4;
-						break;
-					default:
-						std::cerr << "Unsupported attribute type!" << std::endl;
-						continue;
-					}
-
-					glEnableVertexAttribArray(index);
-					glVertexAttribPointer(
-						index,
-						size,
-						type,
-						GL_FALSE,
-						stride,
-						BUFFER_OFFSET(offset)
-					);
-
-					offset += size * sizeof(float);
-					++index; 
+				case AttributeType::POSITION:
+					size = vao->GetPosCount();
+					break;
+				case AttributeType::NORMAL:
+					size = 3;
+					break;
+				case AttributeType::TEX_COORD_0:
+					size = 2;
+					break;
+				case AttributeType::TEX_COORD_1:
+					size = 2;
+					break;
+				case AttributeType::COLOUR:
+					size = 4;
+					break;
+				case AttributeType::TANGENT:
+					size = 4;
+					break;
+				default:
+					std::cerr << "Unsupported attribute type!" << std::endl;
+					continue;
 				}
+
+				glEnableVertexAttribArray(index);
+				glVertexAttribPointer(
+					index,
+					size,
+					type,
+					GL_FALSE,
+					stride,
+					BUFFER_OFFSET(offset)
+				);
+
+				offset += size * sizeof(float);
+				++index; 
 			}
 		}
-		if (vao->GetIBO().GetId() != 0)
+		if (vao->HasIndices())
 		{
 			CreateIndexBuffer(vao->GetIBO());
 		}

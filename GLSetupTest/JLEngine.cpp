@@ -20,7 +20,7 @@ namespace JLEngine
         
         Graphics::Initialise(m_window.get());
 
-        m_resourceLoader = std::make_unique<ResourceLoader>(Graphics::API());
+        m_resourceLoader = new ResourceLoader(Graphics::API());
 
         m_resourceLoader->SetHotReloading(true);
         m_input->SetRawMouseMotion(true);
@@ -144,6 +144,6 @@ namespace JLEngine
     }
     ResourceLoader* JLEngineCore::GetResourceLoader() const
     {
-        return m_resourceLoader.get();
+        return m_resourceLoader;
     }
 }

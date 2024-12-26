@@ -39,6 +39,8 @@ namespace JLEngine
 
 		bool InsertAt(int pos, T* vals, int count);
 
+		void Append(std::vector<T>& vals);
+
 		void Add(T& val);
 
 		T* Array();
@@ -75,6 +77,12 @@ namespace JLEngine
 			std::cout << e.what() << std::endl;
 			return false;
 		}
+	}
+
+	template<class T>
+	void Buffer<T>::Append(std::vector<T>& vals)
+	{
+		m_buffer.insert(m_buffer.end(), vals.begin(), vals.end());
 	}
 
 	template <class T>

@@ -34,7 +34,8 @@ int BakeCubemapIrradiance(std::string assetFolder)
     auto graphics = engine.GetGraphicsAPI();
     auto baker = new JLEngine::CubemapBaker(assetFolder, engine.GetResourceLoader());
 
-    auto hdriImage = JLEngine::TextureReader::LoadTexture(assetFolder + "HDRI/" + hdriTexture + ".hdr", true);
+    JLEngine::ImageData hdriImage;
+    JLEngine::TextureReader::LoadTexture(assetFolder + "HDRI/" + hdriTexture + ".hdr", hdriImage, 0);
     channels = hdriImage.channels;
     int cubemapSize = hdriImage.width / 4;
     

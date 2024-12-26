@@ -42,8 +42,6 @@ namespace JLEngine
         // Add an existing resource
         uint32_t Add(const std::string& name, ResourcePtr resource)
         {
-            std::scoped_lock lock(m_mutex);
-
             if (m_nameToId.find(name) != m_nameToId.end())
             {
                 return m_nameToId[name]; // Return existing ID if already added

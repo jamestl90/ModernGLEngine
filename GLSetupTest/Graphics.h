@@ -2,7 +2,6 @@
 #define GRAPHICS_H
 
 #include "Texture.h"
-#include "VertexBuffers.h"
 
 namespace JLEngine
 {
@@ -13,6 +12,8 @@ namespace JLEngine
 	class VertexArrayObject;
 	class ShaderProgram;
 	class RenderTarget;
+	class IndexBuffer;
+	class VertexBuffer;
 
 	class Graphics
 	{

@@ -100,24 +100,25 @@ int MainApp(std::string assetFolder)
     auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
     mat->castShadows = false;
     mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    planeNode->mesh->GetBatches()[0]->SetMaterial(mat.get());
+    planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
     planeNode->translation -= glm::vec3(0, 2.5f, 0);
 
-    auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
-    metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-
-    auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    helmet->mesh->GetBatches()[0]->GetMaterial()->castShadows = false;
-
-    auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
-    potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
-    potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
-
-    auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
-    fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
-    fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
-
-    cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
+    //auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    //metallicSpheres->translation += glm::vec3(0, 2.5, -5);
+    //
+    //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
+    //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
+    //
+    //auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
+    //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
+    //potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
+    //
+    //auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
+    //fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
+    //fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
+    //
+    //cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
     //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
     //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
@@ -125,15 +126,21 @@ int MainApp(std::string assetFolder)
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
     sceneRoot->AddChild(planeNode);
-    sceneRoot->AddChild(metallicSpheres);
-    sceneRoot->AddChild(helmet);
-    sceneRoot->AddChild(potofcoals);
-    sceneRoot->AddChild(fish);
-    sceneRoot->AddChild(cardinalDirections);
+    //sceneRoot->AddChild(metallicSpheres);
+    //sceneRoot->AddChild(helmet);
+    //sceneRoot->AddChild(potofcoals);
+    //sceneRoot->AddChild(fish);
+    //sceneRoot->AddChild(cardinalDirections);
 
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),
         SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
     m_defRenderer->Initialize();
+    
+    for (auto [key, vao] : engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs())
+    {
+        m_defRenderer->AddStaticVAO(key, vao);
+    }
+    m_defRenderer->GenerateGPUBuffers(sceneRoot.get());
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 

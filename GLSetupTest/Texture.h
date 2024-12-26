@@ -21,7 +21,7 @@ namespace JLEngine
         uint32_t minFilter =        GL_LINEAR;
         uint32_t magFilter =        GL_LINEAR;
         uint32_t textureType =      GL_TEXTURE_2D;
-        uint32_t internalFormat =   GL_RGBA8;
+        uint32_t internalFormat =   GL_RGBA;
         uint32_t format =           GL_RGBA;
         uint32_t dataType =         GL_UNSIGNED_BYTE;
     };
@@ -41,6 +41,22 @@ namespace JLEngine
         void SetParams(const TexParams& params);
 
         void SetFormat(uint32_t dataType, uint32_t internalFormat, uint32_t format);
+
+        static TexParams RGBATexParams()
+        {
+            TexParams texParams;
+            texParams.internalFormat = GL_RGBA;
+            texParams.format = GL_RGBA;
+            return texParams;
+        }
+
+        static TexParams RGBTexParams()
+        {
+            TexParams texParams;
+            texParams.internalFormat = GL_RGB;
+            texParams.format = GL_RGB;
+            return texParams;
+        }
 
     private:
         GraphicsAPI* m_graphics = nullptr;  

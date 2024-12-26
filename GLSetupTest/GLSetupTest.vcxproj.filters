@@ -129,9 +129,6 @@
     <ClCompile Include="GLBLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Batch.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DirectionalLightShadowMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -187,6 +184,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="VertexArrayObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IndirectDrawBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -346,6 +346,15 @@
     </ClInclude>
     <ClInclude Include="RenderTargetFactory.h">
       <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexArrayObjectFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="IndirectDrawBuffer.h">
+      <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

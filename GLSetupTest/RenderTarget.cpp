@@ -10,10 +10,7 @@ namespace JLEngine
 		: GraphicsResource(name, graphics), m_fbo(0), m_dbo(0), m_numSources(1),
 		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
 	{
-		for (uint32_t i = 0; i < m_numSources; i++)
-		{
-			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
-		}
+
 	}
 
 	RenderTarget::~RenderTarget()
@@ -78,6 +75,7 @@ namespace JLEngine
 
 		m_sources.resize(m_numSources);
 		m_drawBuffers.resize(m_numSources);
+		m_attributes.resize(m_numSources);
 
 		for (uint32_t i = 0; i < m_numSources; i++)
 		{

@@ -9,6 +9,7 @@
 
 #include "VertexBuffers.h"
 #include "Batch.h"
+#include "Mesh.h"
 
 namespace JLEngine
 {
@@ -39,17 +40,20 @@ namespace JLEngine
 	class GLBLoader
 	{
 	public:
-		GLBLoader(ResourceLoader* assetLoader);
+		GLBLoader(ResourceLoader* resourceLoader);
 
 		std::shared_ptr<Node> LoadGLB(const std::string& fileName);
 
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetStaticVAOs() { return m_staticVAOs; }
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetDynamicVAOs() { return m_dynamicVAOs; }
+
 	protected:
 		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode);
-		Mesh* ParseMesh(const tinygltf::Model& model, int meshIndex);
-		Material* ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
+		std::shared_ptr<Mesh> ParseMesh(const tinygltf::Model& model, int meshIndex);
+		std::shared_ptr<Material> ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
 		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
-		std::shared_ptr<Batch> CreateBatch(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
+		SubMesh CreateSubMesh(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
 		
 		bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<unsigned int>& indices);
 		bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData);
@@ -66,12 +70,15 @@ namespace JLEngine
 		glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue);
 
 	private:
-		std::unordered_map<int, Mesh*> meshCache;
-		std::unordered_map<int, Material*> materialCache;
+		std::unordered_map<int, std::shared_ptr<Mesh>> meshCache;
+		std::unordered_map<int, std::shared_ptr<Material>> materialCache;
 		std::unordered_map<int, std::shared_ptr<Texture>> textureCache;
 		std::unordered_map<int, std::vector<std::shared_ptr<Node>>> meshNodeReferences;
 
-		ResourceLoader* m_assetLoader;
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;
+
+		ResourceLoader* m_resourceLoader;
 	};
 }
 

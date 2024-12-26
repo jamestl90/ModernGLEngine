@@ -17,10 +17,11 @@ namespace JLEngine
             : m_textureManager(textureManager), m_graphics(graphics) {}
 
         // Create a texture from a file
-        std::shared_ptr<Texture> CreateFromFile(const std::string& name, const std::string& filePath, const TexParams& texParams = TexParams(), int outputChannels = 0)
+        std::shared_ptr<Texture> CreateFromFile(const std::string& name, const std::string& filePath, const TexParams& texParams, int outputChannels = 0)
         {
             return m_textureManager->Load(name, [&]() {
-                ImageData imageData = TextureReader::LoadTexture(filePath, outputChannels);
+                ImageData imageData;
+                TextureReader::LoadTexture(filePath, imageData, outputChannels);
                 if (!imageData.IsValid())
                 {
                     std::cerr << "Failed to load texture: " << filePath << std::endl;
@@ -30,6 +31,26 @@ namespace JLEngine
                 auto texture = std::make_shared<Texture>(name, m_graphics);
                 texture->InitFromData(std::move(imageData));
                 texture->SetParams(texParams);
+                Graphics::CreateTexture(texture.get());
+                return texture;
+                });
+        }
+
+        std::shared_ptr<Texture> CreateFromFile(const std::string& name, const std::string& filePath)
+        {
+            return m_textureManager->Load(name, [&]() {
+                ImageData imageData;
+                TextureReader::LoadTexture(filePath, imageData, 0);
+                if (!imageData.IsValid())
+                {
+                    std::cerr << "Failed to load texture: " << filePath << std::endl;
+                    return std::shared_ptr<Texture>(nullptr);
+                }
+
+                auto texture = std::make_shared<Texture>(name, m_graphics);
+                texture->InitFromData(std::move(imageData));
+                TexParams texParams;
+                texture->SetParams(imageData.channels == 3 ? Texture::RGBTexParams() : Texture::RGBATexParams());
                 Graphics::CreateTexture(texture.get());
                 return texture;
                 });

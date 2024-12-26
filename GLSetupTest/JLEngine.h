@@ -40,7 +40,7 @@ namespace JLEngine
 
         std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
-        std::unique_ptr<ResourceLoader> m_resourceLoader;
+        ResourceLoader* m_resourceLoader;
 
         // Frame timing variables
         int m_maxFrameRate;

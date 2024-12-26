@@ -9,38 +9,37 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include "VertexBuffers.h"
+#include "IndirectDrawBuffer.h"
 
 namespace JLEngine
 {
 	class GraphicsAPI;
-	class Batch;
+	class VertexArrayObject;
 
-	struct IndirectDrawData 
+	struct SubMesh
 	{
-		uint32_t count;         
-		uint32_t instanceCount; 
-		uint32_t firstIndex;    
-		uint32_t baseVertex;    
-		uint32_t baseInstance;  
+		uint32_t attribKey;
+		uint32_t materialHandle;
+		DrawIndirectCommand command;
 	};
 
 	class Mesh : public Resource
 	{
 	public:
 		Mesh(const string& name);
-		Mesh(uint32_t handle, const string& name);
 		~Mesh();
 
-		void UploadToGPU(GraphicsAPI* graphics, bool freeData = false);
-		void UnloadFromGPU();
+		void AddSubmesh(const SubMesh& submesh) { m_subMeshes.push_back(submesh); }
+		std::vector<SubMesh>& GetSubmeshes() { return m_subMeshes; }
 
-        void AddBatch(std::shared_ptr<Batch> batch) { m_batches.push_back(batch); }
-		const std::vector<std::shared_ptr<Batch>>& GetBatches() const { return m_batches; }
+		bool IsStatic() const { return m_isStatic; }
+		void SetStatic(bool flag) { m_isStatic = flag; }
 
-	private:
+	private:	
 
-		GraphicsAPI* m_graphics;
-        std::vector<std::shared_ptr<Batch>> m_batches;
+		bool m_isStatic = false;
+		std::vector<SubMesh> m_subMeshes;		
 	};
 }
 

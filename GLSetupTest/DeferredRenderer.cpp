@@ -1,6 +1,6 @@
 #include "DeferredRenderer.h"
 #include "Material.h"
-#include "GraphicsAPI.h"
+#include "Graphics.h"
 #include "DirectionalLightShadowMap.h"
 #include "HDRISky.h"
 
@@ -48,26 +48,6 @@ namespace JLEngine
         m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
         m_lightingTestShader = m_resourceLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", shaderAssetPath).get();
         m_debugTextureShader = m_resourceLoader->CreateShaderFromFile("DebugTexture", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
-
-        //std::string hdriFolder = "venice_sunset_4k";
-        //std::array<std::string, 6> hdriFiles = 
-        //{
-        //    hdriFolder + "/posx.hdr",
-        //    hdriFolder + "/negx.hdr",
-        //    hdriFolder + "/posy.hdr",
-        //    hdriFolder + "/negy.hdr",
-        //    hdriFolder + "/posz.hdr",
-        //    hdriFolder + "/negz.hdr"
-        //};
-        //std::array<std::string, 6> irradianceFiles =
-        //{
-        //    hdriFolder + "/irradiance_posx.hdr",
-        //    hdriFolder + "/irradiance_negx.hdr",
-        //    hdriFolder + "/irradiance_posy.hdr",
-        //    hdriFolder + "/irradiance_negy.hdr",
-        //    hdriFolder + "/irradiance_posz.hdr",
-        //    hdriFolder + "/irradiance_negz.hdr"
-        //};
 
         HdriSkyInitParams params;
         params.fileName = "rogland_clear_night_4k.hdr";
@@ -140,13 +120,13 @@ namespace JLEngine
 
             for (const auto& batch : batches)
             {
-                m_graphics->BindVertexArray(batch.first->GetVertexBuffer()->GetVAO());
-                m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.first->GetIndexBuffer()->GetId());
-
-                glm::mat4 modelMatrix = batch.second;
-                m_dlShadowMap->SetModelMatrix(modelMatrix);
-
-                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
+                //m_graphics->BindVertexArray(batch.first->GetVertexBuffer()->GetVAO());
+                //m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.first->GetIndexBuffer()->GetId());
+                //
+                //glm::mat4 modelMatrix = batch.second;
+                //m_dlShadowMap->SetModelMatrix(modelMatrix);
+                //
+                //m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
             }
         }
         m_graphics->BindFrameBuffer(0);
@@ -572,11 +552,11 @@ namespace JLEngine
         // If the node contains a mesh, add its batches to the appropriate group
         if (node->GetTag() == NodeTag::Mesh && node->mesh)
         {
-            for (auto& batch : node->mesh->GetBatches())
-            {
-                RenderGroupKey key(batch->GetMaterial()->GetHandle(), batch->attributesKey);
-                renderGroups[key].emplace_back(batch.get(), worldMatrix);
-            }
+            //for (auto& batch : node->mesh->GetBatches())
+            //{
+            //    RenderGroupKey key(batch->GetMaterial()->GetHandle(), batch->attributesKey);
+            //    renderGroups[key].emplace_back(batch.get(), worldMatrix);
+            //}
         }
         //if (node->GetTag() == NodeTag::Skybox && node->mesh)
         //{
@@ -605,15 +585,15 @@ namespace JLEngine
             for (const auto& batch : batches)
             {
                 // Bind vertex and index buffers
-                m_graphics->BindVertexArray(batch.first->GetVertexBuffer()->GetVAO());
-                m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.first->GetIndexBuffer()->GetId());
-
-                // Set model matrix
-                glm::mat4 modelMatrix = batch.second;
-                m_gBufferShader->SetUniform("u_Model", modelMatrix);
-
-                // Issue draw call
-                m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
+                //m_graphics->BindVertexArray(batch.first->GetVertexBuffer()->GetVAO());
+                //m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, batch.first->GetIndexBuffer()->GetId());
+                //
+                //// Set model matrix
+                //glm::mat4 modelMatrix = batch.second;
+                //m_gBufferShader->SetUniform("u_Model", modelMatrix);
+                //
+                //// Issue draw call
+                //m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)batch.first->GetIndexBuffer()->Size(), GL_UNSIGNED_INT, nullptr);
             }
         }
     }

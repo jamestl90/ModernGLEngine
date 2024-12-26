@@ -16,7 +16,7 @@ namespace JLEngine
         {
             return m_materialManager->Load(name, [&]()
             {
-                auto mat = std::make_unique<Material>(name);
+                auto mat = std::make_shared<Material>(name);
 
                 return mat;
             });

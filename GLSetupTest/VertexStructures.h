@@ -17,11 +17,12 @@ namespace JLEngine
 		COLOUR		= 1 << 3,
 		TANGENT		= 1 << 4,
 		TEX_COORD_1 = 1 << 5,
-		POSITION2F	= 1 << 6,
-		COUNT		= 7			// num elements in this enum 
+		COUNT		= 6			// num elements in this enum 
 	};
 
 	using VertexAttribKey = uint32_t;
+
+	class VertexArrayObject;
 
 	struct VertexAttribute
 	{
@@ -48,7 +49,8 @@ namespace JLEngine
 	void RemoveFromVertexAttribKey(VertexAttribKey& key, AttributeType type);
 	bool HasVertexAttribKey(uint32_t mask, AttributeType attribute);
 
-	uint32_t CalculateStride(VertexAttribKey vertexAttribKey);
+	uint32_t CalculateStride(VertexArrayObject* vao);
+	uint32_t CalculateStride(VertexAttribKey key, int posCount = 3);
 }
 
 #endif

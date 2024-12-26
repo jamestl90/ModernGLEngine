@@ -29,7 +29,7 @@ namespace JLEngine
         Geometry::CreateBox(m_skyboxVAO);
         Graphics::CreateVertexArray(&m_skyboxVAO);
 
-        m_hdriSkyImageData = TextureReader::LoadTexture(assetPath + "HDRI/" + initParams.fileName, true);
+        TextureReader::LoadTexture(assetPath + "HDRI/" + initParams.fileName, m_hdriSkyImageData, 0);
         int cubemapSize = m_hdriSkyImageData.width / 4;
 
         Graphics::API()->Enable(GL_TEXTURE_CUBE_MAP_SEAMLESS);

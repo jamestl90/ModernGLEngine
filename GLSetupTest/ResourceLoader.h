@@ -15,6 +15,9 @@
 #include "ShaderFactory.h"
 #include "MaterialFactory.h"
 #include "RenderTargetFactory.h"
+#include "VertexArrayObjectFactory.h"
+#include "MeshFactory.h"
+#include "GLBLoader.h"
 
 namespace JLEngine
 {
@@ -25,6 +28,7 @@ namespace JLEngine
 	class Mesh;
 	class Node;
 	class GraphicsAPI;
+	class VertexArrayObject;
 
 	struct TextureAttribute;
 	
@@ -60,7 +64,8 @@ namespace JLEngine
 		void SetGlobalGenerationSettings(AssetGenerationSettings& settings) { m_settings = settings; }
 
 		// Texture Loading ///////////////////////////////////
-		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath, const TexParams& texParams = TexParams(), int outputChannels = 0);		
+		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath, const TexParams& texParams, int outputChannels = 0);		
+		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath);
 		std::shared_ptr<Texture> CreateTexture(const std::string& name, ImageData& imageData, const TexParams& texParams = TexParams());
 		std::shared_ptr<Texture> CreateTexture(const std::string& name);
 		void DeleteTexture(const std::string& name);
@@ -88,11 +93,13 @@ namespace JLEngine
 			int width, int height, std::vector<TextureAttribute>& texAttribs, 
 			JLEngine::DepthType depthType, uint32_t numSources);
 		
-		// Mesh Loading ///////////////////////////////////
-		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo);
-		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo);
-		Mesh* CreateMesh(const std::string& name);
+		// VAO LOADING ///////////////////////////////////////
+		std::shared_ptr<VertexArrayObject> CreateVertexArray(const std::string& name);
 
+		// Mesh Loading ///////////////////////////////////
+		std::shared_ptr<Mesh> CreateMesh(const std::string& name);
+
+		GLBLoader* GetGLBLoader() { return m_glbLoader; }
 		GraphicsAPI* GetGraphics() { return m_graphics; }
 	protected:
 
@@ -108,17 +115,22 @@ namespace JLEngine
 		ResourceManager<Material>* m_materialManager;
 		ResourceManager<RenderTarget>* m_renderTargetManager;
 		ResourceManager<Cubemap>* m_cubemapManager;
+		ResourceManager<VertexArrayObject>* m_vaoManager;
 
 		TextureFactory* m_textureFactory;
 		CubemapFactory* m_cubemapFactory;
 		ShaderFactory* m_shaderFactory;
 		MaterialFactory* m_materialFactory;
 		RenderTargetFactory* m_renderTargetfactory;
+		VertexArrayObjectFactory* m_vaoFactory;
+		MeshFactory* m_meshFactory;
 
 		ShaderProgram* m_basicUnlit = nullptr;
 		ShaderProgram* m_basicLit = nullptr;
 		ShaderProgram* m_solidColor = nullptr;
 		ShaderProgram* m_screenSpaceQuad = nullptr;
+
+		GLBLoader* m_glbLoader;
 
 		/*  Material Manager Variables */
 		Material* m_defaultMat;

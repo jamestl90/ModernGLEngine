@@ -28,14 +28,18 @@ namespace JLEngine
         m_renderTargetManager = new ResourceManager<RenderTarget>();
         m_meshManager = new ResourceManager<Mesh>();
         m_cubemapManager = new ResourceManager<Cubemap>();
+        m_vaoManager = new ResourceManager<VertexArrayObject>();
 
         m_textureFactory = new TextureFactory(m_textureManager, graphics);
         m_cubemapFactory = new CubemapFactory(m_cubemapManager, graphics);
         m_shaderFactory = new ShaderFactory(m_shaderManager, graphics);
         m_materialFactory = new MaterialFactory(m_materialManager);
         m_renderTargetfactory = new RenderTargetFactory(m_renderTargetManager);
+        m_vaoFactory = new VertexArrayObjectFactory(m_vaoManager);
+        m_meshFactory = new MeshFactory(m_meshManager);
 
-        m_defaultMat = CreateMaterial("DefaultMaterial").get();
+        auto mat = CreateMaterial("DefaultMaterial");
+        m_defaultMat = mat.get();
     }
 
     ResourceLoader::~ResourceLoader() 
@@ -62,8 +66,10 @@ namespace JLEngine
 
     std::shared_ptr<Node> ResourceLoader::LoadGLB(const std::string& glbFile)
     {
-        auto glbLoader = new GLBLoader(this);
-        auto scene = glbLoader->LoadGLB(glbFile);
+        if (!m_glbLoader)
+            m_glbLoader = new GLBLoader(this);
+
+        auto scene = m_glbLoader->LoadGLB(glbFile);
         return scene;
     }
 
@@ -75,6 +81,11 @@ namespace JLEngine
     std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name, const std::string& filePath, const TexParams& texParams, int outputChannels)
     {
         return m_textureFactory->CreateFromFile(name, filePath, texParams, outputChannels);
+    }
+
+    std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name, const std::string& filePath)
+    {
+        return m_textureFactory->CreateFromFile(name, filePath);
     }
 
     std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name, ImageData& imageData, const TexParams& texParams)
@@ -289,34 +300,13 @@ namespace JLEngine
         return m_renderTargetfactory->CreateRenderTarget(name, width, height, texAttribs, depthType, numSources);
     }
 
-    Mesh* JLEngine::ResourceLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo)
+    std::shared_ptr<VertexArrayObject> ResourceLoader::CreateVertexArray(const std::string& name)
     {
-        return m_meshManager->Add(name, [&]()
-            {
-                auto mesh = std::make_unique<Mesh>(name);
-
-                mesh->UploadToGPU(m_graphics);
-                return mesh;
-            });
+        return m_vaoFactory->CreateVertexArray(name);
     }
 
-    Mesh* ResourceLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo)
+    std::shared_ptr<Mesh> ResourceLoader::CreateMesh(const std::string& name)
     {
-        return m_meshManager->Add(name, [&]()
-            {
-                auto mesh = std::make_unique<Mesh>(name);
-
-                mesh->UploadToGPU(m_graphics);
-                return mesh;
-            });
-    }
-
-    Mesh* ResourceLoader::CreateMesh(const std::string& name)
-    {
-        return m_meshManager->Add(name, [&]()
-            {
-                auto mesh = std::make_unique<Mesh>(name);
-                return mesh;
-            });
+        return m_meshFactory->CreateMesh(name);
     }
 }

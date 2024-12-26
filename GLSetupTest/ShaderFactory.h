@@ -23,24 +23,24 @@ namespace JLEngine
         {
             return m_shaderManager->Load(name, [&]()
                 {
-                    auto program = std::make_unique<ShaderProgram>(name, folderPath);
+                    auto program = std::make_shared<ShaderProgram>(name, folderPath);
 
                     Shader vertProgram(GL_VERTEX_SHADER, vert);
                     Shader fragProgram(GL_FRAGMENT_SHADER, frag);
 
-                    std::string shaderFile;
-                    if (!ReadTextFile(program->GetFilePath() + vertProgram.GetName(), shaderFile))
+                    std::string vertShaderFile;
+                    if (!ReadTextFile(program->GetFilePath() + vertProgram.GetName(), vertShaderFile))
                     {
                         throw "Could not find file: " + program->GetFilePath() + vertProgram.GetName(), "Graphics";
                     }
-                    vertProgram.SetSource(shaderFile);
+                    vertProgram.SetSource(vertShaderFile);
                     program->AddShader(vertProgram);
-
-                    if (!ReadTextFile(program->GetFilePath() + fragProgram.GetName(), shaderFile))
+                    std::string fragShaderFile;
+                    if (!ReadTextFile(program->GetFilePath() + fragProgram.GetName(), fragShaderFile))
                     {
                         throw "Could not find file: " + program->GetFilePath() + fragProgram.GetName(), "Graphics";
                     }
-                    fragProgram.SetSource(shaderFile);
+                    fragProgram.SetSource(fragShaderFile);
                     program->AddShader(fragProgram);
 
                     Graphics::CreateShader(program.get());
@@ -61,7 +61,7 @@ namespace JLEngine
         {
             return m_shaderManager->Load(name, [&]()
                 {
-                    auto program = std::make_unique<ShaderProgram>(name);
+                    auto program = std::make_shared<ShaderProgram>(name);
                     Shader vertProgram(GL_VERTEX_SHADER, "vert");
                     Shader fragProgram(GL_FRAGMENT_SHADER, "frag");
                     vertProgram.SetSource(vertSource);

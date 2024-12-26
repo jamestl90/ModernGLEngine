@@ -46,6 +46,52 @@ namespace JLEngine
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
+        void AddStaticVAO(VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao)
+        {
+            m_staticVAOs[key] = vao;
+        }
+
+        void GenerateGPUBuffers(Node* sceneRoot)
+        {
+            if (!sceneRoot) return;
+
+            for (auto [vertexAttrib, vao] : m_staticVAOs)
+            {
+                Graphics::CreateVertexArray(vao.get());
+            }
+
+            for (auto [vertexAttrib, vao] : m_dynamicVAOs)
+            {
+                Graphics::CreateVertexArray(vao.get());
+            }
+
+            std::function<void(Node*)> traverseScene = [&](Node* node)
+                {
+                    if (!node) return;
+
+                    if (node->GetTag() == NodeTag::Mesh)
+                    {
+                        const auto& submeshes = node->mesh->GetSubmeshes();
+                        for (const auto& submesh : submeshes)
+                        {
+                            if (node->mesh->IsStatic())
+                                m_staticBuffer.AddDrawCommand(submesh.command);
+                            else
+                                m_dynamicBuffer.AddDrawCommand(submesh.command);
+                        }
+                    }
+
+                    for (const auto& child : node->children)
+                    {
+                        traverseScene(child.get());
+                    }
+                };
+            traverseScene(sceneRoot);
+
+            m_staticBuffer.SyncToGPU();
+            m_dynamicBuffer.SyncToGPU();
+        }
+
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
 
@@ -85,6 +131,12 @@ namespace JLEngine
         ShaderProgram* m_debugTextureShader;
 
         VertexArrayObject m_triangleVAO;
+
+        IndirectDrawBuffer m_staticBuffer;
+        IndirectDrawBuffer m_dynamicBuffer;
+
+        std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
+        std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;
 
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;

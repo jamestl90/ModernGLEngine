@@ -168,7 +168,8 @@ namespace JLEngine
         vbo.Set(triVerts);
 
         vao.SetVertexBuffer(vbo);
-        vao.AddAttribute(JLEngine::AttributeType::POSITION2F);
+        vao.AddAttribute(JLEngine::AttributeType::POSITION);
+        vao.SetPosCount(2);
         vao.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
         vao.CalcStride();
     }
@@ -194,8 +195,10 @@ namespace JLEngine
 
         VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
         vbo.Set(quadVerts);
+        vao.SetVertexBuffer(vbo);
 
-        vao.AddAttribute(JLEngine::AttributeType::POSITION2F);
+        vao.AddAttribute(JLEngine::AttributeType::POSITION);
+        vao.SetPosCount(2);
         vao.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
         vao.CalcStride();
 

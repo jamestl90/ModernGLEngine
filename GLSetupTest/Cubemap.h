@@ -39,6 +39,7 @@ namespace JLEngine
 			params.internalFormat = channels == 3 ? GL_RGB16F : GL_RGBA16F;
 			params.format = channels == 3 ? GL_RGB : GL_RGBA;
 			params.dataType = GL_FLOAT;
+			return params;
 		}
 
 	protected:

@@ -140,15 +140,15 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="IndirectDrawBuffer.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="ResourceLoader.cpp">
       <SubType>
       </SubType>
     </ClCompile>
     <ClCompile Include="CubemapBaker.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
-    <ClCompile Include="Batch.cpp">
       <SubType>
       </SubType>
     </ClCompile>
@@ -246,7 +246,15 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="IndirectDrawBuffer.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="MaterialFactory.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="MeshFactory.h">
       <SubType>
       </SubType>
     </ClInclude>
@@ -342,6 +350,10 @@
     </ClInclude>
     <ClInclude Include="Types.h" />
     <ClInclude Include="VertexArrayObject.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="VertexArrayObjectFactory.h">
       <SubType>
       </SubType>
     </ClInclude>
