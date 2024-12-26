@@ -6,7 +6,6 @@
 #include "Texture.h"
 #include "GraphicsAPI.h"
 #include "ResourceLoader.h"
-#include "InstanceBuffer.h"
 #include "JLHelpers.h"
 
 #include <tiny_gltf.h>
@@ -17,8 +16,8 @@
 
 namespace JLEngine
 {
-    GLBLoader::GLBLoader(GraphicsAPI* graphics, ResourceLoader* resourceLoader) 
-		: m_graphics(graphics), m_assetLoader(resourceLoader)
+    GLBLoader::GLBLoader(ResourceLoader* resourceLoader) 
+		: m_assetLoader(resourceLoader)
     {
     }
 
@@ -268,51 +267,6 @@ namespace JLEngine
 		batch->attributesKey = key.attributesKey;
 		m_graphics->CreateBatch(*batch);
 		return batch;
-	}
-
-	void GLBLoader::SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const
-	{
-		if (!mesh)
-		{
-			std::cerr << "GLBLoader Error: Null mesh passed to SetupInstancing." << std::endl;
-			return;
-		}
-
-		if (nodes.empty())
-		{
-			std::cerr << "GLBLoader Warning: No nodes to instance for mesh " << mesh->GetName() << "." << std::endl;
-			return;
-		}
-
-		// Collect transformation matrices for instancing
-		std::vector<glm::mat4> instanceTransforms;
-		for (const auto& node : nodes)
-		{
-			if (node)
-			{
-				instanceTransforms.push_back(node->localMatrix);
-			}
-			else
-			{
-				std::cerr << "GLBLoader Warning: Null node encountered in instancing setup." << std::endl;
-			}
-		}
-
-		// Create an InstanceBuffer and upload instance data to the GPU
-		auto instanceBuffer = std::make_shared<InstanceBuffer>(false); // Use dynamic buffer for updates
-		instanceBuffer->UploadToGPU(m_graphics, instanceTransforms);
-
-		// Associate the instance buffer with the mesh
-		mesh->SetInstanceBuffer(instanceBuffer);
-
-		// Mark all batches in the mesh as instanced
-		for (auto& batch : mesh->GetBatches())
-		{
-			batch->SetInstanceBuffer(instanceBuffer);
-		}
-
-		std::cout << "GLBLoader: Instancing setup complete for mesh: " << mesh->GetName()
-			<< " with " << instanceTransforms.size() << " instances." << std::endl;
 	}
 
 	Material* GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)

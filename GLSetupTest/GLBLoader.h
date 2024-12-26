@@ -58,7 +58,6 @@ namespace JLEngine
 		bool LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		
-		void SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const;
 		void GenerateMissingAttributes(std::vector<float>& positions, std::vector<float>& normals, const std::vector<float>& texCoords, std::vector<float>& tangents, const std::vector<uint32_t>& indices, VertexAttribKey key);
 		void BatchLoadAttributes(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& texCoords2, std::vector<float>& tangents, std::vector<uint32_t>& indices, uint32_t& indexOffset, VertexAttribKey key);
 		void LoadAttributes(const tinygltf::Model& model, const tinygltf::Primitive* primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& tangents, std::vector<uint32_t>& indices, uint32_t& indexOffset);
@@ -72,7 +71,6 @@ namespace JLEngine
 		std::unordered_map<int, std::shared_ptr<Texture>> textureCache;
 		std::unordered_map<int, std::vector<std::shared_ptr<Node>>> meshNodeReferences;
 
-		Graphics* m_graphics;
 		ResourceLoader* m_assetLoader;
 	};
 }

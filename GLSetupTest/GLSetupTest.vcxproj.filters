@@ -341,6 +341,12 @@
     <ClInclude Include="ShaderFactory.h">
       <Filter>Header Files\Core\Factory</Filter>
     </ClInclude>
+    <ClInclude Include="MaterialFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderTargetFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

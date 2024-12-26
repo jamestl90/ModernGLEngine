@@ -5,6 +5,7 @@
 #include "Window.h"
 #include "VertexArrayObject.h"
 #include "ShaderProgram.h"
+#include "FileHelpers.h"
 
 namespace JLEngine
 {
@@ -257,9 +258,252 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::CreateShader(ShaderProgram* shader)
+	void Graphics::CreateShader(ShaderProgram* program)
 	{
-		
+		auto shaders = program->GetShaders();
+		for (uint32_t i = 0; i < shaders.size(); i++)
+		{
+			Shader& s = shaders.at(i);
+
+			GLuint shaderId = glCreateShader(s.GetType());
+			s.SetShaderId(shaderId);
+
+			std::string shaderFile = s.GetSource();
+			const char* cStr = shaderFile.c_str();
+			glShaderSource(shaderId, 1, &cStr, NULL);
+			glCompileShader(shaderId);
+
+			Graphics::API()->ShaderCompileErrorCheck(shaderId);
+		}
+
+		GLuint programID = glCreateProgram();
+		program->SetProgramId(programID);
+
+		for (uint32_t i = 0; i < shaders.size(); i++)
+		{
+			glAttachShader(programID, shaders.at(i).GetShaderId());
+		}
+
+		glLinkProgram(programID);
+
+		if (!API()->ShaderProgramLinkErrorCheck(programID))
+		{
+			DisposeShader(program);
+		}
+		else
+		{
+			// another loop to delete :( not sure if i can delete the shader before linking, probably not
+			for (uint32_t i = 0; i < shaders.size(); i++)
+			{
+				glDeleteShader(shaders.at(i).GetShaderId());
+			}
+		}
+
+		auto activeUniforms = Graphics::API()->GetActiveUniforms(program->GetProgramId());
+		for (auto& uniform : activeUniforms)
+		{
+			auto& name = std::get<0>(uniform);
+			auto& loc = std::get<1>(uniform);
+			program->SetActiveUniform(name, loc);
+		}
+	}
+
+	void Graphics::DisposeShader(ShaderProgram* program)
+	{
+		if (program == nullptr) return;
+
+		auto shaders = program->GetShaders();
+
+		for (auto it = shaders.begin(); it != shaders.end(); it++)
+		{
+			glDetachShader(program->GetProgramId(), (*it).GetShaderId());
+			glDeleteShader((*it).GetShaderId());
+		}
+
+		glDeleteProgram(program->GetProgramId());
+	}
+
+	void Graphics::CreateRenderTarget(RenderTarget* target)
+	{
+		if (target->GetWidth() == 0 || target->GetHeight() == 0)
+		{
+			std::cerr << "Graphics: Invalid render target dimensions!" << std::endl;
+		}
+
+		GLuint fbo;
+		glGenFramebuffers(1, &fbo);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		target->SetFrameBufferId(fbo);
+
+		auto& attributes = target->GetTextureAttributes();
+
+		for (uint32_t i = 0; i < target->GetNumSources(); i++)
+		{
+			GLuint tex;
+			glGenTextures(1, &tex);
+			glBindTexture(GL_TEXTURE_2D, tex);
+
+			auto& attrib = attributes[i];
+
+			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, target->GetWidth(), target->GetHeight(), 0, attrib.format, attrib.dataType, nullptr);
+			//glTexStorage2D(GL_TEXTURE_2D, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
+			// glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, attrib.internalFormat, target->GetWidth(), target->GetHeight(), GL_TRUE);
+			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, tex, 0);
+			target->SetSourceId(i, tex);
+
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, attrib.minFilter);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, attrib.magFilter);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, attrib.wrapS);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, attrib.wrapT);
+		}
+
+		GLuint depth;
+		if (target->DepthType() == DepthType::Renderbuffer)
+		{
+			glGenRenderbuffers(1, &depth);
+			glBindRenderbuffer(GL_RENDERBUFFER, depth);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight());
+			// glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight()); // 4x MSAA
+			target->SetDepthId(depth);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			glGenTextures(1, &depth);
+			glBindTexture(GL_TEXTURE_2D, depth);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight(), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			target->SetDepthId(depth);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+		}
+
+		glDrawBuffers(target->GetNumSources(), target->GetDrawBuffers().data());
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			std::cerr << "Framebuffer not complete: ";
+			switch (status)
+			{
+			case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED"; break;
+			default: std::cerr << "Unknown Error"; break;
+			}
+			std::cerr << std::endl;
+
+			glDeleteFramebuffers(1, &fbo);
+			for (uint32_t i = 0; i < target->GetNumSources(); i++)
+			{
+				GLuint tex = target->GetSourceId(i);
+				glDeleteTextures(1, &tex);
+			}
+			if (target->DepthType() == DepthType::Renderbuffer)
+			{
+				GLuint dboId = target->GetDepthBufferId();
+				glDeleteRenderbuffers(1, &dboId);
+			}
+			else if (target->DepthType() == DepthType::Texture)
+			{
+				GLuint dboId = target->GetDepthBufferId();
+				glDeleteTextures(1, &dboId);
+			}
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	}
+
+	void Graphics::DisposeRenderTarget(RenderTarget* target)
+	{
+		GLuint fboId = target->GetFrameBufferId();
+
+		glDeleteTextures(target->GetNumSources(), target->GetSources().data());
+		glDeleteFramebuffers(1, &fboId);
+
+		if (target->DepthType() == DepthType::Renderbuffer)
+		{
+			GLuint dboId = target->GetDepthBufferId();
+			glDeleteRenderbuffers(1, &dboId);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			GLuint dboId = target->GetDepthBufferId();
+			glDeleteTextures(1, &dboId);
+		}
+	}
+
+	void Graphics::ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight)
+	{
+		if (newWidth == 0 || newHeight == 0)
+		{
+			std::cerr << "Graphics: Invalid render target dimensions for resizing!" << std::endl;
+			return;
+		}
+
+		target->SetWidth(newWidth);
+		target->SetHeight(newHeight);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, target->GetFrameBufferId());
+
+		// Resize textures for color attachments
+		auto& attributes = target->GetTextureAttributes();
+		for (uint32_t i = 0; i < target->GetNumSources(); i++)
+		{
+			GLuint tex = target->GetSourceId(i);
+			glBindTexture(GL_TEXTURE_2D, tex);
+
+			auto& attrib = attributes[i];
+			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, newWidth, newHeight, 0, attrib.format, attrib.dataType, nullptr);
+		}
+
+		// Resize depth buffer
+		GLuint depth = target->GetDepthBufferId();
+		if (target->DepthType() == DepthType::Renderbuffer)
+		{
+			glBindRenderbuffer(GL_RENDERBUFFER, depth);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, newWidth, newHeight);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			glBindTexture(GL_TEXTURE_2D, depth);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, newWidth, newHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+		}
+
+		// Check framebuffer completeness
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		{
+			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			std::cerr << "Framebuffer resize failed: ";
+			switch (status)
+			{
+			case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED"; break;
+			default: std::cerr << "Unknown Error"; break;
+			}
+			std::cerr << std::endl;
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			return;
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 	}
 
 	void Graphics::UploadCubemapFace(GLenum face, const ImageData& img, const TexParams& params, int width, int height)

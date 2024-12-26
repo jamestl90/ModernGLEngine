@@ -2,7 +2,7 @@
 #define ASSET_LOADER_H
 
 #include <tiny_gltf.h>
-
+#include <memory>
 #include <filesystem>
 #include <unordered_map>
 
@@ -13,6 +13,8 @@
 #include "TextureFactory.h"
 #include "CubemapFactory.h"
 #include "ShaderFactory.h"
+#include "MaterialFactory.h"
+#include "RenderTargetFactory.h"
 
 namespace JLEngine
 {
@@ -66,8 +68,8 @@ namespace JLEngine
 		std::shared_ptr<Cubemap> CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
 
 		// Shader Loading ///////////////////////////////////
-		ShaderProgram* CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
-		ShaderProgram* CreateShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
+		std::shared_ptr<ShaderProgram> CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
+		std::shared_ptr<ShaderProgram> CreateShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
 
 		void SetHotReloading(bool hotReload) { m_hotReload = hotReload; }
 		void PollForChanges(float deltaTime);
@@ -77,16 +79,15 @@ namespace JLEngine
 		ShaderProgram* SolidColorShader();
 		ShaderProgram* ScreenSpaceQuadShader();
 
-		// Shader Loading ///////////////////////////////////
-		Material* CreateMaterial(const std::string& name);
+		// Material Loading ///////////////////////////////////
+		std::shared_ptr<Material> CreateMaterial(const std::string& name);
 		Material* GetDefaultMaterial() { return m_defaultMat; }
 
 		// RenderTarget Loading ///////////////////////////////////
-		RenderTarget* CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib,
+		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name, 
+			int width, int height, std::vector<TextureAttribute>& texAttribs, 
 			JLEngine::DepthType depthType, uint32_t numSources);
-		RenderTarget* CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs,
-			JLEngine::DepthType depthType, uint32_t numSources);
-
+		
 		// Mesh Loading ///////////////////////////////////
 		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo);
 		Mesh* LoadMeshFromData(const std::string& name, VertexBuffer& vbo);
@@ -97,6 +98,8 @@ namespace JLEngine
 
 		AssetGenerationSettings m_settings;
 		GraphicsAPI* m_graphics;
+
+		bool m_hotReload;
 
 		/* Managers */
 		ResourceManager<Texture>* m_textureManager;
@@ -109,11 +112,8 @@ namespace JLEngine
 		TextureFactory* m_textureFactory;
 		CubemapFactory* m_cubemapFactory;
 		ShaderFactory* m_shaderFactory;
-
-		/* Shader Manager Variables */
-		bool m_hotReload;
-		float m_pollTimeSeconds = 1.0;
-		float m_accumTime = 0;
+		MaterialFactory* m_materialFactory;
+		RenderTargetFactory* m_renderTargetfactory;
 
 		ShaderProgram* m_basicUnlit = nullptr;
 		ShaderProgram* m_basicLit = nullptr;

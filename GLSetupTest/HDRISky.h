@@ -3,7 +3,7 @@
 
 #include <glm/glm.hpp>
 
-#include "VertexBuffers.h"
+#include "VertexArrayObject.h"
 #include "ImageData.h"
 #include "CubemapBaker.h"
 
@@ -18,13 +18,12 @@ namespace JLEngine
 		int prefilteredSamples = 2048;
 	};
 
-	class VertexBuffer;
 	class ResourceLoader;
 
 	class HDRISky
 	{
 	public:
-		HDRISky(ResourceLoader* assetLoader); 
+		HDRISky(ResourceLoader* resourceLoader); 
 		~HDRISky();
 
 		void Initialise(const std::string& assetPath, const HdriSkyInitParams& initParams);
@@ -36,7 +35,7 @@ namespace JLEngine
 		const uint32_t& GetBRDFLutGPUID() const { return m_brdfLUTMap; }
 
 		const ShaderProgram* GetSkyShader() const { return m_skyShader; }
-		const VertexBuffer& GetSkyboxVBO() const { return m_skyboxVBO; }
+		const VertexArrayObject& GetSkyboxVAO() const { return m_skyboxVAO; }
 
 	protected:
 
@@ -45,9 +44,9 @@ namespace JLEngine
 		uint32_t m_prefilteredMap	= 0;
 		uint32_t m_brdfLUTMap		= 0;
 
-        VertexBuffer m_skyboxVBO;
+        VertexArrayObject m_skyboxVAO;
 		ShaderProgram* m_skyShader;
-		ResourceLoader* m_assetLoader;
+		ResourceLoader* m_resourceLoader;
 
 		ImageData m_hdriSkyImageData;
 	};

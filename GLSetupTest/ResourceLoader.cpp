@@ -20,7 +20,7 @@
 namespace JLEngine
 {
     ResourceLoader::ResourceLoader(GraphicsAPI* graphics)
-        : m_graphics(graphics)
+        : m_graphics(graphics), m_hotReload(false)
     {
         m_textureManager = new ResourceManager<Texture>();
         m_shaderManager = new ResourceManager<ShaderProgram>();
@@ -32,8 +32,10 @@ namespace JLEngine
         m_textureFactory = new TextureFactory(m_textureManager, graphics);
         m_cubemapFactory = new CubemapFactory(m_cubemapManager, graphics);
         m_shaderFactory = new ShaderFactory(m_shaderManager, graphics);
+        m_materialFactory = new MaterialFactory(m_materialManager);
+        m_renderTargetfactory = new RenderTargetFactory(m_renderTargetManager);
 
-        m_defaultMat = CreateMaterial("DefaultMaterial");
+        m_defaultMat = CreateMaterial("DefaultMaterial").get();
     }
 
     ResourceLoader::~ResourceLoader() 
@@ -87,42 +89,21 @@ namespace JLEngine
 
     void ResourceLoader::DeleteTexture(const std::string& name) { m_textureFactory->Delete(name); }
 
-    ShaderProgram* ResourceLoader::CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
+    std::shared_ptr<ShaderProgram> ResourceLoader::CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
     {
-        return m_shaderManager->Add(name, [&]()
-            {
-                auto program = std::make_unique<ShaderProgram>(name, folderPath);
-
-                Shader vertProgram(GL_VERTEX_SHADER, vert);
-                Shader fragProgram(GL_FRAGMENT_SHADER, frag);
-                program->AddShader(vertProgram);
-                program->AddShader(fragProgram);
-                program->UploadToGPU(m_graphics);
-
-                auto shaderPathVert = program->GetFilePath() + vertProgram.GetName();
-                auto currentTimestamp = std::filesystem::last_write_time(shaderPathVert);
-                m_shaderTimestamps[shaderPathVert] = currentTimestamp;
-
-                auto shaderPathFrag = program->GetFilePath() + fragProgram.GetName();
-                currentTimestamp = std::filesystem::last_write_time(shaderPathFrag);
-                m_shaderTimestamps[shaderPathFrag] = currentTimestamp;
-
-                return program;
-            });
+        return m_shaderFactory->CreateShaderFromFile(name, vert, frag, folderPath);
     }
 
-    ShaderProgram* ResourceLoader::CreateShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
+    std::shared_ptr<ShaderProgram> ResourceLoader::CreateShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
     {
-        return m_shaderManager->Add(name, [&]()
-            {
-                auto program = std::make_unique<ShaderProgram>(name);
-                Shader vertProgram(GL_VERTEX_SHADER, "vert");
-                Shader fragProgram(GL_FRAGMENT_SHADER, "frag");
-                program->AddShader(vertProgram, vertSource);               
-                program->AddShader(fragProgram, fragSource);
-                program->UploadToGPU(m_graphics);
-                return program;
-            });
+        return m_shaderFactory->CreateShaderFromSource(name, vertSource, fragSource);
+    }
+
+    void ResourceLoader::PollForChanges(float deltaTime)
+    {
+        if (!m_hotReload) return;
+
+        m_shaderFactory->PollForChanges(deltaTime);
     }
 
     ShaderProgram* ResourceLoader::BasicLitShader()
@@ -178,7 +159,7 @@ namespace JLEngine
                 }
             )";
 
-            m_basicLit = CreateShaderFromSource("BasicLitShader", vertexShaderCode, fragmentShaderCode);
+            m_basicLit = CreateShaderFromSource("BasicLitShader", vertexShaderCode, fragmentShaderCode).get();
         }
         return m_basicLit;
     }
@@ -221,7 +202,7 @@ namespace JLEngine
                 }
             )";
 
-            m_basicUnlit = CreateShaderFromSource("BasicUnlitShader", unlitVertexShaderCode, unlitFragmentShaderCode);
+            m_basicUnlit = CreateShaderFromSource("BasicUnlitShader", unlitVertexShaderCode, unlitFragmentShaderCode).get();
         }
         return m_basicUnlit;
     }
@@ -252,7 +233,7 @@ namespace JLEngine
                 }
             )";
 
-            m_solidColor = CreateShaderFromSource("SolidColorShader", solidColorVertexShaderCode, solidColorFragmentShaderCode);
+            m_solidColor = CreateShaderFromSource("SolidColorShader", solidColorVertexShaderCode, solidColorFragmentShaderCode).get();
         }
         return m_solidColor;
     }
@@ -293,88 +274,19 @@ namespace JLEngine
             }
             )";
 
-            m_screenSpaceQuad = CreateShaderFromSource("ScreenSpaceQuadShader", vertexShaderSource, fragmentShaderSource);
+            m_screenSpaceQuad = CreateShaderFromSource("ScreenSpaceQuadShader", vertexShaderSource, fragmentShaderSource).get();
         }
         return m_screenSpaceQuad;
     }
 
-    Material* ResourceLoader::CreateMaterial(const std::string& name)
+    std::shared_ptr<Material> ResourceLoader::CreateMaterial(const std::string& name)
     {
-        return m_materialManager->Add(name, [&]()
-            {
-                auto mat = std::make_unique<Material>(name);
-
-                return mat;
-            });
+        return m_materialFactory->CreateMaterial(name);
     }
 
-    void ResourceLoader::PollForChanges(float deltaTime)
+    std::shared_ptr<RenderTarget> ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, std::vector<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
     {
-        if (!m_hotReload) return;
-
-        m_accumTime += deltaTime;
-
-        if (m_accumTime > m_pollTimeSeconds)
-        {
-            //std::cout << "Polling!" << std::endl;
-            auto& resources = m_shaderManager->GetResources();
-            for (const auto& res : resources)
-            {
-                auto shaderProg = res.second.get();
-
-                if (shaderProg->GetFilePath().empty()) continue;
-
-                bool needsUpdate = false;
-                for (const auto& shader : shaderProg->GetShaders())
-                {
-                    auto shaderPath = shaderProg->GetFilePath() + shader.GetName();
-                    auto currentTimestamp = std::filesystem::last_write_time(shaderPath);
-                    if (m_shaderTimestamps[shaderPath] != currentTimestamp)
-                    {
-                        m_shaderTimestamps[shaderPath] = currentTimestamp;
-                        needsUpdate = true;
-                    }
-                }
-                if (needsUpdate) // if any shader in this program needs an update we will recreate all of them
-                {
-                    shaderProg->ReloadFromFile();
-                }
-            }
-            m_accumTime = 0;
-        }
-    }
-
-    RenderTarget* ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, TextureAttribute& texAttrib, JLEngine::DepthType depthType, uint32_t numSources)
-    {
-        return m_renderTargetManager->Add(name, [&]()
-            {
-                auto renderTarget = std::make_unique<RenderTarget>(name, numSources);
-                renderTarget->SetDepthType(depthType);
-                renderTarget->SetWidth(width);
-                renderTarget->SetHeight(height);
-                renderTarget->SetTextureAttribute(0, texAttrib);
-                renderTarget->UploadToGPU(m_graphics);
-                return renderTarget;
-            });
-    }
-    
-    RenderTarget* ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, SmallArray<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
-    {
-        return m_renderTargetManager->Add(name, [&]()
-            {
-                auto renderTarget = std::make_unique<RenderTarget>(name, numSources);
-                renderTarget->SetDepthType(depthType);
-                renderTarget->SetWidth(width);
-                renderTarget->SetHeight(height);
-
-                for (uint32_t i = 0; i < numSources; i++)
-                {
-                    auto& attrib = texAttribs[i];
-                    renderTarget->SetTextureAttribute(i, attrib);
-                }
-                renderTarget->UploadToGPU(m_graphics);
-                return renderTarget;
-            });
+        return m_renderTargetfactory->CreateRenderTarget(name, width, height, texAttribs, depthType, numSources);
     }
 
     Mesh* JLEngine::ResourceLoader::LoadMeshFromData(const std::string& name, VertexBuffer& vbo, IndexBuffer& ibo)

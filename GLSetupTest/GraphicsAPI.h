@@ -117,10 +117,6 @@ namespace JLEngine
 		 bool ShaderCompileErrorCheck(uint32_t id);
 		 bool ShaderProgramLinkErrorCheck(uint32_t programid);
 
-		 void CreateShaderFromFile(ShaderProgram* program);
-		 void CreateShaderFromText(ShaderProgram* program, std::vector<std::string> shaderTexts);
-		 void DisposeShader(ShaderProgram* program);
-
 		 void SetUniform(uint32_t location, uint32_t x);
 		 void SetUniform(uint32_t location, uint32_t x, uint32_t y);
 		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z);
@@ -157,15 +153,9 @@ namespace JLEngine
 		void SetCullFace(uint32_t face);
 
 		// Texture 
-		bool ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight);
-		bool CreateRenderTarget(RenderTarget* target);
-		void DisposeRenderTarget(RenderTarget* target);
-
-		
 		void ReadTexture2D(uint32_t texId, ImageData& imageData, int width, int height, int channels, bool hdr, bool useFramebuffer);
 		void ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
 
-		
 		void CreateTextures(uint32_t count, uint32_t& id);
 		void BindTexture(uint32_t target, uint32_t id);
 		void DisposeTexture(uint32_t count, uint32_t* textures);

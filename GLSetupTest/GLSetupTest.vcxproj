@@ -246,6 +246,14 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="MaterialFactory.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="RenderTargetFactory.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="ResourceLoader.h">
       <SubType>
       </SubType>

@@ -100,7 +100,7 @@ int MainApp(std::string assetFolder)
     auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
     mat->castShadows = false;
     mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    planeNode->mesh->GetBatches()[0]->SetMaterial(mat);
+    planeNode->mesh->GetBatches()[0]->SetMaterial(mat.get());
     planeNode->translation -= glm::vec3(0, 2.5f, 0);
 
     auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");

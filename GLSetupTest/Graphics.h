@@ -12,6 +12,7 @@ namespace JLEngine
 	class Window;
 	class VertexArrayObject;
 	class ShaderProgram;
+	class RenderTarget;
 
 	class Graphics
 	{
@@ -29,6 +30,11 @@ namespace JLEngine
 		static void DisposeVertexArray(VertexArrayObject* vao);
 
 		static void CreateShader(ShaderProgram* shader);
+		static void DisposeShader(ShaderProgram* program);
+
+		static void CreateRenderTarget(RenderTarget* renderTarget);
+		static void DisposeRenderTarget(RenderTarget* target);
+		static void ResizeRenderTarget(RenderTarget* renderTarget, int w, int h);
 
 	protected:
 		static GraphicsAPI* m_graphicsAPI;

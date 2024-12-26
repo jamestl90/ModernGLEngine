@@ -33,7 +33,7 @@ namespace JLEngine
     class DeferredRenderer 
     {
     public:
-        DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* assetManager,
+        DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* resourceLoader,
             int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
@@ -69,7 +69,7 @@ namespace JLEngine
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
 
         GraphicsAPI* m_graphics;
-        ResourceLoader* m_assetLoader;
+        ResourceLoader* m_resourceLoader;
 
         DebugModes m_debugModes;
 

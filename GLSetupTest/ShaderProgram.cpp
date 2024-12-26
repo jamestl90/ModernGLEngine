@@ -1,6 +1,7 @@
 #include "ShaderProgram.h"
 #include "GraphicsAPI.h"
 #include "Platform.h"
+#include "Graphics.h"
 
 namespace JLEngine
 {
@@ -19,49 +20,8 @@ namespace JLEngine
 		UnloadFromGraphics();
 	}
 
-	void ShaderProgram::ReloadFromFile()
-	{
-		UnloadFromGraphics();
-		
-		UploadToGPU(m_graphics);
-	}
-
-	void ShaderProgram::UploadToGPU(GraphicsAPI* graphics)
-	{
-		m_graphics = graphics;
-
-		try
-		{
-			if (m_shaderTexts.size() == 0)
-			{
-				m_graphics->CreateShaderFromFile(this);
-			}
-			else
-			{				
-				m_graphics->CreateShaderFromText(this, m_shaderTexts);
-				m_shaderTexts.clear();
-			}
-
-			auto activeUniforms = m_graphics->GetActiveUniforms(m_programId);
-			for (auto& uniform : activeUniforms)
-			{
-				auto& name = std::get<0>(uniform);
-				auto& loc = std::get<1>(uniform);
-				m_uniformLocations[name] = loc;
-			}
-		}
-		catch (const std::exception& ex)
-		{
-			if (!Platform::AlertBox(std::string(ex.what()), "Shader Error"))
-			{
-				std::cout << ex.what() << std::endl;
-			}
-		}
-	}
-
-	void ShaderProgram::AddShader(Shader& shader, string source) 
+	void ShaderProgram::AddShader(Shader& shader)
 	{ 
-		m_shaderTexts.push_back(source);
 		m_shaders.push_back(shader); 
 	}
 
@@ -157,6 +117,6 @@ namespace JLEngine
 
 	void ShaderProgram::UnloadFromGraphics()
 	{
-		m_graphics->DisposeShader(this);
+		Graphics::DisposeShader(this);
 	}
 }

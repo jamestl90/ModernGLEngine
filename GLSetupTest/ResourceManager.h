@@ -37,7 +37,7 @@ namespace JLEngine
             return (it != m_nameToId.end()) ? Get(it->second) : nullptr;
         }
 
-        const std::unordered_map<uint32_t, ResourcePtr> const GetResources() { return m_resourcesById; }
+        const std::unordered_map<uint32_t, ResourcePtr>& GetResources() const { return m_resourcesById; }
 
         // Add an existing resource
         uint32_t Add(const std::string& name, ResourcePtr resource)

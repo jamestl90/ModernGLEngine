@@ -11,8 +11,8 @@
 
 namespace JLEngine
 {
-    DeferredRenderer::DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* assetLoader, int width, int height, const std::string& assetFolder)
-        : m_graphics(graphics), m_assetLoader(assetLoader), m_shadowDebugShader(nullptr),
+    DeferredRenderer::DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* resourceLoader, int width, int height, const std::string& assetFolder)
+        : m_graphics(graphics), m_resourceLoader(resourceLoader), m_shadowDebugShader(nullptr),
         m_width(width), m_height(height), m_gBufferDebugShader(nullptr), 
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), 
         m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) {}
@@ -21,10 +21,12 @@ namespace JLEngine
     {
         Graphics::DisposeVertexArray(&m_triangleVAO);
         
-        m_graphics->DisposeShader(m_shadowDebugShader);
-        m_graphics->DisposeShader(m_gBufferDebugShader);
-        m_graphics->DisposeShader(m_gBufferShader);
-        m_graphics->DisposeShader(m_lightingTestShader);
+        Graphics::DisposeShader(m_shadowDebugShader);
+        Graphics::DisposeShader(m_gBufferDebugShader);
+        Graphics::DisposeShader(m_gBufferShader);
+        Graphics::DisposeShader(m_lightingTestShader);
+
+        Graphics::DisposeRenderTarget(m_gBufferTarget);
     }
     
     void DeferredRenderer::Initialize() 
@@ -35,17 +37,17 @@ namespace JLEngine
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
 
-        auto dlShader = m_assetLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath);
+        auto dlShader = m_resourceLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
         m_dlShadowMap = new DirectionalLightShadowMap(m_graphics, dlShader);
         m_dlShadowMap->Initialise();
 
         SetupGBuffer();
         
-        m_shadowDebugShader = m_assetLoader->CreateShaderFromFile("DebugDirShadows", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath);
-        m_gBufferDebugShader = m_assetLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath);
-        m_gBufferShader = m_assetLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath);
-        m_lightingTestShader = m_assetLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", shaderAssetPath);
-        m_debugTextureShader = m_assetLoader->CreateShaderFromFile("DebugTexture", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath);
+        m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath).get();
+        m_gBufferDebugShader = m_resourceLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath).get();
+        m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
+        m_lightingTestShader = m_resourceLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", shaderAssetPath).get();
+        m_debugTextureShader = m_resourceLoader->CreateShaderFromFile("DebugTexture", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
 
         //std::string hdriFolder = "venice_sunset_4k";
         //std::array<std::string, 6> hdriFiles = 
@@ -73,7 +75,7 @@ namespace JLEngine
         params.prefilteredMapSize = 128;
         params.prefilteredSamples = 2048;
 
-        m_hdriSky = new HDRISky(m_assetLoader);
+        m_hdriSky = new HDRISky(m_resourceLoader);
         m_hdriSky->Initialise(m_assetFolder, params);
 
         InitScreenSpaceTriangle();
@@ -108,13 +110,19 @@ namespace JLEngine
     void DeferredRenderer::SetupGBuffer() 
     {
         // Configure G-buffer render target
-        SmallArray<TextureAttribute> attributes(4);
+        std::vector<TextureAttribute> attributes(4);
         attributes[0] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };   // Albedo (RGB) + AO (A)
         attributes[1] = { GL_RGBA16F, GL_RGBA, GL_FLOAT };        // Normals (RGB) + Cast/Receive Shadows (A)
         attributes[2] = { GL_RG8, GL_RG, GL_UNSIGNED_BYTE };      // Metallic (R) + Roughness (G)
         attributes[3] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };  // Emissive (RGB) + Reserved (A)
 
-        m_gBufferTarget = m_assetLoader->CreateRenderTarget("GBufferTarget", m_width, m_height, attributes, DepthType::Texture, attributes.Size());
+        m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
+            "GBufferTarget", 
+            m_width, 
+            m_height, 
+            attributes, 
+            DepthType::Texture, 
+            static_cast<uint32_t>(attributes.size())).get();
     }
 
     glm::mat4 DeferredRenderer::DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -127,7 +135,7 @@ namespace JLEngine
         for (const auto& [key, batches] : renderGroups)
         {
             auto matId = key.first;
-            auto material = m_assetLoader->GetMaterialManager()->Get(matId);
+            auto material = m_resourceLoader->GetMaterialManager()->Get(matId);
             if (material->castShadows == false) continue;
 
             for (const auto& batch : batches)
@@ -590,7 +598,7 @@ namespace JLEngine
             int materialId = key.first;
 
             // Bind material (assuming materials are identified by ID)
-            auto material = m_assetLoader->GetMaterialManager()->Get(materialId);
+            auto material = m_resourceLoader->GetMaterialManager()->Get(materialId);
             SetUniformsForGBuffer(material.get());
 
             // Render all batches in this group
