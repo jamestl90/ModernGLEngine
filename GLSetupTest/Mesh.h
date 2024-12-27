@@ -38,7 +38,7 @@ namespace JLEngine
 
 	private:	
 
-		bool m_isStatic = false;
+		bool m_isStatic = true;
 		std::vector<SubMesh> m_subMeshes;		
 	};
 }

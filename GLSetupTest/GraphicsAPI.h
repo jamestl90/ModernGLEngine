@@ -17,6 +17,8 @@
 #include "Node.h"
 #include "ImageData.h"
 
+#include <glad/glad.h>
+
 inline void* BUFFER_OFFSET(std::size_t i) 
 {
 	return reinterpret_cast<void*>(i);
@@ -42,6 +44,12 @@ inline void GLCheckError(const char* file, int line)
 		}
 	}
 }
+
+typedef GLuint64(APIENTRY* PFNGLGETTEXTUREHANDLEARBPROC)(GLuint texture);
+typedef void(APIENTRY* PFNGLMAKETEXTUREHANDLERESIDENTARBPROC)(GLuint64 handle);
+
+extern PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB;
+extern PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB;
 
 #define GL_CHECK_ERROR() GLCheckError(__FILE__, __LINE__)
 

@@ -124,6 +124,8 @@ namespace JLEngine
             m_nextHandle = 1; // Reset handle generation
         }
 
+        uint32_t Count() { return m_resourcesById.size(); }
+
     private:
         // Generate a unique handle for a resource
         uint32_t GenerateHandle()

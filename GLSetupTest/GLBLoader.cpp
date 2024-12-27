@@ -162,6 +162,7 @@ namespace JLEngine
 
 		// Create a new Mesh object
 		auto mesh = m_resourceLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
+		mesh->SetStatic(true);
 
 		// Group primitives by material and attributes
 		std::unordered_map<MaterialVertexAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
@@ -229,10 +230,11 @@ namespace JLEngine
 		auto& vao = m_staticVAOs[key.attributesKey];
 		if (!vao)
 		{
-			std::cerr << "Error: No VAO found for attributes key " << key.attributesKey << "\n";
+			//std::cerr << "Error: No VAO found for attributes key " << key.attributesKey << "\n";
 			
 			vao = m_resourceLoader->CreateVertexArray("Vao: " + key.attributesKey);
 			m_staticVAOs[key.attributesKey] = vao;			
+			vao->SetVertexAttribKey(key.attributesKey);
 		}
 
 		auto& vbo = vao->GetVBO();

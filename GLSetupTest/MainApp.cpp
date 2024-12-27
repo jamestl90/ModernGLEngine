@@ -25,9 +25,10 @@ void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
 
     glm::quat rotation = glm::quatLookAt(lightDirection, upVector);
 
-    cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
+    //cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
 
-    m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection);
+    m_defRenderer->RenderIndirect(flyCamera->GetPosition(), view, projection);
+    //m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -88,6 +89,14 @@ int MainApp(std::string assetFolder)
     input = engine.GetInput();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
 
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glDebugMessageCallback(
+    //    [](GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+    //        std::cerr << "GL Debug: " << message << std::endl;
+    //    },
+    //    nullptr
+    //);
+
     input->SetKeyboardCallback(KeyboardCallback);
     input->SetMouseCallback(MouseCallback);
     input->SetMouseMoveCallback(MouseMoveCallback);
@@ -135,11 +144,13 @@ int MainApp(std::string assetFolder)
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),
         SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
     m_defRenderer->Initialize();
-    
+
     for (auto [key, vao] : engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs())
     {
-        m_defRenderer->AddStaticVAO(key, vao);
+        if (vao->GetVBO().Size() > 0)
+            m_defRenderer->AddStaticVAO(key, vao);
     }
+
     m_defRenderer->GenerateGPUBuffers(sceneRoot.get());
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);

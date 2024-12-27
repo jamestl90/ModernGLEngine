@@ -10,8 +10,8 @@ int BakeCubemapIrradiance(std::string assetFolder)
     auto window = engine.GetGraphicsAPI()->GetWindow()->GetGLFWwindow();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
 
-    bool writeOutHdri = true;
-    bool writeOutIrradiance = true;
+    bool writeOutHdri = false;
+    bool writeOutIrradiance = false;
     bool writeOutPrefilter = false;
     int irradianceMapSize = 32;
     int prefilteredMapSize = 128;
@@ -40,9 +40,9 @@ int BakeCubemapIrradiance(std::string assetFolder)
     int cubemapSize = hdriImage.width / 4;
     
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
+    GL_CHECK_ERROR();
     uint32_t cmId = baker->HDRtoCubemap(hdriImage, cubemapSize, true);
-
+    GL_CHECK_ERROR();
     if (writeOutHdri)
     {
         std::array<JLEngine::ImageData, 6> faceData;
@@ -57,9 +57,9 @@ int BakeCubemapIrradiance(std::string assetFolder)
             JLEngine::TextureWriter::WriteTexture(facePath, faceData.at(i));
         }
     }
-
+    GL_CHECK_ERROR();
     uint32_t irradianceId = baker->GenerateIrradianceCubemap(cmId, irradianceMapSize);
-
+    GL_CHECK_ERROR();
     if (writeOutIrradiance)
     {
         std::array<JLEngine::ImageData, 6> faceData;
@@ -74,9 +74,9 @@ int BakeCubemapIrradiance(std::string assetFolder)
             JLEngine::TextureWriter::WriteTexture(facePath, faceData.at(i));
         }
     }
-
+    GL_CHECK_ERROR();
     uint32_t prefilteredEnvMap = baker->GeneratePrefilteredEnvMap(cmId, prefilteredMapSize, prefilteredSamples);
-
+    GL_CHECK_ERROR();
     if (writeOutPrefilter)
     {
         //std::array<JLEngine::ImageData, 6> faceData;

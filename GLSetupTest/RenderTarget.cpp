@@ -79,7 +79,7 @@ namespace JLEngine
 
 		for (uint32_t i = 0; i < m_numSources; i++)
 		{
-			m_drawBuffers[i] = GL_TEXTURE0 + i;
+			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
 		}
 	}
 

@@ -20,6 +20,24 @@ namespace JLEngine
         BLEND
     };
 
+    struct MaterialGPU
+    {
+        glm::vec4 baseColorFactor;              // 16 
+        glm::vec4 emissiveFactor;               // 16
+        float metallicFactor;                   // 4
+        float roughnessFactor;                  // 4
+        float alphaCutoff;                      // 4
+        int baseColorTextureIndex;              // 4
+        int metallicRoughnessTextureIndex;      // 4
+        int normalTextureIndex;                 // 4
+        int occlusionTextureIndex;              // 4
+        int emissiveTextureIndex;               // 4
+        int alphaMode;                          // 4
+        int doubleSided;                        // 4
+        int castShadows;                        // 4
+        int receiveShadows;                     // 4
+    };
+
     class Material : public Resource
     {
     public:

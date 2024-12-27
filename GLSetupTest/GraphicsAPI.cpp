@@ -11,6 +11,9 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB = nullptr;
+PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
+
 namespace JLEngine
 {
 	GraphicsAPI::GraphicsAPI(Window* window) 
@@ -58,6 +61,15 @@ namespace JLEngine
 		GLint maxUnits;
 		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxUnits);
 		m_boundTextures = std::vector<uint32_t>(maxUnits);
+
+		// enable bindless textures
+		glGetTextureHandleARB = (PFNGLGETTEXTUREHANDLEARBPROC)glfwGetProcAddress("glGetTextureHandleARB");
+		glMakeTextureHandleResidentARB = (PFNGLMAKETEXTUREHANDLERESIDENTARBPROC)glfwGetProcAddress("glMakeTextureHandleResidentARB");
+
+		if (!glGetTextureHandleARB || !glMakeTextureHandleResidentARB) 
+		{
+			std::cerr << "Failed to load ARB_bindless_texture functions!" << std::endl;
+		}
 	}
 
 	GraphicsAPI::~GraphicsAPI()
@@ -177,14 +189,23 @@ namespace JLEngine
 
 		if (linkStatus == GL_FALSE)
 		{
-			int maxLength;
+			GLint maxLength = 0;
 			glGetProgramiv(programId, GL_INFO_LOG_LENGTH, &maxLength);
-			GLchar* infoLog = new char[maxLength];
-			glGetShaderInfoLog(programId, maxLength, &maxLength, infoLog);
-			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
-			delete[] infoLog;
+
+			if (maxLength > 0)
+			{
+				GLchar* infoLog = new GLchar[maxLength];
+				glGetProgramInfoLog(programId, maxLength, &maxLength, infoLog);
+				std::cout << "ShaderInfoLog: " << infoLog << std::endl;
+				delete[] infoLog;
+			}
+			else
+			{
+				std::cout << "ShaderInfoLog: (empty)" << std::endl;
+			}
 			return false;
 		}
+
 		return true;
 	}
 

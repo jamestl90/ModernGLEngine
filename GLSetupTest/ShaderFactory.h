@@ -48,11 +48,11 @@ namespace JLEngine
                     auto shaderPathVert = program->GetFilePath() + vertProgram.GetName();
                     auto currentTimestamp = std::filesystem::last_write_time(shaderPathVert);
                     m_shaderTimestamps[shaderPathVert] = currentTimestamp;
-
+                    
                     auto shaderPathFrag = program->GetFilePath() + fragProgram.GetName();
                     currentTimestamp = std::filesystem::last_write_time(shaderPathFrag);
                     m_shaderTimestamps[shaderPathFrag] = currentTimestamp;
-
+                    GL_CHECK_ERROR();
                     return program;
                 });
         }

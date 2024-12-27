@@ -186,9 +186,6 @@
     <ClCompile Include="VertexArrayObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="IndirectDrawBuffer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainApp.h">

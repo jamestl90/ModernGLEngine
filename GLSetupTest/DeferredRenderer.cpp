@@ -27,12 +27,17 @@ namespace JLEngine
         Graphics::DisposeShader(m_lightingTestShader);
 
         Graphics::DisposeRenderTarget(m_gBufferTarget);
+
+        Graphics::DisposeGraphicsBuffer(&m_staticBuffer);
+        Graphics::DisposeGraphicsBuffer(&m_dynamicBuffer);
     }
     
     void DeferredRenderer::Initialize() 
     {
         m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
+
+        GenerateDefaultTextures();
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -42,7 +47,6 @@ namespace JLEngine
         m_dlShadowMap->Initialise();
 
         SetupGBuffer();
-        
         m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferDebugShader = m_resourceLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
@@ -54,10 +58,8 @@ namespace JLEngine
         params.irradianceMapSize = 32;
         params.prefilteredMapSize = 128;
         params.prefilteredSamples = 2048;
-
         m_hdriSky = new HDRISky(m_resourceLoader);
         m_hdriSky->Initialise(m_assetFolder, params);
-
         InitScreenSpaceTriangle();
     }
 
@@ -348,6 +350,51 @@ namespace JLEngine
         m_hdriSky->Render(viewMatrix, projMatrix, 2);
     }
 
+    void DeferredRenderer::RenderIndirect(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
+
+        Graphics::API()->BindShader(m_gBufferShader->GetProgramId());
+        m_gBufferShader->SetUniform("u_View", viewMatrix);
+        m_gBufferShader->SetUniform("u_Projection", projMatrix);        
+
+        if (m_staticBuffer.GetGPUID() > 0)
+        {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssboMaterials.GetGPUID()); // Binding 0: Material buffer
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssboTextures.GetGPUID());  // Binding 1: Texture buffer
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssboStaticPerDraw.GetGPUID());    // Binding 2: Static PerDrawData
+
+            auto size = static_cast<uint32_t>(m_staticBuffer.GetDrawCommands().size());
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_staticBuffer.GetGPUID());
+            for (auto& vao : m_staticVAOs)
+            {
+                if (vao.second->GetVBO().Size() > 0)
+                {
+                    glBindVertexArray(vao.second->GetGPUID());
+                    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
+                }
+            }
+        }
+
+        if (m_dynamicBuffer.GetGPUID() > 0)
+        {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssboMaterials.GetGPUID()); // Binding 0: Material buffer
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssboTextures.GetGPUID());  // Binding 1: Texture buffer
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, m_ssboDynamicPerDraw.GetGPUID());   // Binding 2: Dynamic PerDrawData
+
+            auto size = static_cast<uint32_t>(m_dynamicBuffer.GetDrawCommands().size());
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, m_dynamicBuffer.GetGPUID());
+            for (auto& vao : m_dynamicVAOs)
+            {
+                if (vao.second->GetVBO().Size() > 0)
+                {
+                    glBindVertexArray(vao.second->GetGPUID());
+                    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
+                }
+            }
+        }
+    }
+
     void DeferredRenderer::Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         RenderGroupMap renderGroups;
@@ -390,6 +437,85 @@ namespace JLEngine
         }
     }
 
+    void DeferredRenderer::GenerateGPUBuffers(Node* sceneRoot)
+    {
+        if (!sceneRoot) return;
+
+        for (auto [vertexAttrib, vao] : m_staticVAOs)
+        {
+            Graphics::CreateVertexArray(vao.get());
+        }
+
+        for (auto [vertexAttrib, vao] : m_dynamicVAOs)
+        {
+            Graphics::CreateVertexArray(vao.get());
+        }
+
+        auto matManager = m_resourceLoader->GetMaterialManager();
+        auto texManager = m_resourceLoader->GetTextureManager();
+        std::vector<MaterialGPU> matBuffer;
+        std::vector<TextureGPU> texBuffer;
+        std::unordered_map<uint32_t, size_t> materialIDMap;
+
+        GenerateMaterialAndTextureBuffers(*matManager, *texManager, matBuffer, texBuffer, materialIDMap);
+
+        m_ssboMaterials.SetDrawType(GL_STATIC_DRAW);
+        m_ssboTextures.SetDrawType(GL_STATIC_DRAW);
+
+        m_ssboMaterials.Set(matBuffer);
+        m_ssboTextures.Set(texBuffer);
+
+        Graphics::CreateShaderStorageBuffer(&m_ssboMaterials);
+        Graphics::CreateShaderStorageBuffer(&m_ssboTextures);
+
+        std::function<void(Node*)> traverseScene = [&](Node* node)
+        {
+            if (!node) return;
+
+            static uint32_t currentStaticIndex = 0;  
+            static uint32_t currentDynamicIndex = 0; 
+
+            if (node->GetTag() == NodeTag::Mesh)
+            {
+                auto& submeshes = node->mesh->GetSubmeshes();
+                for (auto& submesh : submeshes)
+                {
+                    PerDrawData pdd;
+                    pdd.materialID = (int)materialIDMap[submesh.materialHandle];
+                    pdd.modelMatrix = node->GetGlobalTransform();
+                    if (node->mesh->IsStatic())
+                    {   
+                        submesh.command.baseInstance = currentStaticIndex;
+                        m_ssboStaticPerDraw.Add(pdd);
+                        m_staticBuffer.AddDrawCommand(submesh.command);
+                    }
+                    else
+                    {
+                        submesh.command.baseInstance = currentDynamicIndex;
+                        m_ssboDynamicPerDraw.Add(pdd);
+                        m_dynamicBuffer.AddDrawCommand(submesh.command);
+                    }
+                }
+            }
+
+            for (const auto& child : node->children)
+            {
+                traverseScene(child.get());
+            }
+        };
+        traverseScene(sceneRoot);
+        
+        m_staticBuffer.SetDrawType(GL_STATIC_DRAW);
+        m_dynamicBuffer.SetDrawType(GL_DYNAMIC_DRAW);
+        Graphics::CreateIndirectDrawBuffer(&m_staticBuffer);
+        Graphics::CreateIndirectDrawBuffer(&m_dynamicBuffer);
+
+        m_ssboStaticPerDraw.SetDrawType(GL_STATIC_DRAW);
+        m_ssboDynamicPerDraw.SetDrawType(GL_DYNAMIC_DRAW);
+        Graphics::CreateShaderStorageBuffer(&m_ssboStaticPerDraw);
+        Graphics::CreateShaderStorageBuffer(&m_ssboDynamicPerDraw);
+    }
+
     void DeferredRenderer::CycleDebugMode()
     {
         static DebugModes modes[4] = 
@@ -409,36 +535,6 @@ namespace JLEngine
         else if (m_debugModes == modes[0])
             m_debugModes = modes[1];
     }
-
-    //void DeferredRenderer::SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
-    //{
-    //    if (!m_skybox) return;
-    //
-    //    auto& batch = m_skybox->mesh->GetBatches()[0];
-    //    auto skyboxTexture = batch->GetMaterial()->baseColorTexture;
-    //    auto& vertexBuffer = batch->GetVertexBuffer();
-    //    auto& indexBuffer = batch->GetIndexBuffer();
-    //
-    //    //m_graphics->BindFrameBuffer(0);
-    //    m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
-    //    m_graphics->SetDepthMask(GL_FALSE);
-    //    m_graphics->Enable(GL_DEPTH_TEST);
-    //
-    //    m_graphics->BindShader(m_skyboxShader->GetProgramId());
-    //    m_skyboxShader->SetUniform("u_Model", m_skybox->GetGlobalTransform());
-    //    m_skyboxShader->SetUniform("u_View", glm::mat4(glm::mat3(viewMatrix)));
-    //    m_skyboxShader->SetUniform("u_Projection", projMatrix);
-    //    m_graphics->SetActiveTexture(0);
-    //    m_graphics->BindTexture(GL_TEXTURE_2D, skyboxTexture->GetGPUID());
-    //    m_skyboxShader->SetUniformi("u_SkyboxTexture", 0);
-    //
-    //    m_graphics->BindVertexArray(vertexBuffer->GetVAO());
-    //    m_graphics->BindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer->GetId());
-    //
-    //    m_graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)indexBuffer->Size(), GL_UNSIGNED_INT, nullptr);
-    //
-    //    m_graphics->SetDepthMask(GL_TRUE);
-    //}
 
     void DeferredRenderer::DrawUI()
     {
@@ -538,6 +634,127 @@ namespace JLEngine
         glm::mat4 lightView = glm::lookAt(lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f));
 
         return lightProjection * lightView;
+    }
+
+    void DeferredRenderer::GenerateMaterialAndTextureBuffers(ResourceManager<JLEngine::Material>& materialManager, ResourceManager<JLEngine::Texture>& textureManager, std::vector<MaterialGPU>& materialBuffer, std::vector<TextureGPU>& textureBuffer, std::unordered_map<uint32_t, size_t>& materialIDMap)
+    {
+        // Map Texture GPUID to indices
+        std::unordered_map<uint32_t, size_t> textureIDMap;
+        size_t textureIndex = 0;
+
+        uint32_t baseColDefaultIdx = 0;
+        uint32_t matRoughDefaultIdx = 0;
+        uint32_t normalDefaultIdx = 0;
+        uint32_t occlDefaultIdx = 0;
+        uint32_t emissDefaultIdx = 0;
+
+        for (const auto& [id, texture] : textureManager.GetResources())
+        {
+            TextureGPU texGPU; 
+            uint32_t handle = (uint32_t)glGetTextureHandleARB(texture->GetGPUID());
+            texGPU.handle = handle;
+            glMakeTextureHandleResidentARB(texGPU.handle);
+
+            textureBuffer.push_back(texGPU);
+            textureIDMap[id] = textureIndex++;
+
+            if (texture->GetName() == "Default_RGBA8_White")
+            {
+                baseColDefaultIdx = (uint32_t)textureIDMap[id];
+            }
+            if (texture->GetName() == "Default_RG8_Black")
+            {
+                matRoughDefaultIdx = (uint32_t)textureIDMap[id];
+            }
+            if (texture->GetName() == "Default_RGB8_NeutralNormal")
+            {
+                normalDefaultIdx = (uint32_t)textureIDMap[id];
+            }
+            if (texture->GetName() == "Default_R8_White")
+            {
+                occlDefaultIdx = (uint32_t)textureIDMap[id];
+            }
+            if (texture->GetName() == "Default_RGB8_Black")
+            {
+                emissDefaultIdx = (uint32_t)textureIDMap[id];
+            }
+        }
+
+        // Map Material GPUID to indices and build MaterialGPU array
+        size_t materialIndex = 0;
+
+        for (const auto& [id, material] : materialManager.GetResources())
+        {
+            MaterialGPU matGPU;
+            matGPU.baseColorFactor = material->baseColorFactor;
+            matGPU.emissiveFactor = glm::vec4(material->emissiveFactor, 1.0f);
+            matGPU.metallicFactor = material->metallicFactor;
+            matGPU.roughnessFactor = material->roughnessFactor;
+            matGPU.alphaCutoff = material->alphaCutoff;
+            matGPU.castShadows = material->castShadows ? 1 : 0;
+            matGPU.receiveShadows = material->receiveShadows ? 1 : 0;
+
+            // Map textures by ID
+            matGPU.baseColorTextureIndex = material->baseColorTexture ?
+                (int)textureIDMap[material->baseColorTexture->GetGPUID()] : baseColDefaultIdx; // Default Base Color
+
+            matGPU.metallicRoughnessTextureIndex = material->metallicRoughnessTexture ?
+                (int)textureIDMap[material->metallicRoughnessTexture->GetGPUID()] : matRoughDefaultIdx; // Default Metallic-Roughness
+
+            matGPU.normalTextureIndex = material->normalTexture ?
+                (int)textureIDMap[material->normalTexture->GetGPUID()] : normalDefaultIdx; // Default Normal
+
+            matGPU.occlusionTextureIndex = material->occlusionTexture ?
+                (int)textureIDMap[material->occlusionTexture->GetGPUID()] : occlDefaultIdx; // Default AO
+
+            matGPU.emissiveTextureIndex = material->emissiveTexture ?
+                (int)textureIDMap[material->emissiveTexture->GetGPUID()] : emissDefaultIdx;
+
+            matGPU.alphaMode = static_cast<int>(material->alphaMode);
+            matGPU.doubleSided = static_cast<int>(material->doubleSided);
+
+            materialBuffer.push_back(matGPU);
+            materialIDMap[id] = materialIndex++;
+        }
+    }
+
+    void DeferredRenderer::GenerateDefaultTextures()
+    {
+        std::vector<unsigned char> DefaultWhitePixel = { 255, 255, 255, 255 };       // RGBA White
+        std::vector<unsigned char> DefaultBlackPixel = { 0, 0, 0, 255 };             // RGBA Black
+        std::vector<unsigned char> DefaultNeutralNormalPixel = { 128, 128, 255 };    // RGB Neutral Normal
+        std::vector<unsigned char> DefaultAOWhitePixel = { 255 };                    // R White (Full AO)
+        std::vector<unsigned char> DefaultEmissiveBlackPixel = { 0, 0, 0 };
+
+        // Default white texture for Base Color
+        auto defaultBaseColor = m_resourceLoader->CreateTexture("Default_RGBA8_White");
+        ImageData baseColorImg = ImageData::CreateDefaultImageData(1, 1, GL_RGBA, DefaultWhitePixel);
+        defaultBaseColor->InitFromData(std::move(baseColorImg));
+        Graphics::CreateTexture(defaultBaseColor.get());
+
+        // Default black texture for Metallic-Roughness
+        auto defaultMetallicRoughness = m_resourceLoader->CreateTexture("Default_RG8_Black");
+        ImageData metallicRoughnessImg = ImageData::CreateDefaultImageData(1, 1, GL_RG, { 0, 255 }); // Metallic = 0, Roughness = 1
+        defaultMetallicRoughness->InitFromData(std::move(metallicRoughnessImg));
+        Graphics::CreateTexture(defaultMetallicRoughness.get());
+
+        // Default neutral normal map
+        auto defaultNormal = m_resourceLoader->CreateTexture("Default_RGB8_NeutralNormal");
+        ImageData normalImg = ImageData::CreateDefaultImageData(1, 1, GL_RGB, DefaultNeutralNormalPixel);
+        defaultNormal->InitFromData(std::move(normalImg));
+        Graphics::CreateTexture(defaultNormal.get());
+
+        // Default white AO texture
+        auto defaultAO = m_resourceLoader->CreateTexture("Default_R8_White");
+        ImageData aoImg = ImageData::CreateDefaultImageData(1, 1, GL_RED, DefaultAOWhitePixel);
+        defaultAO->InitFromData(std::move(aoImg));
+        Graphics::CreateTexture(defaultAO.get());
+
+        // Default black texture for Emissive
+        auto defaultEmissive = m_resourceLoader->CreateTexture("Default_RGB8_Black");
+        ImageData emissiveImg = ImageData::CreateDefaultImageData(1, 1, GL_RGB, DefaultEmissiveBlackPixel);
+        defaultEmissive->InitFromData(std::move(emissiveImg));
+        Graphics::CreateTexture(defaultEmissive.get());
     }
 
     void DeferredRenderer::GroupRenderables(Node* node, RenderGroupMap& renderGroups)

@@ -6,6 +6,7 @@
 #include "ShaderProgram.h"
 #include "FileHelpers.h"
 #include "VertexBuffers.h"
+#include "IndirectDrawBuffer.h"
 #include "GraphicsAPI.h"
 
 namespace JLEngine
@@ -246,10 +247,10 @@ namespace JLEngine
 		auto id = vao->GetGPUID();
 		glDeleteVertexArrays(1, &id);
 
-		auto vboid = vao->GetVBO().GetId();
+		auto vboid = vao->GetVBO().GetGPUID();
 		glDeleteBuffers(1, &vboid);
 
-		auto iboid = vao->GetIBO().GetId();
+		auto iboid = vao->GetIBO().GetGPUID();
 		if (iboid != 0)
 		{
 			glDeleteBuffers(1, &iboid);
@@ -296,7 +297,7 @@ namespace JLEngine
 				glDeleteShader(shaders.at(i).GetShaderId());
 			}
 		}
-
+		GL_CHECK_ERROR();
 		auto activeUniforms = Graphics::API()->GetActiveUniforms(program->GetProgramId());
 		for (auto& uniform : activeUniforms)
 		{
@@ -334,7 +335,6 @@ namespace JLEngine
 		target->SetFrameBufferId(fbo);
 
 		auto& attributes = target->GetTextureAttributes();
-
 		for (uint32_t i = 0; i < target->GetNumSources(); i++)
 		{
 			GLuint tex;
@@ -354,7 +354,6 @@ namespace JLEngine
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, attrib.wrapS);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, attrib.wrapT);
 		}
-
 		GLuint depth;
 		if (target->DepthType() == DepthType::Renderbuffer)
 		{
@@ -379,7 +378,6 @@ namespace JLEngine
 		}
 
 		glDrawBuffers(target->GetNumSources(), target->GetDrawBuffers().data());
-
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
 			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -504,6 +502,38 @@ namespace JLEngine
 		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 	}
 
+	void Graphics::CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo)
+	{
+		if (idbo->GetGPUID() == 0)
+		{
+			GLuint id = 0;
+			glGenBuffers(1, &id);
+			idbo->SetGPUID(id);
+		}
+
+		if (idbo->IsDirty())
+		{
+			Graphics::API()->BindBuffer(GL_DRAW_INDIRECT_BUFFER, idbo->GetGPUID());
+			if (idbo->GetBuffer().empty())
+			{
+				Graphics::API()->SetBufferData(GL_DRAW_INDIRECT_BUFFER, 0, nullptr, idbo->DrawType());
+			}
+			else
+			{
+				auto& buffer = idbo->GetBufferMutable();
+				Graphics::API()->SetBufferData(GL_DRAW_INDIRECT_BUFFER,
+					idbo->GetBuffer().size() * sizeof(DrawIndirectCommand), idbo->GetBufferMutable().data(), idbo->DrawType());
+			}
+			idbo->SetDirty(false);
+		}
+	}
+
+	void Graphics::DisposeGraphicsBuffer(GraphicsBuffer* gpuBuffer)
+	{
+		auto id = gpuBuffer->GetGPUID();
+		glDeleteBuffers(1, &id);
+	}
+
 	void Graphics::UploadCubemapFace(GLenum face, const ImageData& img, const TexParams& params, int width, int height)
 	{
 		if (img.isHDR)
@@ -524,7 +554,7 @@ namespace JLEngine
 		glGenBuffers(1, &id);
 		glBindBuffer(vbo.Type(), id);
 		glBufferData(vbo.Type(), vbo.SizeInBytes(), vbo.Array(), vbo.DrawType());
-		vbo.SetId(id);
+		vbo.SetGPUID(id);
 	}
 
 	void Graphics::CreateIndexBuffer(IndexBuffer& ibo)
@@ -535,6 +565,6 @@ namespace JLEngine
 		glGenBuffers(1, &id);
 		glBindBuffer(ibo.Type(), id);
 		glBufferData(ibo.Type(), ibo.Size() * sizeof(uint32_t), ibo.Array(), ibo.DrawType());
-		ibo.SetId(id);
+		ibo.SetGPUID(id);
 	}
 }

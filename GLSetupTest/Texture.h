@@ -26,6 +26,11 @@ namespace JLEngine
         uint32_t dataType =         GL_UNSIGNED_BYTE;
     };
 
+    struct TextureGPU
+    {
+        uint64_t handle;   // Bindless texture handle (for ARB_bindless_texture)
+    };
+
     class Texture : public GraphicsResource
     {
     public:

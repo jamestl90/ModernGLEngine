@@ -28,6 +28,7 @@ namespace JLEngine
 	}
 
 	IndexBuffer::IndexBuffer(uint32_t type, uint32_t data, uint32_t draw )
+		: GraphicsBuffer(type, data, draw)
 	{
 
 	}

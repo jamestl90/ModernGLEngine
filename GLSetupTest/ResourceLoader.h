@@ -16,6 +16,7 @@
 #include "MaterialFactory.h"
 #include "RenderTargetFactory.h"
 #include "VertexArrayObjectFactory.h"
+#include "ShaderStorageBuffer.h"
 #include "MeshFactory.h"
 #include "GLBLoader.h"
 
@@ -24,7 +25,6 @@ namespace JLEngine
 	class Texture;
 	class ShaderProgram;
 	class RenderTarget;
-	class ShaderStorageBuffer;
 	class Mesh;
 	class Node;
 	class GraphicsAPI;

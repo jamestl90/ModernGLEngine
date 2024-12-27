@@ -9,6 +9,7 @@
 #include "ShaderProgram.h"
 #include "Node.h"
 #include "VertexArrayObject.h"
+#include "ShaderStorageBuffer.h"
 #include "ResourceLoader.h"
 #include "Batch.h"
 
@@ -40,57 +41,16 @@ namespace JLEngine
         void Initialize();
         void Resize(int width, int height);
         
+        void RenderIndirect(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
-        void AddStaticVAO(VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao)
-        {
-            m_staticVAOs[key] = vao;
-        }
+        void AddStaticVAO(VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao) { m_staticVAOs[key] = vao; }
 
-        void GenerateGPUBuffers(Node* sceneRoot)
-        {
-            if (!sceneRoot) return;
-
-            for (auto [vertexAttrib, vao] : m_staticVAOs)
-            {
-                Graphics::CreateVertexArray(vao.get());
-            }
-
-            for (auto [vertexAttrib, vao] : m_dynamicVAOs)
-            {
-                Graphics::CreateVertexArray(vao.get());
-            }
-
-            std::function<void(Node*)> traverseScene = [&](Node* node)
-                {
-                    if (!node) return;
-
-                    if (node->GetTag() == NodeTag::Mesh)
-                    {
-                        const auto& submeshes = node->mesh->GetSubmeshes();
-                        for (const auto& submesh : submeshes)
-                        {
-                            if (node->mesh->IsStatic())
-                                m_staticBuffer.AddDrawCommand(submesh.command);
-                            else
-                                m_dynamicBuffer.AddDrawCommand(submesh.command);
-                        }
-                    }
-
-                    for (const auto& child : node->children)
-                    {
-                        traverseScene(child.get());
-                    }
-                };
-            traverseScene(sceneRoot);
-
-            m_staticBuffer.SyncToGPU();
-            m_dynamicBuffer.SyncToGPU();
-        }
+        void GenerateGPUBuffers(Node* sceneRoot);
 
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
@@ -111,8 +71,14 @@ namespace JLEngine
         void GroupRenderables(Node* node, RenderGroupMap& renderGroups);
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
-
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
+        void GenerateMaterialAndTextureBuffers(
+            ResourceManager<JLEngine::Material>& materialManager,
+            ResourceManager<JLEngine::Texture>& textureManager,
+            std::vector<MaterialGPU>& materialBuffer,
+            std::vector<TextureGPU>& textureBuffer,
+            std::unordered_map<uint32_t, size_t>& materialIDMap);
+        void GenerateDefaultTextures();
 
         GraphicsAPI* m_graphics;
         ResourceLoader* m_resourceLoader;
@@ -134,6 +100,11 @@ namespace JLEngine
 
         IndirectDrawBuffer m_staticBuffer;
         IndirectDrawBuffer m_dynamicBuffer;
+
+        ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
+        ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
+        ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
+        ShaderStorageBuffer<TextureGPU> m_ssboTextures;
 
         std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
         std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;

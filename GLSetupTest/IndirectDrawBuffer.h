@@ -5,6 +5,13 @@
 
 namespace JLEngine
 {
+	struct PerDrawData
+	{
+		glm::mat4 modelMatrix; // 64 bytes
+		int materialID;		   // 4 bytes
+		int padding[3];        // 12 bytes 
+	};
+
 	struct DrawIndirectCommand
 	{
 		uint32_t count;
@@ -18,13 +25,13 @@ namespace JLEngine
 	{
 	public:
 		IndirectDrawBuffer()
-			: GraphicsBuffer(GL_TRIANGLES, GL_UNSIGNED_INT, GL_STATIC_DRAW) {}
+			: GraphicsBuffer(GL_DRAW_INDIRECT_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW) {}
 
 		IndirectDrawBuffer(uint32_t draw)
-			: GraphicsBuffer(GL_TRIANGLES, GL_UNSIGNED_INT, draw) {}
+			: GraphicsBuffer(GL_DRAW_INDIRECT_BUFFER, GL_UNSIGNED_INT, draw) {}
 
 		IndirectDrawBuffer(uint32_t draw, const std::vector<DrawIndirectCommand>& commands)
-			: GraphicsBuffer(GL_TRIANGLES, GL_UNSIGNED_INT, draw), m_dirty(true)
+			: GraphicsBuffer(GL_DRAW_INDIRECT_BUFFER, GL_UNSIGNED_INT, draw)
 		{
 			m_buffer = commands;
 		}
@@ -32,7 +39,7 @@ namespace JLEngine
 		void AddDrawCommand(const DrawIndirectCommand& command)
 		{
 			m_buffer.push_back(command);
-			m_dirty = true; // Mark buffer as needing an update
+			SetDirty(true); // Mark buffer as needing an update
 		}
 
 		void RemoveDrawCommand(size_t index)
@@ -40,7 +47,7 @@ namespace JLEngine
 			if (index < m_buffer.size())
 			{
 				m_buffer.erase(m_buffer.begin() + index);
-				m_dirty = true;
+				SetDirty(true);
 			}
 		}
 
@@ -49,23 +56,18 @@ namespace JLEngine
 			if (index < m_buffer.size())
 			{
 				m_buffer[index] = command;
-				m_dirty = true;
+				SetDirty(true);
 			}
 		}
 
 		void ClearCommands()
 		{
 			m_buffer.clear();
-			m_dirty = true;
+			SetDirty(true);
 		}
-
-		void SyncToGPU();
 
 		const std::vector<DrawIndirectCommand>& GetDrawCommands() const { return m_buffer; }
 		const DrawIndirectCommand& GetDrawCommands(size_t i) const { return m_buffer[i]; }
-
-	private:
-		bool m_dirty = true;
 	};
 }
 

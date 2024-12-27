@@ -140,10 +140,6 @@
       <SubType>
       </SubType>
     </ClCompile>
-    <ClCompile Include="IndirectDrawBuffer.cpp">
-      <SubType>
-      </SubType>
-    </ClCompile>
     <ClCompile Include="ResourceLoader.cpp">
       <SubType>
       </SubType>

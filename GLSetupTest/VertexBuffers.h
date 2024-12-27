@@ -28,9 +28,9 @@ namespace JLEngine
 
 		GraphicsBuffer(uint32_t type, uint32_t data, uint32_t drawType);
 
-		void SetId(uint32_t& id) { m_id = id; m_uploadedToGPU = true; }
+		void SetGPUID(uint32_t& id) { m_id = id; m_uploadedToGPU = true; }
 
-		uint32_t GetId() const { return m_id; }
+		uint32_t GetGPUID() const { return m_id; }
 
 		void SetType(uint32_t type) { m_type = type; }
 
@@ -48,6 +48,10 @@ namespace JLEngine
 
 		void SetUploaded(bool uploaded) { m_uploadedToGPU = uploaded; }
 
+		bool IsDirty() { return m_isDirty; }
+
+		void SetDirty(bool dirty) { m_isDirty = dirty; }
+
 	protected:
 
 		uint32_t m_type;
@@ -55,6 +59,7 @@ namespace JLEngine
 		uint32_t m_drawType;
 
 		bool m_uploadedToGPU = false;
+		bool m_isDirty = true;
 
 		uint32_t m_id;
 	};

@@ -33,6 +33,8 @@ namespace JLEngine
 
 		void Set(std::vector<T>& vals);
 
+		void Set(std::vector<T>&& vals);
+
 		void SetAt(int pos, T val);
 
 		bool InsertAt(int pos, std::vector<T>& vals);
@@ -46,6 +48,8 @@ namespace JLEngine
 		T* Array();
 
 		const std::vector<T>& GetBuffer() const;
+
+		std::vector<T>& GetBufferMutable();
 
 		void Clear();
 
@@ -110,6 +114,12 @@ namespace JLEngine
 	}
 
 	template <class T>
+	void Buffer<T>::Set(std::vector<T>&& vals)
+	{
+		m_buffer = std::move(vals);
+	}
+
+	template <class T>
 	void Buffer<T>::Add(T& val)
 	{
 		m_buffer.push_back(val);
@@ -132,6 +142,13 @@ namespace JLEngine
 	{
 		return m_buffer;
 	}
+
+	template <class T>
+	std::vector<T>& Buffer<T>::GetBufferMutable()
+	{
+		return m_buffer;
+	}
+
 
 	template <class T>
 	T* Buffer<T>::Array()

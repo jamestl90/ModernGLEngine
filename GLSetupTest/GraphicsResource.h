@@ -13,7 +13,9 @@ namespace JLEngine
     {
     public:
         explicit GraphicsResource(const std::string& name, GraphicsAPI* graphics)
-            : Resource(name), m_graphics(graphics) {}
+            : Resource(name), m_graphics(graphics) {
+            m_gpuID = (uint32_t)0;
+        }
 
         virtual ~GraphicsResource() = default;
 
