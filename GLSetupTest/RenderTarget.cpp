@@ -1,53 +1,22 @@
 #include "RenderTarget.h"
+#include "Graphics.h"
+#include "GraphicsAPI.h"
 
 #include <glad/glad.h>
 
 namespace JLEngine
 {
-	RenderTarget::RenderTarget(const string& name, uint32_t numSources)
-		: Resource(name), m_fbo(0), m_dbo(0), m_numSources(numSources),
+	RenderTarget::RenderTarget(const string& name, GraphicsAPI* graphics)
+		: GraphicsResource(name, graphics), m_fbo(0), m_dbo(0), m_numSources(1),
 		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
 	{
-		m_attributes.Create(numSources);
-		m_sources.Create(numSources);
-		m_drawBuffers.Create(numSources);
 
-		for (uint32_t i = 0; i < m_numSources; i++)
-		{
-			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
-		}
-	}
-
-	RenderTarget::RenderTarget(uint32_t handle, const string& name, uint32_t numSources)
-		: Resource(handle, name), m_fbo(0), m_dbo(0), m_numSources(numSources),
-		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false), m_graphics(nullptr)
-	{
-		m_attributes.Create(numSources);
-		m_sources.Create(numSources);
-		m_drawBuffers.Create(numSources);
-
-		for (uint32_t i = 0; i < m_numSources; i++)
-		{
-			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
-		}
 	}
 
 	RenderTarget::~RenderTarget()
 	{
-		UnloadFromGraphics();
-	}
-
-	void RenderTarget::UploadToGPU( Graphics* graphics )
-	{
-		m_graphics = graphics;
-
-		if (m_useWindowSize)
-		{
-			m_width = m_graphics->GetWindow()->GetWidth();
-			m_height = m_graphics->GetWindow()->GetHeight();
-		}
-
-		m_graphics->CreateRenderTarget(this);
+		if (JLEngine::Graphics::Alive())
+			Graphics::DisposeRenderTarget(this);
 	}
 
 	void RenderTarget::BindDepthTexture(int texUnit)
@@ -97,25 +66,26 @@ namespace JLEngine
 		m_width = newWidth;
 		m_height = newHeight;
 
-		m_graphics->ResizeRenderTarget(this, newWidth, newHeight);
+		Graphics::ResizeRenderTarget(this, newWidth, newHeight);
 	}
 
 	void RenderTarget::SetNumSources( uint32_t numSources )
 	{
 		m_numSources = numSources;
 
-		m_sources.Create(m_numSources);
-		m_drawBuffers.Create(m_numSources);
+		m_sources.resize(m_numSources);
+		m_drawBuffers.resize(m_numSources);
+		m_attributes.resize(m_numSources);
 
 		for (uint32_t i = 0; i < m_numSources; i++)
 		{
-			m_drawBuffers[i] = GL_TEXTURE0 + i;
+			m_drawBuffers[i] = GL_COLOR_ATTACHMENT0 + i;
 		}
 	}
 
 	void RenderTarget::SetTextureAttribute(uint32_t index, const TextureAttribute& attributes)
 	{
-		if (index < m_attributes.Size())
+		if (index < m_attributes.size())
 		{
 			m_attributes[index] = attributes;
 		}
@@ -123,10 +93,5 @@ namespace JLEngine
 		{
 			std::cerr << "RenderTarget::SetTextureAttributes: Index out of range!" << std::endl;
 		}
-	}
-
-	void RenderTarget::UnloadFromGraphics()
-	{
-		m_graphics->DisposeRenderTarget(this);
 	}
 }

@@ -1,136 +1,118 @@
 #version 460 core
 
-// Inputs from vertex shader
-in vec3 v_FragPos;       // Fragment position in world space
-in vec3 v_Normal;        // Normal in world space
-in vec2 v_TexCoords;     // Texture coordinates
-in vec3 v_Tangent;       // Tangent in world space
-in vec3 v_Bitangent;     // Bitangent in world space
+#extension GL_ARB_bindless_texture : require
+//#extension GL_EXT_nonuniform_qualifier : enable
+//#extension GL_NV_gpu_shader5 : enable
+
+struct MaterialGPU 
+{
+    vec4 baseColorFactor;
+    vec4 emissiveFactor;
+    uvec2 baseColorHandle;
+    uvec2 metallicRoughnessHandle;
+    uvec2 normalHandle;
+    uvec2 occlusionHandle;
+    uvec2 emissiveHandle;
+    float metallicFactor;
+    float roughnessFactor;
+    float alphaCutoff;
+    uint alphaMode;
+    uint receiveShadows;
+};
 
 // Outputs to G-buffer
 layout(location = 0) out vec4 gAlbedoAO;          // Albedo (RGB) + AO (A)
-layout(location = 1) out vec4 gNormalSmooth;      // Normal (RGB) + Smoothness (A)
+layout(location = 1) out vec4 gNormalShadow;      // Normal (RGB) + ShadowInfo
 layout(location = 2) out vec2 gMetallicRoughness; // Metallic (R) + Roughness (G)
 layout(location = 3) out vec4 gEmissive;          // Emissive (RGB) + Reserved (A)
 
-// Material properties
-uniform vec4 baseColorFactor = vec4(1.0);          // Base color factor (RGBA)
-uniform sampler2D baseColorTexture;               // Base color texture
-uniform bool useBaseColorTexture = false;         // Flag to use texture
+layout(std430, binding = 0) readonly buffer MaterialBuffer 
+{
+    MaterialGPU materials[];
+};
 
-uniform float metallicFactor = 0.0;               // Metallic scalar
-uniform float roughnessFactor = 0.0;              // Roughness scalar
-uniform sampler2D metallicRoughnessTexture;       // Metallic-Roughness combined texture
-uniform bool useMetallicRoughnessTexture = false; // Flag to use texture
-
-uniform sampler2D normalTexture;                  // Normal map
-uniform bool useNormalTexture = false;            // Flag to use texture
-
-uniform sampler2D occlusionTexture;               // Ambient occlusion map
-uniform bool useOcclusionTexture = false;         // Flag to use texture
-
-uniform sampler2D emissiveTexture;                // Emissive map
-uniform bool useEmissiveTexture = false;          // Flag to use texture
-uniform vec3 emissiveFactor = vec3(0.0);          // Emissive factor
-
-uniform float m_AlphaCutoff;
-
-uniform bool u_CastShadows;
-uniform bool u_ReceiveShadows;
-
-// Constants 
-const float DEFAULT_AO = 1.0;                    // Default ambient occlusion
+// Inputs from vertex shader
+in vec3 v_Normal;        
+in vec2 v_TexCoord;     
+in vec3 v_Tangent;       
+in vec3 v_Bitangent;     
+flat in uint v_MaterialIndex;
 
 // Get material properties
-vec4 getBaseColor() 
+vec4 getBaseColor(MaterialGPU material) 
 {
-    if (useBaseColorTexture) 
+    bool hasTex = (material.baseColorHandle.x != 0 || material.baseColorHandle.y != 0);
+    if (hasTex) 
     {
-        vec4 textureColor = texture(baseColorTexture, v_TexCoords);
-        return baseColorFactor * textureColor;
+        return texture(sampler2D(material.baseColorHandle), v_TexCoord) * material.baseColorFactor;
     }
-    return baseColorFactor;
+    return material.baseColorFactor;
 }
 
-vec2 getMetallicRoughness() 
+vec2 getMetallicRoughness(MaterialGPU material) 
 {
-    if (useMetallicRoughnessTexture) 
+    bool hasTex = (material.metallicRoughnessHandle.x != 0 || material.metallicRoughnessHandle.y != 0);
+    if (hasTex) 
     {
-        vec4 texValue = texture(metallicRoughnessTexture, v_TexCoords);
-        float metallic = texValue.b * metallicFactor;   // Metallic is in the B channel
-        float roughness = texValue.g * roughnessFactor; // Roughness is in the G channel
+        vec4 texValue = texture(sampler2D(material.metallicRoughnessHandle), v_TexCoord);
+        float metallic = texValue.b * material.metallicFactor;
+        float roughness = texValue.g * material.roughnessFactor;
         return vec2(metallic, roughness);
     }
-    return vec2(metallicFactor, roughnessFactor);
+    return vec2(material.metallicFactor, material.roughnessFactor);
 }
 
-vec3 getNormal() 
+vec3 getNormal(MaterialGPU material) 
 {
-    if (useNormalTexture) 
+    bool hasTex = (material.normalHandle.x != 0 || material.normalHandle.y != 0);
+    if (hasTex) 
     {
-        // Sample and decode the normal from the normal texture
-        vec3 normalTex = texture(normalTexture, v_TexCoords).rgb;
+        vec3 normalTex = texture(sampler2D(material.normalHandle), v_TexCoord).rgb;
         normalTex = normalTex * 2.0 - 1.0; // Map [0, 1] to [-1, 1]
-
-        // Construct TBN matrix from interpolated vertex data
         mat3 TBN = mat3(normalize(v_Tangent), normalize(v_Bitangent), normalize(v_Normal));
-
-        // Transform the tangent-space normal to world space
-        vec3 worldNormal = normalize(TBN * normalTex);
-
-        // Encode the world-space normal to [0, 1] for storage
-        return worldNormal * 0.5 + 0.5;
+        return normalize(TBN * normalTex) * 0.5 + 0.5;
     }
-        // Use the interpolated vertex normal (already in world space)
-    vec3 worldNormal = normalize(v_Normal);
-
-    // Encode the world-space normal to [0, 1] for storage
-    return worldNormal * 0.5 + 0.5;
+    return normalize(v_Normal) * 0.5 + 0.5;
 }
 
-float getAmbientOcclusion() 
+float GetAmbientOcclusion(MaterialGPU material)
 {
-    if (useOcclusionTexture) 
+    bool hasTex = (material.occlusionHandle.x != 0 || material.occlusionHandle.y != 0);
+    if (hasTex) 
     {
-        return texture(occlusionTexture, v_TexCoords).r;
+        return texture(sampler2D(material.occlusionHandle), v_TexCoord).r;
     }
-    return DEFAULT_AO; // Default AO value
+    return 1.0;
 }
 
-vec3 getEmissive() 
+vec3 getEmissive(MaterialGPU material) 
 {
-    if (useEmissiveTexture) 
+    bool hasTex = (material.emissiveHandle.x != 0 || material.emissiveHandle.y != 0);
+    if (hasTex) 
     {
-        vec3 emissiveTexColor = texture(emissiveTexture, v_TexCoords).rgb;
-        return emissiveFactor * emissiveTexColor;
+        vec3 emissiveTexColor = texture(sampler2D(material.emissiveHandle), v_TexCoord).rgb;
+        return material.emissiveFactor.rgb * emissiveTexColor;
     }
-    return emissiveFactor;
-}
-
-float encodeShadowFlags(bool receiveShadows, bool castShadows) 
-{
-    return float(castShadows) + 0.1 * float(receiveShadows);
+    return material.emissiveFactor.rgb;
 }
 
 void main() 
 {
-    // Retrieve material properties
-    vec4 baseColor = getBaseColor();
+    MaterialGPU material = materials[v_MaterialIndex];
 
-    if (baseColor.a <= m_AlphaCutoff)
+    vec4 baseColor = getBaseColor(material);
+    vec2 metallicRoughness = getMetallicRoughness(material);
+    vec3 normal = getNormal(material);
+    vec3 emissive = getEmissive(material);
+    float ao = GetAmbientOcclusion(material);
+
+    if (material.alphaMode == 1 && baseColor.a < material.alphaCutoff) 
     {
         discard;
     }
 
-    vec2 metallicRoughness = getMetallicRoughness();
-    vec3 normal = getNormal();
-    float ao = getAmbientOcclusion();
-    vec3 emissive = getEmissive();
-    float shadowInfo = encodeShadowFlags(u_ReceiveShadows, u_CastShadows);
-
-    // Write to G-buffer
     gAlbedoAO = vec4(baseColor.rgb, ao);          // Albedo + Ambient Occlusion
-    gNormalSmooth = vec4(normal, shadowInfo);            // Normal + Reserved
-    gMetallicRoughness = metallicRoughness;       // Metallic + Roughness + Reserved x2
-    gEmissive = vec4(emissive, 0.0);              // Emissive + Reserved
+    gNormalShadow = vec4(normal, material.receiveShadows); // Encoded Normal + Shadow Info
+    gMetallicRoughness = metallicRoughness;       // Metallic + Roughness
+    gEmissive = vec4(emissive, 0.0);                   // Emissive + Reserved
 }

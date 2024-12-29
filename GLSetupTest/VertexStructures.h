@@ -22,6 +22,8 @@ namespace JLEngine
 
 	using VertexAttribKey = uint32_t;
 
+	class VertexArrayObject;
+
 	struct VertexAttribute
 	{
 	public:
@@ -47,8 +49,8 @@ namespace JLEngine
 	void RemoveFromVertexAttribKey(VertexAttribKey& key, AttributeType type);
 	bool HasVertexAttribKey(uint32_t mask, AttributeType attribute);
 
-	uint32_t CalculateStride(VertexAttribKey vertexAttribKey);
-
+	uint32_t CalculateStride(VertexArrayObject* vao);
+	uint32_t CalculateStride(VertexAttribKey key, int posCount = 3);
 }
 
 #endif

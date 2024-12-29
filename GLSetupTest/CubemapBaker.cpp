@@ -14,9 +14,9 @@
 
 namespace JLEngine
 {
-    CubemapBaker::CubemapBaker(const std::string& assetPath, AssetLoader* assetLoader)
+    CubemapBaker::CubemapBaker(const std::string& assetPath, ResourceLoader* assetLoader)
         : m_hdrToCubemapShader(nullptr), m_assetLoader(assetLoader), m_brdfLutShader(nullptr),
-        m_irradianceShader(nullptr), m_assetPath(assetPath)
+        m_irradianceShader(nullptr), m_assetPath(assetPath), m_prefilteredCubemapShader(nullptr)
     {
     }
 
@@ -32,13 +32,14 @@ namespace JLEngine
 
         auto fullPath = m_assetPath + "Core/Shaders/Baking/";
         EnsureHDRtoCubemapShadersLoaded(fullPath);
-
-        Graphics* graphics = m_assetLoader->GetGraphics();
-        auto vertexBuffer = Geometry::CreateBox(graphics);
+        GL_CHECK_ERROR();
+        GraphicsAPI* graphics = m_assetLoader->GetGraphics();
+        VertexArrayObject vao;
+        Geometry::CreateBox(vao);
+        Graphics::CreateVertexArray(&vao);
 
         if (cubeMapSize == 0)
             cubeMapSize = imgData.width / 4;
-
         unsigned int captureFBO;
         unsigned int captureRBO;
         glGenFramebuffers(1, &captureFBO);
@@ -48,6 +49,11 @@ namespace JLEngine
         glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, cubeMapSize, cubeMapSize);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            throw std::runtime_error("Framebuffer incomplete.");
+        }
 
         unsigned int hdrTexture = 0;
         glGenTextures(1, &hdrTexture);
@@ -100,7 +106,12 @@ namespace JLEngine
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            graphics->BindVertexArray(vertexBuffer.GetVAO());
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            {
+                throw std::runtime_error("Framebuffer incomplete.");
+            }
+
+            graphics->BindVertexArray(vao.GetGPUID());
             graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 36);
             graphics->BindVertexArray(0);
         }
@@ -134,7 +145,7 @@ namespace JLEngine
         //}
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        graphics->DisposeVertexBuffer(vertexBuffer);
+        Graphics::DisposeVertexArray(&vao);        
 
         if (genMipmaps)
         {
@@ -145,6 +156,9 @@ namespace JLEngine
         glDeleteFramebuffers(1, &captureFBO);
         glDeleteRenderbuffers(1, &captureRBO);
         glDeleteTextures(1, &hdrTexture);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindVertexArray(0);
 
         return envCubemap;
     }
@@ -170,11 +184,17 @@ namespace JLEngine
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         // Create a framebuffer and renderbuffer for rendering
-        GLuint captureFBO;
+        GLuint captureFBO, captureRBO;
         glGenFramebuffers(1, &captureFBO);
         glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+        glGenRenderbuffers(1, &captureRBO);
 
-        Graphics* graphics = m_assetLoader->GetGraphics();
+        glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+        glBindRenderbuffer(GL_RENDERBUFFER, captureRBO);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, irradianceMapSize, irradianceMapSize);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO);
+
+        GraphicsAPI* graphics = m_assetLoader->GetGraphics();
         graphics->BindShader(m_irradianceShader->GetProgramId());
         m_irradianceShader->SetUniformi("u_EnvironmentMap", 0);
 
@@ -194,7 +214,9 @@ namespace JLEngine
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, hdrCubeMapID);
 
-        auto vertexBuffer = Geometry::CreateBox(graphics);
+        VertexArrayObject vao;
+        Geometry::CreateBox(vao);
+        Graphics::CreateVertexArray(&vao);
 
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_FALSE);
@@ -214,7 +236,7 @@ namespace JLEngine
             }
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            graphics->BindVertexArray(vertexBuffer.GetVAO());
+            graphics->BindVertexArray(vao.GetGPUID());
             graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 36);
             graphics->BindVertexArray(0);
         }
@@ -223,7 +245,11 @@ namespace JLEngine
 
         // Clean up
         glDeleteFramebuffers(1, &captureFBO);
-        graphics->DisposeVertexBuffer(vertexBuffer);
+        Graphics::DisposeVertexArray(&vao);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindVertexArray(0);
 
         return irradianceMap;
     }
@@ -278,7 +304,9 @@ namespace JLEngine
         graphics->SetActiveTexture(0);
         graphics->BindTexture(GL_TEXTURE_CUBE_MAP, hdrCubeMapID);
 
-        auto vertexBuffer = Geometry::CreateBox(graphics);
+        VertexArrayObject vao;
+        Geometry::CreateBox(vao);
+        Graphics::CreateVertexArray(&vao);
 
         unsigned int maxMips = static_cast<int>(1 + std::floor(std::log2(prefEnvMapSize)));
         for (unsigned int mip = 0; mip < maxMips; mip++)
@@ -300,17 +328,27 @@ namespace JLEngine
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                     GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, prefilteredEnvMap, mip);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-                graphics->BindVertexArray(vertexBuffer.GetVAO());
+
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) 
+                {
+                    throw std::runtime_error("Framebuffer incomplete after modifying attachment.");
+                }
+
+                graphics->BindVertexArray(vao.GetGPUID());
                 graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 36);
                 graphics->BindVertexArray(0);
             }
         }
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        graphics->DisposeVertexBuffer(vertexBuffer);
+        Graphics::DisposeVertexArray(&vao);
 
         glDeleteFramebuffers(1, &captureFBO);
         glDeleteRenderbuffers(1, &captureRBO);
+
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+        glUseProgram(0); 
 
         return prefilteredEnvMap;
     }
@@ -321,9 +359,11 @@ namespace JLEngine
         auto fullPath = m_assetPath + "Core/Shaders/Baking/";
         EnsureBRDFLutShaderLoaded(fullPath);
 
-        auto fullscreenQuad = JLEngine::Geometry::CreateScreenSpaceQuad(graphics);
-        auto vbo = std::get<0>(fullscreenQuad);
-        auto ibo = std::get<1>(fullscreenQuad);
+        VertexArrayObject vao;
+        JLEngine::Geometry::CreateScreenSpaceQuad(vao);
+        JLEngine::Graphics::CreateVertexArray(&vao);
+        auto& vbo = vao.GetVBO();
+        auto& ibo = vao.GetIBO();
 
         GLuint captureFBO, captureRBO;
         glGenFramebuffers(1, &captureFBO);
@@ -349,11 +389,11 @@ namespace JLEngine
         m_brdfLutShader->SetUniformi("u_NumSamples", numSamples);
         graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        graphics->BindVertexArray(vbo.GetVAO());
+        graphics->BindVertexArray(vao.GetGPUID());
         graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.Size(), GL_UNSIGNED_INT, nullptr);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        graphics->DisposeVertexBuffer(vbo);
+        Graphics::DisposeVertexArray(&vao);
 
         glDeleteFramebuffers(1, &captureFBO);
         glDeleteRenderbuffers(1, &captureRBO);
@@ -383,13 +423,15 @@ namespace JLEngine
 
     void CubemapBaker::CleanupInternals()
     {
-        m_assetLoader->GetGraphics()->DisposeShader(m_hdrToCubemapShader);
+        if (!Graphics::Alive()) return;
+
+        Graphics::DisposeShader(m_hdrToCubemapShader);
         m_hdrToCubemapShader = nullptr;
 
-        m_assetLoader->GetGraphics()->DisposeShader(m_irradianceShader);
+        Graphics::DisposeShader(m_irradianceShader);
         m_irradianceShader = nullptr;
 
-        m_assetLoader->GetGraphics()->DisposeShader(m_brdfLutShader);
+        Graphics::DisposeShader(m_brdfLutShader);
         m_brdfLutShader = nullptr;
     }
 
@@ -402,7 +444,8 @@ namespace JLEngine
                 "equirectangular_to_cubemap_vert.glsl",
                 "equirectangular_to_cubemap_frag.glsl",
                 fullPath
-            );
+            ).get();
+
         }
     }
 
@@ -415,7 +458,7 @@ namespace JLEngine
                 "irradiance_vert.glsl",
                 "irradiance_frag.glsl",
                 fullPath
-            );
+            ).get();
         }
     }
 
@@ -428,7 +471,7 @@ namespace JLEngine
                 "prefiltered_env_map_vert.glsl",
                 "prefiltered_env_map_frag.glsl",
                 fullPath
-            );
+            ).get();
         }
     }
 
@@ -441,7 +484,7 @@ namespace JLEngine
                 "generate_brdf_lut_vert.glsl", 
                 "generate_brdf_lut_frag.glsl", 
                 fullPath
-            );
+            ).get();
         }
     }
 }

@@ -1,35 +1,45 @@
 #version 460 core
 
-layout(location = 0) in vec3 a_Position;  // Vertex position
-layout(location = 1) in vec3 a_Normal;    // Vertex normal
-layout(location = 2) in vec2 a_TexCoords; // Texture coordinates
-layout(location = 3) in vec3 a_Tangent;   // Tangent for normal mapping
+layout(location = 0) in vec3 a_Position; 
+layout(location = 1) in vec3 a_Normal;   
+layout(location = 2) in vec2 a_TexCoord; 
+layout(location = 3) in vec3 a_Tangent;  
 
-// Outputs to fragment shader
-out vec3 v_FragPos;       // Fragment position in world space
-out vec3 v_Normal;        // Normal in world space
-out vec2 v_TexCoords;     // Texture coordinates
-out vec3 v_Tangent;       // Tangent in world space
-out vec3 v_Bitangent;     // Bitangent in world space
+struct PerDrawData 
+{
+    mat4 modelMatrix;
+    uint materialIndex;
+};
 
-// Uniforms
-uniform mat4 u_Model;     // Model matrix
-uniform mat4 u_View;      // View matrix
-uniform mat4 u_Projection;// Projection matrix
+layout(std430, binding = 1) readonly buffer PerDrawDataBuffer 
+{
+    PerDrawData perDrawData[];
+};
+
+uniform mat4 u_View;
+uniform mat4 u_Projection;
+
+out vec3 v_Normal;
+out vec2 v_TexCoord;
+out vec3 v_Tangent;
+out vec3 v_Bitangent;
+flat out uint v_MaterialIndex;
 
 void main() 
 {
-    // Calculate world-space positions and normals
-    v_FragPos = vec3(u_Model * vec4(a_Position, 1.0));
-    v_Normal = normalize(mat3(transpose(inverse(u_Model))) * a_Normal); // Transform normal to world space
+    PerDrawData data = perDrawData[gl_DrawID];
+    mat4 modelMatrix = data.modelMatrix;
+    v_MaterialIndex = data.materialIndex;
 
-    // Pass texture coordinates
-    v_TexCoords = a_TexCoords;
+    mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));
 
-    // Calculate tangent and bitangent for normal mapping
-    v_Tangent = normalize(mat3(u_Model) * a_Tangent);
-    v_Bitangent = cross(v_Normal, v_Tangent);
+    v_Normal = normalize(normalMatrix * a_Normal);
+    v_Tangent = normalize(mat3(modelMatrix) * a_Tangent);
+    v_Bitangent = normalize(cross(v_Normal, v_Tangent)); 
 
-    // Output clip space position
-    gl_Position = u_Projection * u_View * vec4(v_FragPos, 1.0);
+    v_TexCoord = a_TexCoord;
+
+    // clip-space position
+    vec4 worldPosition = modelMatrix * vec4(a_Position, 1.0);
+    gl_Position = u_Projection * u_View * worldPosition;
 }

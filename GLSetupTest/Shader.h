@@ -22,8 +22,12 @@ namespace JLEngine
 		void SetName(std::string name) { m_name = name; }
 		std::string GetName() const { return m_name; }
 
+		std::string& GetSource() { return m_source; }
+		void SetSource(const std::string& source) { m_source = ""; m_source = source; }
+
 	protected: 
 
+		std::string m_source;
 		uint32_t m_shaderId;
 		int m_type;
 

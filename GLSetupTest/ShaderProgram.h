@@ -14,7 +14,7 @@ using std::string;
 
 namespace JLEngine
 {
-	class Graphics;
+	class GraphicsAPI;
 
 	class ShaderProgram : public Resource
 	{
@@ -23,19 +23,14 @@ namespace JLEngine
 		ShaderProgram(string name, string path);
 		~ShaderProgram();
 
-		void ReloadFromFile();
-
-		void UploadToGPU(Graphics* graphics);
-
 		void SetProgramId(uint32_t id) { m_programId = id; }
 		uint32_t GetProgramId() { return m_programId; }
 
-		void AddShader(Shader& shader) { m_shaders.push_back(shader); }
-		void AddShader(Shader& shader, string source);
-		Shader GetShader(int type);
+		void ClearShaders() { m_shaders.clear(); }
+		void AddShader(Shader& shader);
+		Shader& GetShader(int type);
 		void GetShader(string name, Shader& shader);
-		const std::vector<Shader> GetShaders() { return m_shaders; }
-	
+		std::vector<Shader>& GetShaders() { return m_shaders; }
 		const std::string GetFilePath() { return m_filename; }
 		int GetUniformLocation(const std::string& name);
 
@@ -45,18 +40,19 @@ namespace JLEngine
 		void SetUniformf(const std::string& name, float value);
 		void SetUniformi(const std::string& name, uint32_t value);
 
+		void ClearUniforms() { m_uniformLocations.clear(); }
+		void SetActiveUniform(std::string& name, int location) { m_uniformLocations[name] = location; }
+
 		void UnloadFromGraphics();
 
 	private:
 
-		std::vector<std::string> m_shaderTexts;
 		uint32_t m_programId;
-		std::vector<std::string> m_activeUniforms;
 		std::string m_filename;
 		std::vector<Shader> m_shaders;
 		std::unordered_map<std::string, int> m_uniformLocations;
 
-		Graphics* m_graphics;
+		GraphicsAPI* m_graphics;
 	};
 }
 

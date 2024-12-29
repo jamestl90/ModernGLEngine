@@ -4,12 +4,13 @@
 #include <vector>
 #include <string>
 #include <glm/glm.hpp>
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "RenderTarget.h"
 #include "ShaderProgram.h"
 #include "Node.h"
-#include "VertexBuffers.h"
-#include "AssetLoader.h"
+#include "VertexArrayObject.h"
+#include "ShaderStorageBuffer.h"
+#include "ResourceLoader.h"
 #include "Batch.h"
 
 using RenderGroupKey = std::pair<int, JLEngine::VertexAttribKey>;
@@ -26,6 +27,12 @@ namespace JLEngine
         None
     };
 
+    struct VAOResource 
+    {
+        std::shared_ptr<VertexArrayObject> vao;       
+        std::shared_ptr<IndirectDrawBuffer> drawBuffer; 
+    };
+
     class Material;
     class DirectionalLightShadowMap;
     class HDRISky;
@@ -33,43 +40,50 @@ namespace JLEngine
     class DeferredRenderer 
     {
     public:
-        DeferredRenderer(Graphics* graphics, AssetLoader* assetManager,
+        DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* resourceLoader,
             int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
         void Initialize();
         void Resize(int width, int height);
         
-        void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
+        void AddStaticVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);
+
+        void GenerateGPUBuffers(Node* sceneRoot);
+
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
 
     private:
-        void DrawUI();
+        void DrawUI();        
         void BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit);
         //void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void DrawGeometry(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
-        glm::mat4 DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void SetUniformsForGBuffer(Material* mat);
-        void RenderGroups(const RenderGroupMap& renderGroups);
-        void GroupRenderables(Node* node, RenderGroupMap& renderGroups);
+        glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
-
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
+        void GenerateMaterialAndTextureBuffers(
+            ResourceManager<JLEngine::Material>& materialManager,
+            ResourceManager<JLEngine::Texture>& textureManager,
+            std::vector<MaterialGPU>& materialBuffer,
+            std::unordered_map<uint32_t, size_t>& materialIDMap);
+        //void GenerateDefaultTextures();
 
-        Graphics* m_graphics;
-        AssetLoader* m_assetLoader;
+        GraphicsAPI* m_graphics;
+        ResourceLoader* m_resourceLoader;
 
         DebugModes m_debugModes;
 
@@ -84,8 +98,14 @@ namespace JLEngine
         ShaderProgram* m_shadowDebugShader;
         ShaderProgram* m_debugTextureShader;
 
-        VertexBuffer m_triangleVertexBuffer;
-        GLuint m_triangleVAO;
+        VertexArrayObject m_triangleVAO;
+
+        ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
+        ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
+        ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
+
+        std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
+        std::unordered_map<VertexAttribKey, VAOResource> m_dynamicResources;
 
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;

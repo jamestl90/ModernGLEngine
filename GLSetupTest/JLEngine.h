@@ -4,9 +4,10 @@
 #include <memory>
 #include <chrono>  
 #include "Window.h"
+#include "GraphicsAPI.h"
 #include "Graphics.h"
 #include "Input.h"
-#include "AssetLoader.h"
+#include "ResourceLoader.h"
 #include "IMGuiManager.h"
 
 namespace JLEngine
@@ -17,12 +18,12 @@ namespace JLEngine
         JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate);
         ~JLEngineCore();
         void run(std::function<void(double deltaTime)> logicUpdate,
-            std::function<void(Graphics& graphics, double interpolationFactor)> render,
+            std::function<void(GraphicsAPI& graphics, double interpolationFactor)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
-        Graphics* GetGraphics()         const;
-        Input* GetInput()               const;
-        AssetLoader* GetAssetLoader()   const;
+        GraphicsAPI* GetGraphicsAPI()          const;
+        Input* GetInput()                   const;
+        ResourceLoader* GetResourceLoader() const;
 
         void InitIMGUI() { m_imguiManager.Initialize(m_window->GetGLFWwindow()); }
 
@@ -37,8 +38,7 @@ namespace JLEngine
 
         std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
-        std::unique_ptr<Graphics> m_graphics;
-        std::unique_ptr<AssetLoader> m_assetLoader;
+        ResourceLoader* m_resourceLoader;
 
         // Frame timing variables
         int m_maxFrameRate;

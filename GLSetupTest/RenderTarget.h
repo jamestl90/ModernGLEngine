@@ -4,6 +4,9 @@
 #include "Types.h"
 #include "Texture.h"
 #include "Buffer.h"
+#include "GraphicsResource.h"
+
+#include <vector>
 
 namespace JLEngine
 {
@@ -25,11 +28,10 @@ namespace JLEngine
 		Texture
 	};
 
-	class RenderTarget : public Resource
+	class RenderTarget : public GraphicsResource
 	{
 	public:
-		RenderTarget(const string& name, uint32_t numSources);
-		RenderTarget(uint32_t handle, const string& name, uint32_t numSources);
+		RenderTarget(const string& name, GraphicsAPI* graphics);
 
 		~RenderTarget();
 
@@ -41,11 +43,11 @@ namespace JLEngine
 		const uint32_t GetDepthBufferId() const { return m_dbo; }
 		int GetSourceId(int index) { return m_sources[index]; }
 		const uint32_t GetNumSources() const { return m_numSources; }
-		const SmallArray<uint32_t>& GetSources() { return m_sources; }
-		const SmallArray<uint32_t>& GetDrawBuffers() { return m_drawBuffers; }
+		const std::vector<uint32_t>& GetSources() { return m_sources; }
+		const std::vector<uint32_t>& GetDrawBuffers() { return m_drawBuffers; }
 		const bool UseWindowSize() const { return m_useWindowSize; }
 		JLEngine::DepthType DepthType() const { return m_depthType; }
-		const SmallArray<TextureAttribute>& GetTextureAttributes() { return m_attributes; }
+		const std::vector<TextureAttribute>& GetTextureAttributes() { return m_attributes; }
 
 		uint32_t GetWidth() const { return m_width; }
 		uint32_t GetHeight() const { return m_height; }
@@ -56,9 +58,6 @@ namespace JLEngine
 		void SetDepthType(JLEngine::DepthType depthType) { m_depthType = depthType; }
 		void SetNumSources(uint32_t numSources);
 		void SetTextureAttribute(uint32_t index, const TextureAttribute& attributes);
-
-		void UploadToGPU(Graphics* graphics);
-		void UnloadFromGraphics();
 
 		void BindDepthTexture(int texUnit);
 		void BindTexture(int texIndex, int texUnit);
@@ -75,16 +74,16 @@ namespace JLEngine
 		uint32_t m_width;
 		uint32_t m_height;
 
-		SmallArray<TextureAttribute> m_attributes;
+		std::vector<TextureAttribute> m_attributes;
 
 		uint32_t m_fbo;	// main FBO
 		uint32_t m_dbo;	// depth FBO
 
-		SmallArray<uint32_t> m_sources;	// texture Id's
-		SmallArray<uint32_t> m_drawBuffers;
+		std::vector<uint32_t> m_sources;	// texture Id's
+		std::vector<uint32_t> m_drawBuffers;
 		uint32_t m_numSources;
 
-		Graphics* m_graphics;
+		GraphicsAPI* m_graphics;
 	};
 }
 

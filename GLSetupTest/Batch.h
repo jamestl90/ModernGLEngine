@@ -4,7 +4,6 @@
 #include <memory>
 #include "VertexBuffers.h"
 #include "Material.h"
-#include "InstanceBuffer.h"
 
 namespace JLEngine
 {
@@ -26,9 +25,6 @@ namespace JLEngine
             Material* mat)
             : vertexBuffer(vb), indexBuffer(ib), material(mat), isInstanced(false) {}
 
-        void SetInstanceBuffer(std::shared_ptr<InstanceBuffer> ib);
-
-        bool HasInstanceBuffer() const { return instanceBuffer.get() != nullptr; }
         bool IsValid() const
         {
             return vertexBuffer != nullptr && indexBuffer != nullptr && material != nullptr;
@@ -38,7 +34,6 @@ namespace JLEngine
         const std::shared_ptr<VertexBuffer>& GetVertexBuffer() const { return vertexBuffer; }
         const std::shared_ptr<IndexBuffer>& GetIndexBuffer() const { return indexBuffer; }
         Material* GetMaterial() const { return material; }
-        const std::shared_ptr<InstanceBuffer>& GetInstanceBuffer() const { return instanceBuffer; }
 
         bool IsInstanced() const { return isInstanced; }
         void SetMaterial(Material* mat) { material = mat; }
@@ -52,9 +47,6 @@ namespace JLEngine
 
         // Material for the batch
         Material* material;
-
-        // Instance data (optional)
-        std::shared_ptr<InstanceBuffer> instanceBuffer;
 
         // Flag to indicate if this batch supports instancing
         bool isInstanced = false;

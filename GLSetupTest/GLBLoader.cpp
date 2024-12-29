@@ -4,9 +4,8 @@
 #include "Mesh.h"
 #include "Node.h"
 #include "Texture.h"
-#include "Graphics.h"
-#include "AssetLoader.h"
-#include "InstanceBuffer.h"
+#include "GraphicsAPI.h"
+#include "ResourceLoader.h"
 #include "JLHelpers.h"
 
 #include <tiny_gltf.h>
@@ -17,13 +16,15 @@
 
 namespace JLEngine
 {
-    GLBLoader::GLBLoader(Graphics* graphics, AssetLoader* assetLoader) 
-		: m_graphics(graphics), m_assetLoader(assetLoader)
+    GLBLoader::GLBLoader(ResourceLoader* resourceLoader) 
+		: m_resourceLoader(resourceLoader)
     {
     }
 
 	std::shared_ptr<Node> GLBLoader::LoadGLB(const std::string& fileName)
 	{
+		std::cout << "Loading GLB: " << fileName << std::endl;
+
 		// Load GLB file using tinygltf
 		tinygltf::TinyGLTF loader;
 		tinygltf::Model model;
@@ -51,6 +52,7 @@ namespace JLEngine
 		// Retrieve the default scene or the first scene
 		const tinygltf::Scene& scene = model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
 		auto rootNode = std::make_shared<Node>("RootNode");
+		rootNode->SetTag(NodeTag::Default);
 
 		// Parse all nodes in the scene
 		for (int nodeIndex : scene.nodes)
@@ -74,25 +76,6 @@ namespace JLEngine
 			}
 		}
 
-		// Process mesh instancing
-		//for (const auto& [meshIndex, nodes] : meshNodeReferences)
-		//{
-		//	if (nodes.size() > 1) // Mesh is referenced by multiple nodes
-		//	{
-		//		auto meshIt = meshCache.find(meshIndex);
-		//		if (meshIt != meshCache.end())
-		//		{
-		//			auto mesh = meshIt->second;
-		//			mesh->SetInstanced(true);
-		//			SetupInstancing(mesh, nodes);
-		//		}
-		//		else
-		//		{
-		//			std::cerr << "GLBLoader Warning: Mesh index " << meshIndex << " is missing from cache." << std::endl;
-		//		}
-		//	}
-		//}
-
 		return rootNode;
 	}
 
@@ -103,15 +86,7 @@ namespace JLEngine
 		// Handle mesh
 		if (gltfNode.mesh >= 0)
 		{
-			auto lowerStr = JLEngine::Str::ToLower(gltfNode.name);
-			if (lowerStr.find("skybox") == std::string::npos)
-			{
-				node->SetTag(NodeTag::Mesh);
-			}
-			else
-			{
-				node->SetTag(NodeTag::Skybox);
-			}
+			node->SetTag(NodeTag::Mesh);
 
 			// Track which nodes reference this mesh
 			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
@@ -163,7 +138,7 @@ namespace JLEngine
 		return node;
 	}
 
-	Mesh* GLBLoader::ParseMesh(const tinygltf::Model& model, int meshIndex)
+	std::shared_ptr<Mesh> GLBLoader::ParseMesh(const tinygltf::Model& model, int meshIndex)
 	{
 		// Check if the mesh is already cached
 		auto it = meshCache.find(meshIndex);
@@ -181,7 +156,10 @@ namespace JLEngine
 		const tinygltf::Mesh& gltfMesh = model.meshes[meshIndex];
 
 		// Create a new Mesh object
-		auto mesh = m_assetLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
+		auto mesh = m_resourceLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
+		mesh->SetStatic(true);
+
+		std::cout << "Mesh name: " << model.meshes[meshIndex].name << std::endl;
 
 		// Group primitives by material and attributes
 		std::unordered_map<MaterialVertexAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
@@ -208,19 +186,10 @@ namespace JLEngine
 		// Create batches for each grouped set of primitives
 		for (const auto& [key, primitives] : groups)
 		{
-			auto batch = CreateBatch(model, primitives, key);
-			if (batch)
-			{
-				mesh->AddBatch(batch);
-			}
-			else
-			{
-				std::cerr << "GLBLoader Warning: Failed to create batch for material "
-					<< key.materialIndex << "." << std::endl;
-			}
-		}
+			auto subMesh = CreateSubMesh(model, primitives, key);
 
-		mesh->UploadToGPU(m_graphics);
+			mesh->AddSubmesh(subMesh);
+		}
 
 		// Cache the mesh for future use
 		meshCache[meshIndex] = mesh;
@@ -228,128 +197,69 @@ namespace JLEngine
 		return mesh;
 	}
 
-	std::shared_ptr<Batch> GLBLoader::CreateBatch(const tinygltf::Model& model, 
+	SubMesh GLBLoader::CreateSubMesh(const tinygltf::Model& model, 
 		const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key)
-	{
+	{		
 		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
 		std::vector<uint32_t> indices;
 
-		// Load attributes from primitives
 		uint32_t indexOffset = 0;
 		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, indices, indexOffset, key.attributesKey);
-		texCoords2.clear();
-		// Generate missing normals or tangents if required
+
 		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
 
 		// Interleave vertex data
 		std::vector<float> interleavedVertexData;
 		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
-
-		// Create vertex and index buffers
-		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-		vertexBuffer->Set(interleavedVertexData);
-		vertexBuffer->SetVertexAttribKey(key.attributesKey);
-
-		auto indexBuffer = std::make_shared<IndexBuffer>(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-		indexBuffer->Set(indices);
 
 		Material* material;
 		if (!model.materials.empty())
 		{
-			material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
+			material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex).get();
 		}
 		else
 		{
-			material = m_assetLoader->GetDefaultMaterial();
+			material = m_resourceLoader->GetDefaultMaterial();
 		}
 
-		// Create and return the batch
-		auto batch = std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
-		batch->attributesKey = key.attributesKey;
-		m_graphics->CreateBatch(*batch);
-		return batch;
+		auto& vao = m_staticVAOs[key.attributesKey];
+		if (!vao)
+		{
+			//std::cerr << "Error: No VAO found for attributes key " << key.attributesKey << "\n";
+			
+			vao = m_resourceLoader->CreateVertexArray("Vao: " + key.attributesKey);
+			m_staticVAOs[key.attributesKey] = vao;			
+			vao->SetVertexAttribKey(key.attributesKey);
+		}
+
+		if (vao->GetAttribKey() == 3)
+		{
+			std::cout << "";
+		}
+
+		auto& vbo = vao->GetVBO();
+		uint32_t vertexOffset = (uint32_t)vbo.Size() / (CalculateStride(key.attributesKey) / 4);
+		vbo.Append(interleavedVertexData);
+
+		auto& ibo = vao->GetIBO();
+		uint32_t indexBase = (uint32_t)ibo.Size();
+		ibo.Append(indices);
+
+		SubMesh submesh;
+		submesh.attribKey = key.attributesKey;
+		submesh.materialHandle = material->GetHandle();
+		submesh.command = {
+			.count = static_cast<uint32_t>(indices.size()),
+			.instanceCount = 1,
+			.firstIndex = indexBase,
+			.baseVertex = vertexOffset,
+			.baseInstance = 0
+		};
+
+		return submesh;
 	}
 
-	std::shared_ptr<Batch> GLBLoader::CreateBatch2(const tinygltf::Model& model,
-		const tinygltf::Primitive& primitives, MaterialVertexAttributeKey key)
-	{
-		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
-		std::vector<uint32_t> indices;
-
-		// Load attributes from primitives
-		uint32_t indexOffset = 0;
-		LoadAttributes(model, &primitives, positions, normals, texCoords, tangents, indices, indexOffset);
-
-		// Generate missing normals or tangents if required
-		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
-
-		// Interleave vertex data
-		std::vector<float> interleavedVertexData;
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
-
-		// Create vertex and index buffers
-		auto vertexBuffer = std::make_shared<VertexBuffer>(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-		vertexBuffer->Set(interleavedVertexData);
-
-		auto indexBuffer = std::make_shared<IndexBuffer>(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-		indexBuffer->Set(indices);
-
-		// Load material
-		auto material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex);
-
-		// Create and return the batch
-		auto batch = std::make_shared<Batch>(vertexBuffer, indexBuffer, material, false);
-		batch->attributesKey = key.attributesKey;
-		m_graphics->CreateBatch(*batch);
-		return batch;
-	}
-
-	void GLBLoader::SetupInstancing(Mesh* mesh, const std::vector<std::shared_ptr<Node>>& nodes) const
-	{
-		if (!mesh)
-		{
-			std::cerr << "GLBLoader Error: Null mesh passed to SetupInstancing." << std::endl;
-			return;
-		}
-
-		if (nodes.empty())
-		{
-			std::cerr << "GLBLoader Warning: No nodes to instance for mesh " << mesh->GetName() << "." << std::endl;
-			return;
-		}
-
-		// Collect transformation matrices for instancing
-		std::vector<glm::mat4> instanceTransforms;
-		for (const auto& node : nodes)
-		{
-			if (node)
-			{
-				instanceTransforms.push_back(node->localMatrix);
-			}
-			else
-			{
-				std::cerr << "GLBLoader Warning: Null node encountered in instancing setup." << std::endl;
-			}
-		}
-
-		// Create an InstanceBuffer and upload instance data to the GPU
-		auto instanceBuffer = std::make_shared<InstanceBuffer>(false); // Use dynamic buffer for updates
-		instanceBuffer->UploadToGPU(m_graphics, instanceTransforms);
-
-		// Associate the instance buffer with the mesh
-		mesh->SetInstanceBuffer(instanceBuffer);
-
-		// Mark all batches in the mesh as instanced
-		for (auto& batch : mesh->GetBatches())
-		{
-			batch->SetInstanceBuffer(instanceBuffer);
-		}
-
-		std::cout << "GLBLoader: Instancing setup complete for mesh: " << mesh->GetName()
-			<< " with " << instanceTransforms.size() << " instances." << std::endl;
-	}
-
-	Material* GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
+	std::shared_ptr<Material> GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
 	{
 		// Check cache
 		auto it = materialCache.find(matIdx);
@@ -359,7 +269,7 @@ namespace JLEngine
 			return it->second;
 		}
 
-		auto material = m_assetLoader->CreateMaterial(gltfMaterial.name.empty() ? "UnnamedMat" : gltfMaterial.name);		
+		auto material = m_resourceLoader->CreateMaterial(gltfMaterial.name.empty() ? "UnnamedMat" : gltfMaterial.name);
 		int texId = 0;
 
 		// Parse base color factor
@@ -472,7 +382,7 @@ namespace JLEngine
 		return material;
 	}
 
-	Texture* GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex)
+	std::shared_ptr<Texture> GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex)
 	{
 		// Check if the texture index is valid
 		if (textureIndex < 0 || textureIndex >= model.textures.size())
@@ -487,22 +397,23 @@ namespace JLEngine
 
 		// Fetch the texture and its image data
 		const auto& texture = model.textures[textureIndex];
-		const auto& imageData = model.images[texture.source];
+		const auto& glbImageData = model.images[texture.source];
 
 		// Generate a final name for the texture
 		const std::string& finalName = name + (texture.name.empty() ? "UnnamedTexture" : texture.name);
 
 		// Extract texture details
-		uint32_t width = static_cast<uint32_t>(imageData.width);
-		uint32_t height = static_cast<uint32_t>(imageData.height);
-		int channels = imageData.component;
-		std::vector<unsigned char> data = imageData.image; // Raw pixel data
+		uint32_t width = static_cast<uint32_t>(glbImageData.width);
+		uint32_t height = static_cast<uint32_t>(glbImageData.height);
+		int channels = glbImageData.component;
+		ImageData imgData;
+		imgData.width = width;
+		imgData.height = height;
+		imgData.channels = channels;
+		imgData.data = glbImageData.image;
 
 		// Create a new texture
-		//auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data, true, true);
-		auto jltexture = m_assetLoader->CreateEmptyTexture(finalName);
-		jltexture->InitFromData(imageData.image, width, height, channels, true, true);
-		jltexture->UploadToGPU(m_graphics, true);
+		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData);
 
 		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;
@@ -584,6 +495,8 @@ namespace JLEngine
 		uint32_t& indexOffset, 
 		VertexAttribKey key)
 	{
+		if (primitives.size() > 1)
+			std::cout << "check here, primitive count > 1";
 		for (const auto* primitive : primitives)
 		{
 			uint32_t currentVertexCount = static_cast<uint32_t>(positions.size() / 3); // Before adding new vertices
@@ -684,7 +597,7 @@ namespace JLEngine
 		{
 			if (HasVertexAttribKey(key, AttributeType::TANGENT))
 			{
-				std::cout << "Generating tangents..." << std::endl;
+				//std::cout << "Generating tangents..." << std::endl;
 				tangents = Geometry::CalculateTangents(positions, normals, texCoords, indices);
 			}
 		}
@@ -939,7 +852,7 @@ namespace JLEngine
 		}
 		else
 		{
-			std::cerr << "Warning: TANGENT attribute not found in primitive" << std::endl;
+			//std::cerr << "Warning: TANGENT attribute not found in primitive" << std::endl;
 			return false;
 		}
 		return true;
@@ -997,4 +910,12 @@ namespace JLEngine
 		}
 		return false;
 	}	
+
+	void GLBLoader::ClearCaches()
+	{
+		meshCache.clear();
+		materialCache.clear();
+		textureCache.clear();
+		meshNodeReferences.clear();
+	}
 }

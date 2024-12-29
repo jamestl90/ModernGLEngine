@@ -2,7 +2,7 @@
 #define CUBEMAP_BAKER_H
 
 #include "Types.h"
-#include "AssetLoader.h"
+#include "ResourceLoader.h"
 
 #include <string>
 
@@ -15,7 +15,7 @@ namespace JLEngine
 	class CubemapBaker
 	{
 	public:
-		CubemapBaker(const std::string& assetPath, AssetLoader* assetLoader);
+		CubemapBaker(const std::string& assetPath, ResourceLoader* assetLoader);
 		~CubemapBaker();
 
 		uint32_t HDRtoCubemap(ImageData& imgData, int cubeMapSize, bool genMipmaps, float compressionThresh = 3.0f, float maxValue = 10000);
@@ -34,7 +34,7 @@ namespace JLEngine
 
 		std::string m_assetPath;
 
-		AssetLoader* m_assetLoader;
+		ResourceLoader* m_assetLoader;
 		ShaderProgram* m_hdrToCubemapShader;
 		ShaderProgram* m_irradianceShader;
 		ShaderProgram* m_prefilteredCubemapShader;

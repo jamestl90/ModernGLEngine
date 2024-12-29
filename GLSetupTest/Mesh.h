@@ -4,43 +4,42 @@
 #include "Types.h"
 #include "CollisionShapes.h"
 #include "VertexBuffers.h"
-#include "InstanceBuffer.h"
 #include "Resource.h"
 
 #include <memory>
 #include <vector>
 #include <string>
+#include "VertexBuffers.h"
+#include "IndirectDrawBuffer.h"
 
 namespace JLEngine
 {
-	class Graphics;
-	class Batch;
+	class GraphicsAPI;
+	class VertexArrayObject;
+
+	struct SubMesh
+	{
+		uint32_t attribKey;
+		uint32_t materialHandle;
+		DrawIndirectCommand command;
+	};
 
 	class Mesh : public Resource
 	{
 	public:
 		Mesh(const string& name);
-		Mesh(uint32_t handle, const string& name);
 		~Mesh();
 
-		void UploadToGPU(Graphics* graphics, bool freeData = false);
-		void UnloadFromGPU();
+		void AddSubmesh(const SubMesh& submesh) { m_subMeshes.push_back(submesh); }
+		std::vector<SubMesh>& GetSubmeshes() { return m_subMeshes; }
 
-        void AddBatch(std::shared_ptr<Batch> batch) { m_batches.push_back(batch); }
-		const std::vector<std::shared_ptr<Batch>>& GetBatches() const { return m_batches; }
+		bool IsStatic() const { return m_isStatic; }
+		void SetStatic(bool flag) { m_isStatic = flag; }
 
-		void SetInstanced(bool instanced)
-		{
-			m_instanced = instanced;
-		}
+	private:	
 
-		void SetInstanceBuffer(std::shared_ptr<InstanceBuffer> instanceBuffer);
-		bool IsInstanced() const { return m_instanced; }
-	private:
-
-		Graphics* m_graphics;
-        std::vector<std::shared_ptr<Batch>> m_batches;
-		bool m_instanced;
+		bool m_isStatic = true;
+		std::vector<SubMesh> m_subMeshes;		
 	};
 }
 

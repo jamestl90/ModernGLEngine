@@ -14,17 +14,6 @@ namespace JLEngine
         int height         = 0;
         int channels       = 0;
 
-        uint32_t textureType    = GL_TEXTURE_2D;
-        uint32_t internalFormat = GL_RGBA8;
-        uint32_t format         = GL_RGBA;
-        uint32_t dataType       = GL_UNSIGNED_BYTE;
-
-        uint32_t minFilter      = GL_LINEAR;
-        uint32_t maxFilter      = GL_LINEAR;
-        uint32_t wrapS          = GL_CLAMP_TO_EDGE;
-        uint32_t wrapT          = GL_CLAMP_TO_EDGE;
-        uint32_t wrapR          = GL_CLAMP_TO_EDGE;
-
         bool isHDR;      // Whether the image is HDR
         std::vector<unsigned char> data; // Regular texture data
         std::vector<float> hdrData;     // HDR texture data
@@ -48,15 +37,6 @@ namespace JLEngine
                 isHDR = other.isHDR;
                 data = std::move(other.data);
                 hdrData = std::move(other.hdrData);
-                internalFormat = other.internalFormat;
-                format = other.format;
-                dataType = other.dataType;
-                minFilter = other.minFilter;
-                maxFilter = other.maxFilter;
-                wrapS = other.wrapS;
-                wrapT = other.wrapT;
-                wrapR = other.wrapR;
-                textureType = other.textureType;
             }
             return *this;
         }
@@ -64,6 +44,22 @@ namespace JLEngine
         // Disable copy
         ImageData(const ImageData&) = delete;
         ImageData& operator=(const ImageData&) = delete;
+        
+        static ImageData CreateDefaultImageData(int width, int height, GLenum format, const std::vector<unsigned char>& defaultData)
+        {
+            JLEngine::ImageData imageData;
+            imageData.width = width;
+            imageData.height = height;
+            imageData.channels = (format == GL_RGBA) ? 4 : (format == GL_RGB) ? 3 : (format == GL_RG) ? 2 : 1; // Determine channels from format
+            imageData.isHDR = false;
+
+            // Fill the data buffer with default values
+            size_t pixelCount = width * height * imageData.channels;
+            imageData.data.resize(pixelCount);
+            std::copy(defaultData.begin(), defaultData.end(), imageData.data.begin());
+
+            return imageData;
+        }
 
         // Utility method to check if data is valid
         bool IsValid() const 

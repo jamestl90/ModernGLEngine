@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include "VertexArrayObject.h"
 
 namespace JLEngine
 {
@@ -58,18 +59,18 @@ namespace JLEngine
 		return (mask & static_cast<uint32_t>(attribute)) != 0;
 	}
 
-	uint32_t CalculateStride(VertexAttribKey vertexAttribKey)
+	uint32_t CalculateStride(VertexArrayObject* vao)
 	{
 		uint32_t stride = 0;
 
 		for (uint32_t i = 0; i < 32; ++i)
 		{
-			if (vertexAttribKey & (1 << i)) // Check if the bit is set
+			if (vao->GetAttribKey() & (1 << i)) // Check if the bit is set
 			{
 				switch (static_cast<AttributeType>(1 << i))
 				{
 				case AttributeType::POSITION:
-					stride += 3 * sizeof(float); // 3 floats
+					stride += vao->GetPosCount() * sizeof(float); // 3 floats
 					break;
 				case AttributeType::NORMAL:
 					stride += 3 * sizeof(float); // 3 floats
@@ -93,4 +94,38 @@ namespace JLEngine
 		return stride;
 	}
 
+	uint32_t CalculateStride(VertexAttribKey key, int posCount)
+	{
+		uint32_t stride = 0;
+
+		for (uint32_t i = 0; i < 32; ++i)
+		{
+			if (key & (1 << i)) // Check if the bit is set
+			{
+				switch (static_cast<AttributeType>(1 << i))
+				{
+				case AttributeType::POSITION:
+					stride += posCount * sizeof(float); // 3 floats
+					break;
+				case AttributeType::NORMAL:
+					stride += 3 * sizeof(float); // 3 floats
+					break;
+				case AttributeType::TEX_COORD_0:
+				case AttributeType::TEX_COORD_1:
+					stride += 2 * sizeof(float); // 2 floats
+					break;
+				case AttributeType::COLOUR:
+					stride += 4 * sizeof(float); // 4 floats
+					break;
+				case AttributeType::TANGENT:
+					stride += 4 * sizeof(float); // 4 floats
+					break;
+				default:
+					std::cerr << "Unsupported attribute type!" << std::endl;
+					break;
+				}
+			}
+		}
+		return stride;
+	}
 }

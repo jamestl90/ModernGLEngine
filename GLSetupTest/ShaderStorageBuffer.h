@@ -2,28 +2,35 @@
 #define SHADER_STORAGE_BUFFER_H
 
 #include "Resource.h"
+#include "VertexBuffers.h"
 #include <string>
+#include "glm/glm.hpp"
 
 namespace JLEngine 
 {
-    class Graphics;
+    class GraphicsAPI;
 
-    class ShaderStorageBuffer : public Resource 
+    template <typename T>
+    class ShaderStorageBuffer : public Buffer<T>, public GraphicsBuffer
     {
     public:
-        ShaderStorageBuffer(const std::string& name, size_t size, Graphics* graphics);
+        ShaderStorageBuffer();
         ~ShaderStorageBuffer();
 
-        void Initialize();  // Allocate GPU memory
-        void UpdateData(const void* data, size_t size);  // Update SSBO data
-        void Bind(uint32_t bindingPoint);  // Bind SSBO to a specific binding point
-
-    private:
-        uint32_t m_ssboID;   // OpenGL ID for the SSBO
-        size_t m_size;     // Size of the buffer
-        Graphics* m_graphics;
     };
 
+    template <typename T>
+    ShaderStorageBuffer<T>::ShaderStorageBuffer()
+        : GraphicsBuffer(GL_SHADER_STORAGE_BUFFER, 0, GL_STATIC_DRAW)
+    {
+
+    }
+
+    template <typename T>
+    ShaderStorageBuffer<T>::~ShaderStorageBuffer()
+    {
+
+    }
 } 
 
 #endif 

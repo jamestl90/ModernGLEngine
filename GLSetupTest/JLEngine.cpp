@@ -1,5 +1,5 @@
 #include "JLEngine.h"
-#include "Graphics.h"
+#include "GraphicsAPI.h"
 #include "ShaderStorageBuffer.h"
 #include <iostream> 
 #include <thread>
@@ -17,28 +17,16 @@ namespace JLEngine
 
         m_window = std::make_unique<Window>(windowWidth, windowHeight, windowTitle, fixedUpdates);
         m_input = std::make_unique<Input>(m_window.get());
-        m_graphics = std::make_unique<Graphics>(m_window.get());
+        
+        Graphics::Initialise(m_window.get());
 
-        auto textureManager = new ResourceManager<Texture>();
-        auto shaderManager = new ResourceManager<ShaderProgram>();
-        auto materialManager = new ResourceManager<Material>();
-        auto renderTargetManager = new ResourceManager<RenderTarget>();
-        auto shaderStorageManager = new ResourceManager<ShaderStorageBuffer>();
-        auto meshManager = new ResourceManager<Mesh>();
+        m_resourceLoader = new ResourceLoader(Graphics::API());
 
-        m_assetLoader = std::make_unique<AssetLoader>(
-            m_graphics.get(),
-            shaderManager,
-            meshManager,
-            materialManager,
-            textureManager,
-            renderTargetManager,
-            shaderStorageManager
-        );
-
-        m_assetLoader->SetHotReloading(true);
+        m_resourceLoader->SetHotReloading(true);
         m_input->SetRawMouseMotion(true);
         setVsync(true);
+
+        Graphics::API()->DumpInfo();
     }
 
     JLEngineCore::~JLEngineCore()
@@ -84,7 +72,7 @@ namespace JLEngine
     }
 
     void JLEngineCore::run(std::function<void(double deltaTime)> logicUpdate,
-        std::function<void(Graphics& graphics, double interpolationFactor)> render,
+        std::function<void(GraphicsAPI& graphics, double interpolationFactor)> render,
         std::function<void(double fixedDeltaTime)> fixedUpdate)
     {
         auto lastTime = std::chrono::high_resolution_clock::now();
@@ -132,7 +120,7 @@ namespace JLEngine
             ImGui::End();
 
             double interpolationFactor = m_accumulatedTime / m_fixedUpdateInterval;
-            render(*m_graphics, interpolationFactor); 
+            render(*Graphics::API(), interpolationFactor);
             m_frameCount++;
 
             ImGui::Begin("Info");
@@ -144,20 +132,20 @@ namespace JLEngine
             m_window->PollEvents();
 
             //logPerformanceMetrics();
-            m_assetLoader->PollForChanges((float)m_deltaTime);
+            m_resourceLoader->PollForChanges((float)m_deltaTime);
         }
     }
 
-    Graphics* JLEngineCore::GetGraphics() const
+    GraphicsAPI* JLEngineCore::GetGraphicsAPI() const
     {
-        return m_graphics.get();
+        return Graphics::API();
     }
     Input* JLEngineCore::GetInput() const
     {
         return m_input.get();
     }
-    AssetLoader* JLEngineCore::GetAssetLoader() const
+    ResourceLoader* JLEngineCore::GetResourceLoader() const
     {
-        return m_assetLoader.get();
+        return m_resourceLoader;
     }
 }

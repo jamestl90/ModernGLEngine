@@ -39,19 +39,21 @@ int GenerateBRDFLUT(const std::string& assetFolder)
     JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120);
     engine.InitIMGUI();
     auto input = engine.GetInput();
-    auto window = engine.GetGraphics()->GetWindow()->GetGLFWwindow();
+    auto window = engine.GetGraphicsAPI()->GetWindow()->GetGLFWwindow();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
-    auto graphics = engine.GetGraphics();
+    auto graphics = engine.GetGraphicsAPI();
     auto finalPath = assetFolder + "Core/";
 
-    auto fullscreenQuad = JLEngine::Geometry::CreateScreenSpaceQuad(graphics);
-    auto vaoId = std::get<0>(fullscreenQuad).GetVAO();
-    auto ibo = std::get<1>(fullscreenQuad);
-    auto quadShader = engine.GetAssetLoader()->CreateShaderFromFile("QuadShader", "pos_uv_vert.glsl", "pos_uv_frag.glsl", finalPath + "/Shaders/");
+    JLEngine::VertexArrayObject vao;
+    JLEngine::Geometry::CreateScreenSpaceQuad(vao);
+    JLEngine::Graphics::CreateVertexArray(&vao);
+    auto vaoId = vao.GetGPUID();
+    auto ibo = vao.GetIBO();
+    auto quadShader = engine.GetResourceLoader()->CreateShaderFromFile("QuadShader", "pos_uv_vert.glsl", "pos_uv_frag.glsl", finalPath + "/Shaders/");
 
     int brdfLutSize = 512;
 
-    auto baker = new JLEngine::CubemapBaker(assetFolder, engine.GetAssetLoader());
+    auto baker = new JLEngine::CubemapBaker(assetFolder, engine.GetResourceLoader());
     uint32_t brdfLUTTexture = baker->GenerateBRDFLUT(brdfLutSize, 1024);
 
     GL_CHECK_ERROR();
@@ -61,7 +63,7 @@ int GenerateBRDFLUT(const std::string& assetFolder)
     JLEngine::TextureWriter::WriteTexture(assetFolder + "HDRI/testoutput.hdr", brdfLutData);
 
     graphics->SetViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    auto renderFunc = [&graphics,&vaoId, &quadShader, &ibo, &brdfLUTTexture](JLEngine::Graphics& g, double interpolationFac)
+    auto renderFunc = [&graphics,&vaoId, &quadShader, &ibo, &brdfLUTTexture](JLEngine::GraphicsAPI& g, double interpolationFac)
     {
             graphics->BindShader(quadShader->GetProgramId());
             graphics->SetActiveTexture(0);

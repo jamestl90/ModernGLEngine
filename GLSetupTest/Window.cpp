@@ -31,9 +31,7 @@ namespace JLEngine
             throw std::runtime_error("Failed to initialize GLFW");
         }
 
-        int major, minor, revision;
-        glfwGetVersion(&major, &minor, &revision);
-        std::cout << "GLFW Version: " << major << "." << minor << "." << revision << std::endl;
+        glfwGetVersion(&m_major, &m_minor, &m_revision);
 
         glfwWindowHint(GLFW_SAMPLES, 4); // msaa samples
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -60,8 +58,6 @@ namespace JLEngine
         {
             throw std::runtime_error("Failed to create OpenGL");
         }
-
-        std::cout << "OpenGL " << glGetString(GL_VERSION) << " initialized!" << std::endl;
 
         // Set the frame buffer size callback for resizing the window
         glfwSetFramebufferSizeCallback(m_window, [](GLFWwindow* window, int width, int height) 

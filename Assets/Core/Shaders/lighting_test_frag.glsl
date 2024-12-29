@@ -39,8 +39,7 @@ struct GBufferData
     float roughness;
     vec3 F0;
     vec3 emissive;
-    bool castShadows;
-    bool receiveShadows;
+    float receiveShadows;
 };
 
 // Linearize depth from non-linear clip space
@@ -160,16 +159,6 @@ vec3 ReconstructWorldPosition(vec2 texCoords, float depth)
     return worldSpacePos.xyz;
 }
 
-bool decodeReceiveShadows(float encodedValue) 
-{
-    return fract(encodedValue) > 0.05; // Fractional part determines receive shadows
-}
-
-bool decodeCastShadows(float encodedValue) 
-{
-    return floor(encodedValue) > 0.5; // Integer part determines cast shadows
-}
-
 GBufferData ExtractGBufferData(vec2 texCoords)
 {
     GBufferData gData;
@@ -184,8 +173,7 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     gData.roughness = max(metallicRoughness.g, 0.05);
     gData.F0 = mix(vec3(0.04), gData.albedo, gData.metallic);
     gData.emissive = texture(gEmissive, texCoords).rgb;
-    gData.castShadows = decodeCastShadows(normalSample.w);
-    gData.receiveShadows = decodeReceiveShadows(normalSample.w);
+    gData.receiveShadows = normalSample.w;
 
     return gData;
 }
@@ -222,7 +210,7 @@ void main()
 
     vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(worldPos, 1.0);
     float shadow = 1.0;
-    if (gData.receiveShadows)
+    if (gData.receiveShadows > 0.0)
     {
         shadow = ShadowCalculation(fragPosLightSpace, gData.normal, lightDir);
     }

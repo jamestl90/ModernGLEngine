@@ -29,7 +29,7 @@ extern JLEngine::ShaderProgram* basicLit;
 extern JLEngine::DeferredRenderer* m_defRenderer;
 extern GLFWwindow* window;
 
-void gameRender(JLEngine::Graphics& graphics, double interpolationFactor);
+void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor);
 void gameLogicUpdate(double deltaTime);
 void fixedUpdate(double fixedTimeDelta);
 void KeyboardCallback(int key, int scancode, int action, int mods);

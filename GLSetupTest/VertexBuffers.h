@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <set>
 #include <vector>
+#include <glad/glad.h>
 
 using std::pair;
 using std::vector;
@@ -25,35 +26,40 @@ namespace JLEngine
 	public:
 		GraphicsBuffer();
 
-		GraphicsBuffer(int type, int data, int drawType);
+		GraphicsBuffer(uint32_t type, uint32_t data, uint32_t drawType);
 
-		void SetId(uint32_t& id) { m_id = id; m_uploadedToGPU = true; }
+		void SetGPUID(uint32_t& id) { m_id = id; m_uploadedToGPU = true; }
 
-		uint32_t GetId() const { return m_id; }
+		uint32_t GetGPUID() const { return m_id; }
 
-		void SetType(int type) { m_type = type; }
+		void SetType(uint32_t type) { m_type = type; }
 
-		void SetDataType(int dataType) { m_dataType = dataType; }
+		void SetDataType(uint32_t dataType) { m_dataType = dataType; }
 
-		void SetDrawType(int drawType) { m_drawType = drawType; }
+		void SetDrawType(uint32_t drawType) { m_drawType = drawType; }
 
-		int Type() const { return m_type; }
+		uint32_t Type() const { return m_type; }
 
-		int DataType() const { return m_dataType; }
+		uint32_t DataType() const { return m_dataType; }
 
-		int DrawType() const { return m_drawType; }
+		uint32_t DrawType() const { return m_drawType; }
 
 		bool Uploaded() { return m_uploadedToGPU; }
 
 		void SetUploaded(bool uploaded) { m_uploadedToGPU = uploaded; }
 
+		bool IsDirty() { return m_isDirty; }
+
+		void SetDirty(bool dirty) { m_isDirty = dirty; }
+
 	protected:
 
-		int m_type;
-		int m_dataType;
-		int m_drawType;
+		uint32_t m_type;
+		uint32_t m_dataType;
+		uint32_t m_drawType;
 
 		bool m_uploadedToGPU = false;
+		bool m_isDirty = true;
 
 		uint32_t m_id;
 	};
@@ -61,11 +67,11 @@ namespace JLEngine
 	class IndexBuffer : public Buffer<uint32_t>, public GraphicsBuffer
 	{
 	public:
-		IndexBuffer() {}
+		IndexBuffer() : GraphicsBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW){}
 
-		IndexBuffer(int type, int data, int draw);
+		IndexBuffer(uint32_t type, uint32_t data, uint32_t draw);
 
-		IndexBuffer(vector<uint32_t>& indices, int type, int data, int draw);
+		IndexBuffer(vector<uint32_t>& indices, uint32_t type, uint32_t data, uint32_t draw);
 
 		~IndexBuffer();
 	};
@@ -73,42 +79,16 @@ namespace JLEngine
 	class VertexBuffer : public Buffer<float>, public GraphicsBuffer
 	{
 	public:
-		VertexBuffer() : m_stride(0), m_vaoId(0), m_key(0) {}
+		VertexBuffer() : GraphicsBuffer(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW) {}
 
-		VertexBuffer(int type, int data, int draw);
+		VertexBuffer(uint32_t type, uint32_t data, uint32_t draw);
 
-		VertexBuffer(vector<float>& vertices, int type, int data, int draw);
+		VertexBuffer(vector<float>& vertices, uint32_t type, uint32_t data, uint32_t draw);
 
 		~VertexBuffer();
 
-		void Add(glm::vec3& val);
-
-		void AddAttribute(const VertexAttribute& attrib);
-
-		void CalcStride();
-
-		const std::set<VertexAttribute>& GetAttributes() const;
-
-		uint32_t GetStride();
-
 		uint32_t SizeInBytes();
-
-		void SetVAO(uint32_t id) { m_vaoId = id; }
-		uint32_t GetVAO() { return m_vaoId; }
-
-		VertexAttribKey GetAttribKey() { return m_key; }
-		void SetVertexAttribKey(VertexAttribKey key) { m_key = key; }
-
-	private:
-
-		VertexAttribKey m_key;
-
-		uint32_t m_vaoId;
-
-		std::set<VertexAttribute> m_attributes;
-
-		uint32_t m_stride;
-	};
+	};	
 
 	pair<glm::vec3, glm::vec3> findMaxMinPair(VertexBuffer&  vertices);
 }
