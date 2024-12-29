@@ -18,5 +18,9 @@ Rendering Setup
 Supports a basic deferred pipeline with ALBEDO(AO), NORMALS, METALLIC/ROUGHNESS and EMISSIVE multi textured render target
 Meshes without UVs or without Normals are rendered separately 
 
-![Screenshot](https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_gbuffer_debug.png)
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections.png'/>
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections2.png'/>
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections3.png'/>
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections4.png'/>
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_sky_debug.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_gbuffer_debug.png'/>
