@@ -136,9 +136,9 @@ int MainApp(std::string assetFolder)
     //sceneRoot->AddChild(virtualCity);
     sceneRoot->AddChild(planeNode);
     sceneRoot->AddChild(metallicSpheres);
-    sceneRoot->AddChild(helmet);
-    sceneRoot->AddChild(potofcoals);
-    sceneRoot->AddChild(fish);
+    //sceneRoot->AddChild(helmet);
+    //sceneRoot->AddChild(potofcoals);
+    //sceneRoot->AddChild(fish);
     //sceneRoot->AddChild(cardinalDirections);
 
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),

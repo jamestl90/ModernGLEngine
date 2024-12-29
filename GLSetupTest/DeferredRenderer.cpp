@@ -61,7 +61,7 @@ namespace JLEngine
         m_debugTextureShader = m_resourceLoader->CreateShaderFromFile("DebugTexture", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
 
         HdriSkyInitParams params;
-        params.fileName = "rogland_clear_night_4k.hdr";
+        params.fileName = "kloofendal_48d_partly_cloudy_puresky_4k.hdr";
         params.irradianceMapSize = 32;
         params.prefilteredMapSize = 128;
         params.prefilteredSamples = 2048;
