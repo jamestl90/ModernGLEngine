@@ -184,7 +184,6 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     gData.roughness = max(metallicRoughness.g, 0.05);
     gData.F0 = mix(vec3(0.04), gData.albedo, gData.metallic);
     gData.emissive = texture(gEmissive, texCoords).rgb;
-    gData.castShadows = decodeCastShadows(normalSample.w);
     gData.receiveShadows = decodeReceiveShadows(normalSample.w);
 
     return gData;

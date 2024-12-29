@@ -41,8 +41,7 @@ namespace JLEngine
         void Initialize();
         void Resize(int width, int height);
         
-        void RenderIndirect(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void Render(Node* sceneRoot, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
@@ -56,19 +55,17 @@ namespace JLEngine
         void CycleDebugMode();
 
     private:
-        void DrawUI();
+        void DrawUI();        
         void BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit);
         //void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void DrawGeometry(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void GBufferPass(RenderGroupMap& renderGroups, Node* sceneGraph, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
-        glm::mat4 DirectionalShadowMapPass(RenderGroupMap& renderGroups, const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void SetUniformsForGBuffer(Material* mat);
-        void RenderGroups(const RenderGroupMap& renderGroups);
-        void GroupRenderables(Node* node, RenderGroupMap& renderGroups);
+        glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
@@ -76,9 +73,8 @@ namespace JLEngine
             ResourceManager<JLEngine::Material>& materialManager,
             ResourceManager<JLEngine::Texture>& textureManager,
             std::vector<MaterialGPU>& materialBuffer,
-            std::vector<TextureGPU>& textureBuffer,
             std::unordered_map<uint32_t, size_t>& materialIDMap);
-        void GenerateDefaultTextures();
+        //void GenerateDefaultTextures();
 
         GraphicsAPI* m_graphics;
         ResourceLoader* m_resourceLoader;
@@ -104,7 +100,7 @@ namespace JLEngine
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
-        ShaderStorageBuffer<TextureGPU> m_ssboTextures;
+        //ShaderStorageBuffer<TextureGPU> m_ssboTextures;
 
         std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
         std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;

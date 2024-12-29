@@ -2,10 +2,23 @@
 
 layout(location = 0) in vec3 a_Position;
 
+struct PerDrawData 
+{
+    mat4 modelMatrix;
+    uint materialIndex;
+};
+
+layout(std430, binding = 0) readonly buffer PerDrawDataBuffer 
+{
+    PerDrawData perDrawData[];
+};
+
 uniform mat4 u_LightSpaceMatrix;
-uniform mat4 u_Model;
 
 void main() 
 {
-    gl_Position = u_LightSpaceMatrix * u_Model * vec4(a_Position, 1.0);
+    PerDrawData data = perDrawData[gl_DrawID];
+    mat4 modelMatrix = data.modelMatrix;
+
+    gl_Position = u_LightSpaceMatrix * modelMatrix * vec4(a_Position, 1.0);
 }

@@ -296,14 +296,16 @@ namespace JLEngine
 			{
 				glDeleteShader(shaders.at(i).GetShaderId());
 			}
-		}
-		GL_CHECK_ERROR();
-		auto activeUniforms = Graphics::API()->GetActiveUniforms(program->GetProgramId());
-		for (auto& uniform : activeUniforms)
-		{
-			auto& name = std::get<0>(uniform);
-			auto& loc = std::get<1>(uniform);
-			program->SetActiveUniform(name, loc);
+
+			GL_CHECK_ERROR();
+			auto activeUniforms = Graphics::API()->GetActiveUniforms(program->GetProgramId());
+			program->ClearUniforms();
+			for (auto& uniform : activeUniforms)
+			{
+				auto& name = std::get<0>(uniform);
+				auto& loc = std::get<1>(uniform);
+				program->SetActiveUniform(name, loc);
+			}
 		}
 	}
 

@@ -111,20 +111,21 @@ namespace JLEngine
         {
             Graphics::DisposeShader(program);
 
-            auto shaders = program->GetShaders();
+            auto& shaders = program->GetShaders();
             
-            std::string shaderFile;
-            if (!ReadTextFile(program->GetFilePath() + shaders[0].GetName(), shaderFile))
+            std::string vertFile;
+            if (!ReadTextFile(program->GetFilePath() + shaders[0].GetName(), vertFile))
             {
                 throw "Could not find file: " + program->GetFilePath() + shaders[0].GetName(), "Graphics";
             }
-            shaders[0].SetSource(shaderFile);
+            shaders[0].SetSource(vertFile);
 
-            if (!ReadTextFile(program->GetFilePath() + shaders[1].GetName(), shaderFile))
+            std::string fragFile;
+            if (!ReadTextFile(program->GetFilePath() + shaders[1].GetName(), fragFile))
             {
                 throw "Could not find file: " + program->GetFilePath() + shaders[1].GetName(), "Graphics";
             }
-            shaders[1].SetSource(shaderFile);
+            shaders[1].SetSource(fragFile);
 
             Graphics::CreateShader(program);
         }

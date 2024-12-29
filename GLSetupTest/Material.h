@@ -20,22 +20,20 @@ namespace JLEngine
         BLEND
     };
 
-    struct MaterialGPU
+    struct alignas(16) MaterialGPU
     {
-        glm::vec4 baseColorFactor;              // 16 
-        glm::vec4 emissiveFactor;               // 16
-        float metallicFactor;                   // 4
-        float roughnessFactor;                  // 4
-        float alphaCutoff;                      // 4
-        int baseColorTextureIndex;              // 4
-        int metallicRoughnessTextureIndex;      // 4
-        int normalTextureIndex;                 // 4
-        int occlusionTextureIndex;              // 4
-        int emissiveTextureIndex;               // 4
-        int alphaMode;                          // 4
-        int doubleSided;                        // 4
-        int castShadows;                        // 4
-        int receiveShadows;                     // 4
+        glm::vec4 baseColorFactor;            // 16 bytes
+        glm::vec4 emissiveFactor;             // 16 bytes
+        uint64_t baseColorHandle;             // 8 bytes
+        uint64_t metallicRoughnessHandle;     // 8 bytes
+        uint64_t normalHandle;                // 8 bytes
+        uint64_t occlusionHandle;             // 8 bytes
+        uint64_t emissiveHandle;              // 8 bytes
+        float metallicFactor;                 // 4 bytes
+        float roughnessFactor;                // 4 bytes
+        float alphaCutoff;                    // 4 bytes
+        uint32_t alphaMode;                   // 4 bytes
+        uint32_t receiveShadows;              // 4 bytes         
     };
 
     class Material : public Resource

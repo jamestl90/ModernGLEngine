@@ -47,6 +47,8 @@ namespace JLEngine
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetStaticVAOs() { return m_staticVAOs; }
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetDynamicVAOs() { return m_dynamicVAOs; }
 
+		void ClearCaches();
+
 	protected:
 		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode);
 		std::shared_ptr<Mesh> ParseMesh(const tinygltf::Model& model, int meshIndex);
@@ -65,7 +67,7 @@ namespace JLEngine
 		void GenerateMissingAttributes(std::vector<float>& positions, std::vector<float>& normals, const std::vector<float>& texCoords, std::vector<float>& tangents, const std::vector<uint32_t>& indices, VertexAttribKey key);
 		void BatchLoadAttributes(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& texCoords2, std::vector<float>& tangents, std::vector<uint32_t>& indices, uint32_t& indexOffset, VertexAttribKey key);
 		void LoadAttributes(const tinygltf::Model& model, const tinygltf::Primitive* primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& tangents, std::vector<uint32_t>& indices, uint32_t& indexOffset);
-		
+
 		glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue);
 		glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue);
 

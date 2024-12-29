@@ -5,11 +5,10 @@
 
 namespace JLEngine
 {
-	struct PerDrawData
+	struct alignas(16) PerDrawData
 	{
 		glm::mat4 modelMatrix; // 64 bytes
-		int materialID;		   // 4 bytes
-		int padding[3];        // 12 bytes 
+		uint32_t materialID;		   // 4 bytes
 	};
 
 	struct DrawIndirectCommand

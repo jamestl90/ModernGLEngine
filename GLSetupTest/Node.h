@@ -154,7 +154,7 @@ namespace JLEngine
         bool useMatrix;
 
         Light* m_lightData;
-        Mesh* mesh;
+        std::shared_ptr<Mesh> mesh;
 
         std::vector<std::shared_ptr<Node>> children;
         std::weak_ptr<Node> parent;

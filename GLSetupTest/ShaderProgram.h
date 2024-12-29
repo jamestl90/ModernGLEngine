@@ -26,10 +26,11 @@ namespace JLEngine
 		void SetProgramId(uint32_t id) { m_programId = id; }
 		uint32_t GetProgramId() { return m_programId; }
 
+		void ClearShaders() { m_shaders.clear(); }
 		void AddShader(Shader& shader);
-		Shader GetShader(int type);
+		Shader& GetShader(int type);
 		void GetShader(string name, Shader& shader);
-		std::vector<Shader> GetShaders() { return m_shaders; }
+		std::vector<Shader>& GetShaders() { return m_shaders; }
 		const std::string GetFilePath() { return m_filename; }
 		int GetUniformLocation(const std::string& name);
 
@@ -39,6 +40,7 @@ namespace JLEngine
 		void SetUniformf(const std::string& name, float value);
 		void SetUniformi(const std::string& name, uint32_t value);
 
+		void ClearUniforms() { m_uniformLocations.clear(); }
 		void SetActiveUniform(std::string& name, int location) { m_uniformLocations[name] = location; }
 
 		void UnloadFromGraphics();

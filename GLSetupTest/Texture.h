@@ -15,20 +15,15 @@ namespace JLEngine
     {
         bool mipmapEnabled =        false;
         bool immutable =            false;
-        uint32_t wrapS =            GL_CLAMP_TO_EDGE;
-        uint32_t wrapT =            GL_CLAMP_TO_EDGE;
-        uint32_t wrapR =            GL_CLAMP_TO_EDGE;
+        uint32_t wrapS =            GL_REPEAT;
+        uint32_t wrapT =            GL_REPEAT;
+        uint32_t wrapR =            GL_REPEAT;
         uint32_t minFilter =        GL_LINEAR;
         uint32_t magFilter =        GL_LINEAR;
         uint32_t textureType =      GL_TEXTURE_2D;
         uint32_t internalFormat =   GL_RGBA;
         uint32_t format =           GL_RGBA;
         uint32_t dataType =         GL_UNSIGNED_BYTE;
-    };
-
-    struct TextureGPU
-    {
-        uint64_t handle;   // Bindless texture handle (for ARB_bindless_texture)
     };
 
     class Texture : public GraphicsResource
@@ -46,6 +41,9 @@ namespace JLEngine
         void SetParams(const TexParams& params);
 
         void SetFormat(uint32_t dataType, uint32_t internalFormat, uint32_t format);
+
+        uint64_t Bindless() { return m_bindlessHandle; }
+        void SetBindlessHandle(uint64_t handle) { m_bindlessHandle = handle; }
 
         static TexParams RGBATexParams()
         {
@@ -65,6 +63,8 @@ namespace JLEngine
 
     private:
         GraphicsAPI* m_graphics = nullptr;  
+
+        uint64_t m_bindlessHandle = 0;
 
         ImageData m_imageData;
         TexParams m_texParams;

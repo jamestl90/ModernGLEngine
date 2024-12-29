@@ -23,6 +23,8 @@ namespace JLEngine
 
 	std::shared_ptr<Node> GLBLoader::LoadGLB(const std::string& fileName)
 	{
+		std::cout << "Loading GLB: " << fileName << std::endl;
+
 		// Load GLB file using tinygltf
 		tinygltf::TinyGLTF loader;
 		tinygltf::Model model;
@@ -50,6 +52,7 @@ namespace JLEngine
 		// Retrieve the default scene or the first scene
 		const tinygltf::Scene& scene = model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
 		auto rootNode = std::make_shared<Node>("RootNode");
+		rootNode->SetTag(NodeTag::Default);
 
 		// Parse all nodes in the scene
 		for (int nodeIndex : scene.nodes)
@@ -83,22 +86,14 @@ namespace JLEngine
 		// Handle mesh
 		if (gltfNode.mesh >= 0)
 		{
-			auto lowerStr = JLEngine::Str::ToLower(gltfNode.name);
-			if (lowerStr.find("skybox") == std::string::npos)
-			{
-				node->SetTag(NodeTag::Mesh);
-			}
-			else
-			{
-				node->SetTag(NodeTag::Skybox);
-			}
+			node->SetTag(NodeTag::Mesh);
 
 			// Track which nodes reference this mesh
 			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
 			referencingNodes.push_back(node);
 
 			// Parse the mesh
-			node->mesh = ParseMesh(model, gltfNode.mesh).get();
+			node->mesh = ParseMesh(model, gltfNode.mesh);
 
 			// Debug: Log the mesh association
 			//std::cout << "Node " << node->name << " references mesh " << node->mesh->GetName() << std::endl;
@@ -164,6 +159,8 @@ namespace JLEngine
 		auto mesh = m_resourceLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 		mesh->SetStatic(true);
 
+		std::cout << "Mesh name: " << model.meshes[meshIndex].name << std::endl;
+
 		// Group primitives by material and attributes
 		std::unordered_map<MaterialVertexAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
 		for (const auto& primitive : gltfMesh.primitives)
@@ -202,15 +199,13 @@ namespace JLEngine
 
 	SubMesh GLBLoader::CreateSubMesh(const tinygltf::Model& model, 
 		const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key)
-	{
+	{		
 		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
 		std::vector<uint32_t> indices;
 
-		// Load attributes from primitives
 		uint32_t indexOffset = 0;
 		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, indices, indexOffset, key.attributesKey);
 
-		// Generate missing normals or tangents if required
 		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
 
 		// Interleave vertex data
@@ -238,11 +233,20 @@ namespace JLEngine
 		}
 
 		auto& vbo = vao->GetVBO();
-		uint32_t vertexOffset = (uint32_t)vbo.Size() / CalculateStride(key.attributesKey);
+		//if (vbo.Size() + interleavedVertexData.size() * sizeof(float) > vbo.GetBuffer().capacity()) 
+		//{
+		//	std::cerr << "Error: Vertex buffer capacity exceeded.\n";
+		//	return {};
+		//}
+		uint32_t vertexOffset = (uint32_t)vbo.Size() / (CalculateStride(key.attributesKey) / 4);
 		vbo.Append(interleavedVertexData);
 
 		auto& ibo = vao->GetIBO();
-		uint32_t indexBase = (uint32_t)ibo.Size() / sizeof(uint32_t);
+		//if (ibo.Size() + indices.size() * sizeof(uint32_t) > ibo.GetBuffer().capacity()) {
+		//	std::cerr << "Error: Index buffer capacity exceeded.\n";
+		//	return {};
+		//}
+		uint32_t indexBase = (uint32_t)ibo.Size();
 		ibo.Append(indices);
 
 		SubMesh submesh;
@@ -413,7 +417,6 @@ namespace JLEngine
 		imgData.data = glbImageData.image;
 
 		// Create a new texture
-		//auto jltexture = m_assetLoader->CreateTextureFromData(finalName, width, height, channels, data, true, true);
 		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData);
 
 		// Cache the newly created texture
@@ -596,7 +599,7 @@ namespace JLEngine
 		{
 			if (HasVertexAttribKey(key, AttributeType::TANGENT))
 			{
-				std::cout << "Generating tangents..." << std::endl;
+				//std::cout << "Generating tangents..." << std::endl;
 				tangents = Geometry::CalculateTangents(positions, normals, texCoords, indices);
 			}
 		}
@@ -851,7 +854,7 @@ namespace JLEngine
 		}
 		else
 		{
-			std::cerr << "Warning: TANGENT attribute not found in primitive" << std::endl;
+			//std::cerr << "Warning: TANGENT attribute not found in primitive" << std::endl;
 			return false;
 		}
 		return true;
@@ -909,4 +912,12 @@ namespace JLEngine
 		}
 		return false;
 	}	
+
+	void GLBLoader::ClearCaches()
+	{
+		meshCache.clear();
+		materialCache.clear();
+		textureCache.clear();
+		meshNodeReferences.clear();
+	}
 }

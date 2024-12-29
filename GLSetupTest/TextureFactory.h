@@ -66,7 +66,7 @@ namespace JLEngine
         }
 
         // Create a texture from raw ImageData
-        std::shared_ptr<Texture> CreateFromData(const std::string& name, ImageData& imageData, const TexParams& texParams = TexParams())
+        std::shared_ptr<Texture> CreateFromData(const std::string& name, ImageData& imageData, TexParams texParams = TexParams())
         {
             return m_textureManager->Load(name, [&]() {
                 if (!imageData.IsValid())

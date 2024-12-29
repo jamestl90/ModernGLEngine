@@ -67,7 +67,7 @@ namespace JLEngine
 	class IndexBuffer : public Buffer<uint32_t>, public GraphicsBuffer
 	{
 	public:
-		IndexBuffer() {}
+		IndexBuffer() : GraphicsBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW){}
 
 		IndexBuffer(uint32_t type, uint32_t data, uint32_t draw);
 
@@ -79,7 +79,7 @@ namespace JLEngine
 	class VertexBuffer : public Buffer<float>, public GraphicsBuffer
 	{
 	public:
-		VertexBuffer() {}
+		VertexBuffer() : GraphicsBuffer(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW) {}
 
 		VertexBuffer(uint32_t type, uint32_t data, uint32_t draw);
 

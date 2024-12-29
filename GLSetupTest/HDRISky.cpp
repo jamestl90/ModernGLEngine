@@ -35,7 +35,7 @@ namespace JLEngine
         Graphics::API()->Enable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
         CubemapBaker baker(assetPath, m_resourceLoader);
-        GL_CHECK_ERROR();
+
         m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, true);
         m_irradianceMap = baker.GenerateIrradianceCubemap(m_hdriSky, initParams.irradianceMapSize);
         m_prefilteredMap = baker.GeneratePrefilteredEnvMap(m_hdriSky, initParams.prefilteredMapSize, initParams.prefilteredSamples);

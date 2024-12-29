@@ -33,7 +33,7 @@ namespace JLEngine
 		void CalcStride() { m_stride = CalculateStride(this); }
 		const uint32_t GetStride() const { return m_stride; }
 		
-		bool HasIndices() { return m_hasIndices; }
+		bool HasIndices() { return m_ibo.Size() > 0; }
 
 		void SetPosCount(int count) { m_posCount = count; }
 		int GetPosCount() { return m_posCount; }
