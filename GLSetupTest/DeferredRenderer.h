@@ -27,6 +27,12 @@ namespace JLEngine
         None
     };
 
+    struct VAOResource 
+    {
+        std::shared_ptr<VertexArrayObject> vao;       
+        std::shared_ptr<IndirectDrawBuffer> drawBuffer; 
+    };
+
     class Material;
     class DirectionalLightShadowMap;
     class HDRISky;
@@ -47,7 +53,7 @@ namespace JLEngine
         bool GetDLShadowsEnabled() { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
-        void AddStaticVAO(VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao) { m_staticVAOs[key] = vao; }
+        void AddStaticVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);
 
         void GenerateGPUBuffers(Node* sceneRoot);
 
@@ -94,16 +100,12 @@ namespace JLEngine
 
         VertexArrayObject m_triangleVAO;
 
-        IndirectDrawBuffer m_staticBuffer;
-        IndirectDrawBuffer m_dynamicBuffer;
-
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
-        //ShaderStorageBuffer<TextureGPU> m_ssboTextures;
 
-        std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
-        std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;
+        std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
+        std::unordered_map<VertexAttribKey, VAOResource> m_dynamicResources;
 
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;

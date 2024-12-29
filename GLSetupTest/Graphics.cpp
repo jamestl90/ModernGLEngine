@@ -108,7 +108,7 @@ namespace JLEngine
 
 		if (params.mipmapEnabled)
 		{
-			glGenerateMipmap(params.textureType); // Generate mipmaps for mutable textures
+			glGenerateTextureMipmap(image); // Generate mipmaps for mutable textures
 		}
 
 		texture->SetGPUID(image);

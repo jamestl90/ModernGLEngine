@@ -232,6 +232,11 @@ namespace JLEngine
 			vao->SetVertexAttribKey(key.attributesKey);
 		}
 
+		if (vao->GetAttribKey() == 3)
+		{
+			std::cout << "";
+		}
+
 		auto& vbo = vao->GetVBO();
 		uint32_t vertexOffset = (uint32_t)vbo.Size() / (CalculateStride(key.attributesKey) / 4);
 		vbo.Append(interleavedVertexData);
@@ -490,6 +495,8 @@ namespace JLEngine
 		uint32_t& indexOffset, 
 		VertexAttribKey key)
 	{
+		if (primitives.size() > 1)
+			std::cout << "check here, primitive count > 1";
 		for (const auto* primitive : primitives)
 		{
 			uint32_t currentVertexCount = static_cast<uint32_t>(positions.size() / 3); // Before adding new vertices

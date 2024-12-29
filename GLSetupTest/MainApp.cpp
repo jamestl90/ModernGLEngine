@@ -111,18 +111,18 @@ int MainApp(std::string assetFolder)
     mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
     planeNode->translation -= glm::vec3(0, 2.5f, 0);
-
+    
     auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    //
+    
     auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
-    //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
-    //
+    auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
+    engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
+    
     auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
     potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
     potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
-    //
+    
     auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
     fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
     fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
@@ -148,9 +148,9 @@ int MainApp(std::string assetFolder)
     for (auto [key, vao] : engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs())
     {
         if (vao->GetVBO().Size() > 0)
-            m_defRenderer->AddStaticVAO(key, vao);
+            m_defRenderer->AddStaticVAO(true, key, vao);
     }
-    GL_CHECK_ERROR();
+
     m_defRenderer->GenerateGPUBuffers(sceneRoot.get());
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);

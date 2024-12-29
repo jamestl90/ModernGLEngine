@@ -13,7 +13,7 @@ namespace JLEngine
 
     struct TexParams
     {
-        bool mipmapEnabled =        false;
+        bool mipmapEnabled =        true;
         bool immutable =            false;
         uint32_t wrapS =            GL_REPEAT;
         uint32_t wrapT =            GL_REPEAT;

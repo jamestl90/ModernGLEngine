@@ -111,9 +111,6 @@ void main()
         discard;
     }
 
-    //float shadowInfo = encodeShadowFlags(material.receiveShadows, material.castShadows);
-
-    // Write to G-buffer
     gAlbedoAO = vec4(baseColor.rgb, ao);          // Albedo + Ambient Occlusion
     gNormalShadow = vec4(normal, material.receiveShadows); // Encoded Normal + Shadow Info
     gMetallicRoughness = metallicRoughness;       // Metallic + Roughness

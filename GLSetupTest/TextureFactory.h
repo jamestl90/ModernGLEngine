@@ -49,7 +49,6 @@ namespace JLEngine
 
                 auto texture = std::make_shared<Texture>(name, m_graphics);
                 texture->InitFromData(std::move(imageData));
-                TexParams texParams;
                 texture->SetParams(imageData.channels == 3 ? Texture::RGBTexParams() : Texture::RGBATexParams());
                 Graphics::CreateTexture(texture.get());
                 return texture;
