@@ -454,14 +454,12 @@ namespace JLEngine
                     //pdd.castShadows = matManager->Get(submesh.materialHandle)->castShadows ? 1 : 0;
                     if (node->mesh->IsStatic())
                     {   
-                        submesh.command.baseInstance = currentStaticIndex;
                         m_ssboStaticPerDraw.Add(pdd);
                         m_staticBuffer.AddDrawCommand(submesh.command);
                         currentStaticIndex++;
                     }
                     else
                     {
-                        submesh.command.baseInstance = currentDynamicIndex;
                         m_ssboDynamicPerDraw.Add(pdd);
                         m_dynamicBuffer.AddDrawCommand(submesh.command);
                         currentDynamicIndex++;

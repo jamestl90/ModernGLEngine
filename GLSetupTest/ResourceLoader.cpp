@@ -70,6 +70,7 @@ namespace JLEngine
             m_glbLoader = new GLBLoader(this);
 
         auto scene = m_glbLoader->LoadGLB(glbFile);
+        m_glbLoader->ClearCaches();
         return scene;
     }
 

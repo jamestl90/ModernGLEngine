@@ -233,19 +233,10 @@ namespace JLEngine
 		}
 
 		auto& vbo = vao->GetVBO();
-		//if (vbo.Size() + interleavedVertexData.size() * sizeof(float) > vbo.GetBuffer().capacity()) 
-		//{
-		//	std::cerr << "Error: Vertex buffer capacity exceeded.\n";
-		//	return {};
-		//}
 		uint32_t vertexOffset = (uint32_t)vbo.Size() / (CalculateStride(key.attributesKey) / 4);
 		vbo.Append(interleavedVertexData);
 
 		auto& ibo = vao->GetIBO();
-		//if (ibo.Size() + indices.size() * sizeof(uint32_t) > ibo.GetBuffer().capacity()) {
-		//	std::cerr << "Error: Index buffer capacity exceeded.\n";
-		//	return {};
-		//}
 		uint32_t indexBase = (uint32_t)ibo.Size();
 		ibo.Append(indices);
 
