@@ -17,7 +17,6 @@ struct MaterialGPU
     float roughnessFactor;
     float alphaCutoff;
     uint alphaMode;
-    uint castShadows;
     uint receiveShadows;
 };
 
@@ -97,11 +96,6 @@ vec3 getEmissive(MaterialGPU material)
     return material.emissiveFactor.rgb;
 }
 
-float encodeShadowFlags(uint receiveShadows, uint castShadows) 
-{
-    return float(castShadows) + 0.1 * float(receiveShadows);
-}
-
 void main() 
 {
     MaterialGPU material = materials[v_MaterialIndex];
@@ -117,7 +111,7 @@ void main()
         discard;
     }
 
-    float shadowInfo = encodeShadowFlags(material.receiveShadows, material.castShadows);
+    //float shadowInfo = encodeShadowFlags(material.receiveShadows, material.castShadows);
 
     // Write to G-buffer
     gAlbedoAO = vec4(baseColor.rgb, ao);          // Albedo + Ambient Occlusion

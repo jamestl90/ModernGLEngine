@@ -25,6 +25,8 @@ namespace JLEngine
         m_resourceLoader->SetHotReloading(true);
         m_input->SetRawMouseMotion(true);
         setVsync(true);
+
+        Graphics::API()->DumpInfo();
     }
 
     JLEngineCore::~JLEngineCore()

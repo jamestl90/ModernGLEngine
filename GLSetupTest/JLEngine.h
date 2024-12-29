@@ -36,8 +36,6 @@ namespace JLEngine
 
         IMGuiManager m_imguiManager;
 
-        Graphics* m_graphics;
-
         std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
         ResourceLoader* m_resourceLoader;

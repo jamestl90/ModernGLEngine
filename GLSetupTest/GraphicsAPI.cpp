@@ -832,6 +832,9 @@ namespace JLEngine
 		std::cout << m_versionInfo << std::endl;
 		std::cout << m_vendorInfo << std::endl;
 		std::cout << m_rendererInfo << std::endl;
+		std::cout << "GLFW Version: " << m_window->GetVersionMajor() 
+			<< "." << m_window->GetVersionMinor() 
+			<< "." << m_window->GetRevision() << std::endl;
 		std::cout << "MSAA Buffers: " << m_MSAABuffers << std::endl;
 		std::cout << "MSAA Samples: " << m_MSAASamples << std::endl;
 		std::cout << "****************************************************" << std::endl;

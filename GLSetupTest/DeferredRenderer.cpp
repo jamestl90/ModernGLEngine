@@ -375,7 +375,7 @@ namespace JLEngine
     {
         DrawUI();
 
-        //auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
+        auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
 
         GBufferPass(viewMatrix, projMatrix);
 
@@ -406,7 +406,7 @@ namespace JLEngine
         }
         else
         {
-            LightPass(eyePos, viewMatrix, projMatrix, glm::mat4(1.0));
+            LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
     }
 

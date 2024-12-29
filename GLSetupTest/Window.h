@@ -26,12 +26,20 @@ namespace JLEngine
 
         void SetResizeCallback(std::function<void(int, int)> callback);
 
+        int GetVersionMajor() { return m_major; }
+        int GetVersionMinor() { return m_minor; }
+        int GetRevision() { return m_revision; }
+
     private:
         GLFWwindow* m_window;
         int m_width, m_height;
 
         std::function<void(int, int)> m_resizeCallback;
         static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
+
+        int m_major;
+        int m_minor;
+        int m_revision;
     };
 }
 #endif
