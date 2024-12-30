@@ -417,7 +417,7 @@ namespace JLEngine
 		imgData.data = glbImageData.image;
 
 		// Create a new texture
-		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData);
+		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData, Texture::DefaultParams(imgData.channels, false));
 
 		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;

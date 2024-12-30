@@ -38,7 +38,7 @@ namespace JLEngine
 		API()->DisposeTexture(1, &id);
 	}
 
-	void Graphics::CreateTexture(Texture* texture)
+	void Graphics::CreateTexture(Texture* texture, bool makeBindless)
 	{
 		if (!texture)
 		{
@@ -55,8 +55,35 @@ namespace JLEngine
 		}
 
 		GLuint image;
-		glGenTextures(1, &image);
-		glBindTexture(params.textureType, image);
+		glCreateTextures(GL_TEXTURE_2D, 1, &image);
+		texture->SetGPUID(image);
+
+		GLfloat anisotropy;
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &anisotropy);
+		glTextureParameterf(image, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
+
+		if (imgData.hdrData.empty() && imgData.data.empty())
+		{
+			throw std::runtime_error("Graphics::CreateTexture: No valid texture data provided for " + texture->GetName());
+		}
+
+		GLuint mipLevels = params.mipmapEnabled
+			? static_cast<int>(std::log2(std::max(imgData.width, imgData.height))) + 1 : 1;
+
+		glTextureStorage2D(image, mipLevels, params.internalFormat, imgData.width, imgData.height);
+
+		if (imgData.isHDR)
+		{
+			glTextureSubImage2D(image, 
+				0, 0, 0, imgData.width, imgData.height, params.format, 
+				params.dataType, imgData.hdrData.data());
+		}
+		else
+		{
+			glTextureSubImage2D(image,
+				0, 0, 0, imgData.width, imgData.height, params.format,
+				params.dataType, imgData.data.data());
+		}
 
 		uint32_t minFilter = params.minFilter;
 		if (params.mipmapEnabled && (minFilter != GL_NEAREST_MIPMAP_NEAREST &&
@@ -67,55 +94,30 @@ namespace JLEngine
 			minFilter = GL_LINEAR_MIPMAP_LINEAR; // Default to trilinear filtering
 		}
 
-		glTexParameteri(params.textureType, GL_TEXTURE_MAG_FILTER, params.magFilter);
-		glTexParameteri(params.textureType, GL_TEXTURE_MIN_FILTER, minFilter);
-		glTexParameteri(params.textureType, GL_TEXTURE_WRAP_S, params.wrapS);
-		glTexParameteri(params.textureType, GL_TEXTURE_WRAP_T, params.wrapT);
-
-		if (imgData.hdrData.empty() && imgData.data.empty())
-		{
-			throw std::runtime_error("Graphics::CreateTexture: No valid texture data provided for " + texture->GetName());
-		}
-
-		if (params.immutable)
-		{
-			int mipLevels = params.mipmapEnabled ? static_cast<int>(std::log2(std::max(imgData.width, imgData.height)) + 1) : 1;
-			glTexStorage2D(params.textureType, mipLevels,
-				params.internalFormat, imgData.width, imgData.height);
-
-			if (imgData.isHDR && !imgData.hdrData.empty())
-			{
-				glTexSubImage2D(params.textureType, 0, 0, 0, imgData.width, imgData.height,
-					params.format, params.dataType, imgData.hdrData.data());
-			}
-			else if (!imgData.data.empty())
-			{
-				glTexSubImage2D(params.textureType, 0, 0, 0, imgData.width, imgData.height,
-					params.format, params.dataType, imgData.data.data());
-			}
-		}
-		else
-		{
-			if (imgData.isHDR && !imgData.hdrData.empty())
-			{
-				glTexImage2D(params.textureType, 0, params.internalFormat, imgData.width, imgData.height, 0,
-					params.format, params.dataType, imgData.hdrData.data());
-			}
-			else if (!imgData.data.empty())
-			{
-				glTexImage2D(params.textureType, 0, params.internalFormat, imgData.width, imgData.height, 0,
-					params.format, params.dataType, imgData.data.data());
-			}
-		}
+		glTextureParameteri(image, GL_TEXTURE_MAG_FILTER, params.magFilter);
+		glTextureParameteri(image, GL_TEXTURE_MIN_FILTER, minFilter);
+		glTextureParameteri(image, GL_TEXTURE_WRAP_S, params.wrapS);
+		glTextureParameteri(image, GL_TEXTURE_WRAP_T, params.wrapT);
 
 		if (params.mipmapEnabled)
 		{
 			glGenerateTextureMipmap(image); // Generate mipmaps for mutable textures
 		}
 
-		texture->SetGPUID(image);
+		if (makeBindless)
+		{
+			GLuint64 bindlessHandle = glGetTextureHandleARB(texture->GetGPUID());
+			if (bindlessHandle == 0)
+			{
+				std::cerr << "Error: glGetTextureHandleARB - handle = 0" << std::endl;
+				throw std::runtime_error("Invalid handle");
+			}
+			glMakeTextureHandleResidentARB(bindlessHandle);
+			texture->SetBindlessHandle(bindlessHandle);
+		}
 
-		glBindTexture(params.textureType, 0);
+		// debug 
+		glObjectLabel(GL_TEXTURE, image, -1, texture->GetName().c_str());
 	}
 
 	void Graphics::CreateCubemap(Cubemap* cubemap)
@@ -333,69 +335,89 @@ namespace JLEngine
 		}
 
 		GLuint fbo;
-		glGenFramebuffers(1, &fbo);
-		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		glCreateFramebuffers(1, &fbo);
 		target->SetFrameBufferId(fbo);
 
 		auto& attributes = target->GetTextureAttributes();
 		for (uint32_t i = 0; i < target->GetNumSources(); i++)
 		{
 			GLuint tex;
-			glGenTextures(1, &tex);
-			glBindTexture(GL_TEXTURE_2D, tex);
+			glCreateTextures(GL_TEXTURE_2D, 1, &tex);
 
 			auto& attrib = attributes[i];
+			if (target->IsMultisampled())
+			{
+				glTextureStorage2DMultisample(tex, target->GetSamples(), attrib.internalFormat, 
+					target->GetWidth(), target->GetHeight(), GL_TRUE);
+			}
+			else
+			{
+				glTextureStorage2D(tex, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
+			}
+			
+			glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, attrib.minFilter);
+			glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, attrib.magFilter);
+			glTextureParameteri(tex, GL_TEXTURE_WRAP_S, attrib.wrapS);
+			glTextureParameteri(tex, GL_TEXTURE_WRAP_T, attrib.wrapT);
 
-			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, target->GetWidth(), target->GetHeight(), 0, attrib.format, attrib.dataType, nullptr);
-			//glTexStorage2D(GL_TEXTURE_2D, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
-			// glTexStorage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, attrib.internalFormat, target->GetWidth(), target->GetHeight(), GL_TRUE);
-			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, tex, 0);
+			glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0 + i, tex, 0);
 			target->SetSourceId(i, tex);
-
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, attrib.minFilter);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, attrib.magFilter);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, attrib.wrapS);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, attrib.wrapT);
 		}
+
 		GLuint depth;
 		if (target->DepthType() == DepthType::Renderbuffer)
 		{
-			glGenRenderbuffers(1, &depth);
-			glBindRenderbuffer(GL_RENDERBUFFER, depth);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight());
-			// glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, target->GetWidth(), target->GetHeight()); // 4x MSAA
+			glCreateRenderbuffers(1, &depth);
+			if (target->IsMultisampled())
+			{
+				glNamedRenderbufferStorageMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32,
+					target->GetWidth(), target->GetHeight());
+			}
+			else
+			{
+				glNamedRenderbufferStorage(depth, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight());
+			}
 			target->SetDepthId(depth);
-			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+			glNamedFramebufferRenderbuffer(fbo, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 		}
 		else if (target->DepthType() == DepthType::Texture)
 		{
-			glGenTextures(1, &depth);
-			glBindTexture(GL_TEXTURE_2D, depth);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight(), 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glCreateTextures(GL_TEXTURE_2D, 1, &depth);
+			if (target->IsMultisampled())
+			{
+				glTextureStorage2DMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32,
+					target->GetWidth(), target->GetHeight(), GL_TRUE);
+			}
+			else
+			{
+				glTextureStorage2D(depth, 1, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight());
+			}
+
+			glTextureParameteri(depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTextureParameteri(depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTextureParameteri(depth, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTextureParameteri(depth, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 			target->SetDepthId(depth);
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+			glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depth, 0);
 		}
 
-		glDrawBuffers(target->GetNumSources(), target->GetDrawBuffers().data());
+		auto& drawBuffers = target->GetDrawBuffers();
+		glNamedFramebufferDrawBuffers(fbo, static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-			std::cerr << "Framebuffer not complete: ";
+			GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
+			std::string errorMsg = "Framebuffer not complete: ";
 			switch (status)
 			{
-			case GL_FRAMEBUFFER_UNDEFINED: std::cerr << "GL_FRAMEBUFFER_UNDEFINED"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: std::cerr << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
-			case GL_FRAMEBUFFER_UNSUPPORTED: std::cerr << "GL_FRAMEBUFFER_UNSUPPORTED"; break;
-			default: std::cerr << "Unknown Error"; break;
+			case GL_FRAMEBUFFER_UNDEFINED: errorMsg += "GL_FRAMEBUFFER_UNDEFINED"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: errorMsg += "GL_FRAMEBUFFER_UNSUPPORTED"; break;
+			default: errorMsg += "Unknown Error"; break;
 			}
-			std::cerr << std::endl;
 
 			glDeleteFramebuffers(1, &fbo);
 			for (uint32_t i = 0; i < target->GetNumSources(); i++)
@@ -414,12 +436,8 @@ namespace JLEngine
 				glDeleteTextures(1, &dboId);
 			}
 
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			throw std::runtime_error(errorMsg);
 		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	}
 
 	void Graphics::DisposeRenderTarget(RenderTarget* target)

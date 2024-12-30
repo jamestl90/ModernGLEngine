@@ -27,7 +27,6 @@ namespace JLEngine
 		{
 			TexParams params;
 			params.mipmapEnabled = mipmaps;
-			params.immutable = immutable;
 			params.wrapS = GL_CLAMP_TO_EDGE;
 			params.wrapT = GL_CLAMP_TO_EDGE;
 			params.wrapR = GL_CLAMP_TO_EDGE;

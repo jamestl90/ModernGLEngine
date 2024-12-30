@@ -19,7 +19,7 @@ namespace JLEngine
 			Graphics::DisposeRenderTarget(this);
 	}
 
-	void RenderTarget::BindDepthTexture(int texUnit)
+	void RenderTarget::BindDepthTexture(int texUnit) const
 	{
 		Graphics::API()->SetActiveTexture(texUnit);
 		Graphics::API()->BindTexture(GL_TEXTURE_2D, m_dbo);

@@ -39,12 +39,14 @@ namespace JLEngine
 		void SetDepthId(uint32_t id) { m_dbo = id; }
 		void SetSourceId(uint32_t index, uint32_t id) { m_sources[index] = id; }
 
+		const uint32_t GetSamples() const { return m_numSamples; }
 		const uint32_t GetFrameBufferId() const { return m_fbo; }
 		const uint32_t GetDepthBufferId() const { return m_dbo; }
 		int GetSourceId(int index) { return m_sources[index]; }
 		const uint32_t GetNumSources() const { return m_numSources; }
 		const std::vector<uint32_t>& GetSources() { return m_sources; }
 		const std::vector<uint32_t>& GetDrawBuffers() { return m_drawBuffers; }
+		bool IsMultisampled() const { return m_multisampled; }
 		const bool UseWindowSize() const { return m_useWindowSize; }
 		JLEngine::DepthType DepthType() const { return m_depthType; }
 		const std::vector<TextureAttribute>& GetTextureAttributes() { return m_attributes; }
@@ -52,6 +54,8 @@ namespace JLEngine
 		uint32_t GetWidth() const { return m_width; }
 		uint32_t GetHeight() const { return m_height; }
 
+		void SetNumSamples(int samples) { m_numSamples = samples; }
+		void SetMultisampled(bool multisampled) { m_multisampled = multisampled; }
 		void SetUseWindowSize(bool flag) { m_useWindowSize = flag; }
 		void SetWidth(uint32_t width) { m_width = width; }
 		void SetHeight(uint32_t height) { m_height = height; }
@@ -59,7 +63,7 @@ namespace JLEngine
 		void SetNumSources(uint32_t numSources);
 		void SetTextureAttribute(uint32_t index, const TextureAttribute& attributes);
 
-		void BindDepthTexture(int texUnit);
+		void BindDepthTexture(int texUnit) const;
 		void BindTexture(int texIndex, int texUnit);
 		void BindTextures();
 		void Unbind() const;
@@ -78,6 +82,9 @@ namespace JLEngine
 
 		uint32_t m_fbo;	// main FBO
 		uint32_t m_dbo;	// depth FBO
+
+		bool m_multisampled = false;
+		int m_numSamples = 4;
 
 		std::vector<uint32_t> m_sources;	// texture Id's
 		std::vector<uint32_t> m_drawBuffers;

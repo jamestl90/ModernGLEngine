@@ -131,11 +131,7 @@ namespace JLEngine
         {
             if (resource.vao->GetGPUID() == 0) continue;
 
-            auto size = static_cast<uint32_t>(resource.drawBuffer->GetDataImmutable().size());
-            m_graphics->BindVertexArray(resource.vao->GetGPUID());
-            m_graphics->BindBuffer(GL_DRAW_INDIRECT_BUFFER, resource.drawBuffer->GetGPUBuffer().GetGPUID());
-            m_graphics->MultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
-            // glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
+            DrawGeometry(resource, stride);
         }
 
         GL_CHECK_ERROR();
@@ -180,11 +176,7 @@ namespace JLEngine
         {
             if (resource.vao->GetGPUID() == 0) continue;
 
-            auto& drawBuffer = resource.drawBuffer;
-            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawBuffer->GetGPUBuffer().GetGPUID());
-            auto size = static_cast<uint32_t>(drawBuffer->GetDataImmutable().size());
-            m_graphics->BindVertexArray(resource.vao->GetGPUID());
-            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
+            DrawGeometry(resource, stride);
         }
  
         GL_CHECK_ERROR();
@@ -474,7 +466,7 @@ namespace JLEngine
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
-
+        
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
     }
@@ -521,9 +513,13 @@ namespace JLEngine
         ImGui::End();
     }
 
-    void DeferredRenderer::DrawGeometry(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    void DeferredRenderer::DrawGeometry(const VAOResource& vaoResource, uint32_t stride)
     {
-        
+        auto& drawBuffer = vaoResource.drawBuffer;
+        m_graphics->BindBuffer(GL_DRAW_INDIRECT_BUFFER, vaoResource.drawBuffer->GetGPUBuffer().GetGPUID());
+        auto size = static_cast<uint32_t>(drawBuffer->GetDataImmutable().size());
+        m_graphics->BindVertexArray(vaoResource.vao->GetGPUID());
+        m_graphics->MultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
     }
 
     void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
@@ -616,15 +612,7 @@ namespace JLEngine
 
         for (const auto& [id, texture] : textureManager.GetResources())
         {
-            GLuint64 handle = glGetTextureHandleARB(texture->GetGPUID());
-            if (handle == 0)
-            {
-                std::cerr << "Error: glGetTextureHandleARB - handle = 0" << std::endl;
-                throw std::runtime_error("Invalid handle");
-            }
-            glMakeTextureHandleResidentARB(handle);
-
-            textureIDMap[texture->GetGPUID()] = handle;
+            textureIDMap[texture->GetGPUID()] = texture->Bindless();
         }
 
         // Map Material GPUID to indices and build MaterialGPU array

@@ -29,7 +29,7 @@ namespace JLEngine
 
 		static void DisposeTexture(Texture* texture);
 		static void DisposeCubemap(Cubemap* texture);
-		static void CreateTexture(Texture* texture);
+		static void CreateTexture(Texture* texture, bool makeBindless = true);
 		static void CreateCubemap(Cubemap* cubemap);		
 
 		static void CreateVertexArray(VertexArrayObject* vao);

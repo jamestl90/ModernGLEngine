@@ -104,12 +104,12 @@ int MainApp(std::string assetFolder)
 
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
-    //auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    //auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    //mat->castShadows = false;
-    //mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    //planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
-    //planeNode->translation -= glm::vec3(0, 2.5f, 0);
+    auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
+    auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    mat->castShadows = false;
+    mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
+    planeNode->translation -= glm::vec3(0, 2.5f, 0);
     //
     auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
@@ -133,7 +133,7 @@ int MainApp(std::string assetFolder)
 
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    //sceneRoot->AddChild(planeNode);
+    sceneRoot->AddChild(planeNode);
     sceneRoot->AddChild(metallicSpheres);
     //sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);

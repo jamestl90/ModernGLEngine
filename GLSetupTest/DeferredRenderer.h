@@ -58,7 +58,7 @@ namespace JLEngine
 
     private:
         void DrawUI();        
-        void DrawGeometry(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
