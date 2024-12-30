@@ -28,7 +28,7 @@ namespace JLEngine
                     return std::shared_ptr<Texture>(nullptr);
                 }
 
-                auto texture = std::make_shared<Texture>(name, m_graphics);
+                auto texture = std::make_shared<Texture>(name);
                 texture->InitFromData(std::move(imageData));
                 texture->SetParams(texParams);
                 Graphics::CreateTexture(texture.get());
@@ -47,7 +47,7 @@ namespace JLEngine
                     return std::shared_ptr<Texture>(nullptr);
                 }
 
-                auto texture = std::make_shared<Texture>(name, m_graphics);
+                auto texture = std::make_shared<Texture>(name);
                 texture->InitFromData(std::move(imageData));
                 texture->SetParams(imageData.channels == 3 ? Texture::RGBTexParams() : Texture::RGBATexParams());
                 Graphics::CreateTexture(texture.get());
@@ -59,7 +59,7 @@ namespace JLEngine
         std::shared_ptr<Texture> CreateEmpty(const std::string& name)
         {
             return m_textureManager->Load(name, [&]() {
-                auto texture = std::make_shared<Texture>(name, m_graphics);
+                auto texture = std::make_shared<Texture>(name);
                 return texture;
                 });
         }
@@ -74,7 +74,7 @@ namespace JLEngine
                     return std::shared_ptr<Texture>(nullptr);
                 }
 
-                auto texture = std::make_shared<Texture>(name, m_graphics);
+                auto texture = std::make_shared<Texture>(name);
                 texture->InitFromData(std::move(imageData));
                 texture->SetParams(texParams);
                 Graphics::CreateTexture(texture.get());

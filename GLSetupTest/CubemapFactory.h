@@ -25,7 +25,7 @@ namespace JLEngine
                 return m_cubemapManager->Load(name, [&]()
                 {
                     auto imgData = TextureReader::LoadCubeMapHDR(folderPath, fileNames);
-                    auto cubemap = std::make_shared<Cubemap>(name, m_graphics);
+                    auto cubemap = std::make_shared<Cubemap>(name);
 
                     TexParams params = Cubemap::HDRCubemapParams();
                     cubemap->SetParams(params);

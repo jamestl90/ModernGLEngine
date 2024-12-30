@@ -6,12 +6,12 @@
 namespace JLEngine
 {
 	ShaderProgram::ShaderProgram(string name)
-		: Resource(name), m_graphics(nullptr), m_programId(-1)
+		: GPUResource(name), m_graphics(nullptr), m_programId(-1)
 	{
 	}
 
 	ShaderProgram::ShaderProgram(string name, string path)
-		: Resource(name), m_graphics(nullptr), m_filename(path), m_programId(-1)
+		: GPUResource(name), m_graphics(nullptr), m_filename(path), m_programId(-1)
 	{
 	}
 

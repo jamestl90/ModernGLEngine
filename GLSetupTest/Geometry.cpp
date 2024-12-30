@@ -78,8 +78,8 @@ namespace JLEngine
             }
         }
 
-        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-        vbo.Set(vertices);
+        VertexBuffer vbo;
+        vbo.Set(std::move(vertices));
 
         vao.AddAttribute(JLEngine::AttributeType::POSITION);
         vao.AddAttribute(JLEngine::AttributeType::NORMAL);
@@ -88,8 +88,8 @@ namespace JLEngine
         vao.CalcStride();
         vao.SetVertexBuffer(vbo);
 
-        IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-        ibo.Set(indices);
+        IndexBuffer ibo;
+        ibo.Set(std::move(indices));
         vao.SetIndexBuffer(ibo);
 	}
 
@@ -144,8 +144,8 @@ namespace JLEngine
         std::vector<float> verts;
         verts.insert(verts.end(), std::begin(skyboxVertices), std::end(skyboxVertices));
 
-        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-        vbo.Set(verts);
+        VertexBuffer vbo;
+        vbo.Set(std::move(verts));
 
         vao.SetVertexBuffer(vbo);
         vao.AddAttribute(JLEngine::AttributeType::POSITION);
@@ -164,8 +164,8 @@ namespace JLEngine
         std::vector<float> triVerts;
         triVerts.insert(triVerts.end(), std::begin(triangleVertices), std::end(triangleVertices));
 
-        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-        vbo.Set(triVerts);
+        VertexBuffer vbo;
+        vbo.Set(std::move(triVerts));
 
         vao.SetVertexBuffer(vbo);
         vao.AddAttribute(JLEngine::AttributeType::POSITION);
@@ -193,8 +193,8 @@ namespace JLEngine
         std::vector<float> quadVerts;
         quadVerts.insert(quadVerts.end(), std::begin(quadVerticesArray), std::end(quadVerticesArray));
 
-        VertexBuffer vbo(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-        vbo.Set(quadVerts);
+        VertexBuffer vbo;
+        vbo.Set(std::move(quadVerts));
         vao.SetVertexBuffer(vbo);
 
         vao.AddAttribute(JLEngine::AttributeType::POSITION);
@@ -205,8 +205,8 @@ namespace JLEngine
         std::vector<uint32_t> quadIndices;
         quadIndices.insert(quadIndices.end(), std::begin(quadIndicesArray), std::end(quadIndicesArray));
 
-        IndexBuffer ibo(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW);
-        ibo.Set(quadIndices);
+        IndexBuffer ibo;
+        ibo.Set(std::move(quadIndices));
         vao.SetIndexBuffer(ibo);
     }
 

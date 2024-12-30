@@ -8,6 +8,8 @@
 #include "VertexBuffers.h"
 #include "IndirectDrawBuffer.h"
 #include "GraphicsAPI.h"
+#include "GPUResource.h"
+#include "RenderTarget.h"
 
 namespace JLEngine
 {
@@ -180,15 +182,18 @@ namespace JLEngine
 	{
 		uint32_t vaoID;
 		glCreateVertexArrays(1, &vaoID);
-		glBindVertexArray(vaoID);
 		vao->SetGPUID(vaoID);
 
-		CreateVertexBuffer(vao->GetVBO());
+		auto& vbo = vao->GetVBO();
+		CreateGPUBuffer<float>(vbo.GetGPUBuffer(), vbo.GetDataMutable());
+
+		uint32_t stride = CalculateStride(vao);
+
+		glVertexArrayVertexBuffer(vao->GetGPUID(), 0, vbo.GetGPUBuffer().GetGPUID(), 0, stride);
 
 		auto vertexAttribKey = vao->GetAttribKey();
 		uint32_t offset = 0;
 		uint32_t index = 0;
-		uint32_t stride = CalculateStride(vao);
 
 		for (uint32_t i = 0; i < static_cast<uint32_t>(AttributeType::COUNT); ++i)
 		{
@@ -222,15 +227,9 @@ namespace JLEngine
 					continue;
 				}
 
-				glEnableVertexAttribArray(index);
-				glVertexAttribPointer(
-					index,
-					size,
-					type,
-					GL_FALSE,
-					stride,
-					BUFFER_OFFSET(offset)
-				);
+				glEnableVertexArrayAttrib(vaoID, index);
+				glVertexArrayAttribFormat(vaoID, index, size, GL_FLOAT, GL_FALSE, offset);
+				glVertexArrayAttribBinding(vaoID, index, 0);				
 
 				offset += size * sizeof(float);
 				++index; 
@@ -238,7 +237,9 @@ namespace JLEngine
 		}
 		if (vao->HasIndices())
 		{
-			CreateIndexBuffer(vao->GetIBO());
+			auto& ibo = vao->GetIBO();
+			CreateGPUBuffer<uint32_t>(ibo.GetGPUBuffer(), ibo.GetDataImmutable());
+			glVertexArrayElementBuffer(vaoID, ibo.GetGPUBuffer().GetGPUID());
 		}
 	}
 
@@ -247,10 +248,10 @@ namespace JLEngine
 		auto id = vao->GetGPUID();
 		glDeleteVertexArrays(1, &id);
 
-		auto vboid = vao->GetVBO().GetGPUID();
+		auto vboid = vao->GetVBO().GetGPUBuffer().GetGPUID();
 		glDeleteBuffers(1, &vboid);
 
-		auto iboid = vao->GetIBO().GetGPUID();
+		auto iboid = vao->GetIBO().GetGPUBuffer().GetGPUID();
 		if (iboid != 0)
 		{
 			glDeleteBuffers(1, &iboid);
@@ -259,7 +260,7 @@ namespace JLEngine
 
 	void Graphics::CreateShader(ShaderProgram* program)
 	{
-		auto shaders = program->GetShaders();
+		auto& shaders = program->GetShaders();
 		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			Shader& s = shaders.at(i);
@@ -313,7 +314,7 @@ namespace JLEngine
 	{
 		if (program == nullptr) return;
 
-		auto shaders = program->GetShaders();
+		auto& shaders = program->GetShaders();
 
 		for (auto it = shaders.begin(); it != shaders.end(); it++)
 		{
@@ -504,33 +505,53 @@ namespace JLEngine
 		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 	}
 
+	void Graphics::CreateGPUBuffer(GPUBuffer& buffer)
+	{
+		GLuint id;
+		API()->CreateNamedBuffer(id);
+		API()->NamedBufferStorage(id, buffer.GetSize(), buffer.GetUsageFlags(), nullptr);
+		buffer.SetGPUID(id);
+		buffer.ClearDirty();
+	}
+
 	void Graphics::CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo)
 	{
-		if (idbo->GetGPUID() == 0)
+		GPUBuffer& gpuBuffer = idbo->GetGPUBuffer();
+
+		if (gpuBuffer.GetGPUID() == 0)
 		{
 			GLuint id = 0;
-			glGenBuffers(1, &id);
-			idbo->SetGPUID(id);
+			glCreateBuffers(1, &id);
+			gpuBuffer.SetGPUID(id);
 		}
 
-		if (idbo->IsDirty())
+		const auto& bufferData = idbo->GetDataImmutable();
+		size_t bufferSize = bufferData.size() * sizeof(DrawIndirectCommand);
+
+		if (bufferSize == 0)
 		{
-			Graphics::API()->BindBuffer(GL_DRAW_INDIRECT_BUFFER, idbo->GetGPUID());
-			if (idbo->GetBuffer().empty())
+			// Allocate storage with no initial data
+			glNamedBufferStorage(gpuBuffer.GetGPUID(), 0, nullptr, gpuBuffer.GetUsageFlags());
+		}
+		else
+		{
+			if (gpuBuffer.GetSize() != bufferSize)
 			{
-				Graphics::API()->SetBufferData(GL_DRAW_INDIRECT_BUFFER, 0, nullptr, idbo->DrawType());
+				// Recreate storage if the size has changed
+				glNamedBufferStorage(gpuBuffer.GetGPUID(), bufferSize, bufferData.data(), gpuBuffer.GetUsageFlags());
+				gpuBuffer.SetSize(bufferSize);
 			}
 			else
 			{
-				auto& buffer = idbo->GetBufferMutable();
-				Graphics::API()->SetBufferData(GL_DRAW_INDIRECT_BUFFER,
-					idbo->GetBuffer().size() * sizeof(DrawIndirectCommand), idbo->GetBufferMutable().data(), idbo->DrawType());
+				// Update existing buffer data
+				glNamedBufferSubData(gpuBuffer.GetGPUID(), 0, bufferSize, bufferData.data());
 			}
-			idbo->SetDirty(false);
 		}
+
+		gpuBuffer.ClearDirty();
 	}
 
-	void Graphics::DisposeGraphicsBuffer(GraphicsBuffer* gpuBuffer)
+	void Graphics::DisposeGraphicsBuffer(GPUBuffer* gpuBuffer)
 	{
 		auto id = gpuBuffer->GetGPUID();
 		glDeleteBuffers(1, &id);
@@ -546,27 +567,5 @@ namespace JLEngine
 		{
 			glTexImage2D(face, 0, params.internalFormat, width, height, 0, params.format, params.dataType, img.data.data());
 		}
-	}
-
-	void Graphics::CreateVertexBuffer(VertexBuffer& vbo)
-	{
-		if (vbo.Uploaded()) return;
-
-		uint32_t id;
-		glGenBuffers(1, &id);
-		glBindBuffer(vbo.Type(), id);
-		glBufferData(vbo.Type(), vbo.SizeInBytes(), vbo.Array(), vbo.DrawType());
-		vbo.SetGPUID(id);
-	}
-
-	void Graphics::CreateIndexBuffer(IndexBuffer& ibo)
-	{
-		if (ibo.Uploaded()) return;
-
-		uint32_t id;
-		glGenBuffers(1, &id);
-		glBindBuffer(ibo.Type(), id);
-		glBufferData(ibo.Type(), ibo.Size() * sizeof(uint32_t), ibo.Array(), ibo.DrawType());
-		ibo.SetGPUID(id);
 	}
 }

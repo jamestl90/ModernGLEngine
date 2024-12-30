@@ -390,7 +390,7 @@ namespace JLEngine
         graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         graphics->BindVertexArray(vao.GetGPUID());
-        graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.Size(), GL_UNSIGNED_INT, nullptr);
+        graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.GetDataImmutable().size(), GL_UNSIGNED_INT, nullptr);
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         Graphics::DisposeVertexArray(&vao);

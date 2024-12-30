@@ -3,21 +3,19 @@
 
 #include "VertexBuffers.h"
 #include "VertexStructures.h"
-#include "GraphicsResource.h"
+#include "Resource.h"
 
 #include <memory>
 #include <string>
 
 namespace JLEngine
 {
-	class GraphicsAPI;
-
-	class VertexArrayObject : public GraphicsResource
+	class VertexArrayObject
 	{
 	public:
 		VertexArrayObject();
-		VertexArrayObject(const std::string& name, GraphicsAPI* graphics)
-			: GraphicsResource(name, graphics), m_key(0), m_stride(0) {}
+		VertexArrayObject(std::string name)
+			: m_gpuID(0), m_key(0), m_stride(0), m_vbo("vbo:" + name), m_ibo("ibo:" + name) {}
 
 		void SetVertexBuffer(const VertexBuffer vertexBuffer) { m_vbo = vertexBuffer; }
 		void SetIndexBuffer(const IndexBuffer indexBuffer) { m_ibo = indexBuffer; m_hasIndices = true; }
@@ -33,10 +31,13 @@ namespace JLEngine
 		void CalcStride() { m_stride = CalculateStride(this); }
 		const uint32_t GetStride() const { return m_stride; }
 		
-		bool HasIndices() { return m_ibo.Size() > 0; }
+		bool HasIndices() { return m_ibo.GetDataImmutable().size() > 0; }
 
 		void SetPosCount(int count) { m_posCount = count; }
-		int GetPosCount() { return m_posCount; }
+		int GetPosCount() const { return m_posCount; }
+
+		void SetGPUID(uint32_t gpuid) { m_gpuID = gpuid; }
+		uint32_t GetGPUID() const { return m_gpuID; }
 
 	private:
 
@@ -46,6 +47,8 @@ namespace JLEngine
 		int m_tangentCount = 4;
 		int m_uv2Count = 2;
 		int m_vertColorCount = 4;
+
+		uint32_t m_gpuID;
 
 		bool m_hasIndices = false;
 

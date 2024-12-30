@@ -9,11 +9,9 @@
 
 #include "ShaderProgram.h"
 #include "Texture.h"
-#include "VertexBuffers.h"
 #include "ViewFrustum.h"
 #include "CollisionShapes.h"
 #include "Types.h"
-#include "RenderTarget.h"
 #include "Node.h"
 #include "ImageData.h"
 
@@ -62,9 +60,7 @@ namespace JLEngine
 	class IWindow;
 	class Mesh;
 	class RenderTarget;
-	class TextureReader;
 	class Material;
-	class Batch;
 
 	struct PrimitiveType
 	{
@@ -185,12 +181,19 @@ namespace JLEngine
 		void BindFrameBufferToRenderbuffer(uint32_t type, uint32_t internalFormat, uint32_t target, uint32_t id);
 		// VAO
 		uint32_t CreateVertexArray();
-		//void CreateVertexArray(uint32_t count, uint32_t& id);
 		void BindVertexArray(uint32_t vaoID);
 		// VBO
+		void CreateNamedBuffer(uint32_t& id);
+		void BindBufferBase(uint32_t bufferID, GLenum target, uint32_t index);
+		void BindBufferRange(uint32_t bufferID, GLenum target, uint32_t index, size_t offset, size_t size);
+		void NamedBufferStorage(uint32_t& id, size_t size, GLbitfield usageFlags, const void* data = nullptr);
+		void NamedBufferSubData(uint32_t& id, const void* data, size_t size, size_t offset = 0);
+		void* MapNamedBuffer(uint32_t& id, GLbitfield access);
+		void UnmapNamedBuffer(uint32_t& id);
+
 		void CreateBuffer(uint32_t count, uint32_t& id);
 		void DisposeBuffer(uint32_t count, uint32_t* id);
-		void BindBuffer(uint32_t buffType, uint32_t vboID);
+		void BindBuffer(uint32_t buffType, uint32_t boID);
 		void SetBufferData(uint32_t buffType, ptrdiff_t size, void* data, uint32_t usage);
 
 		void EnableVertexAttribArray(uint32_t pos);
@@ -210,6 +213,7 @@ namespace JLEngine
 		void DrawArrayBuffer(uint32_t drawMode, uint32_t first, uint32_t count);
 		void DrawElementBuffer(uint32_t drawMode, int32_t count, uint32_t dataType, void* offset);
 		void DrawBuffers(uint32_t count, uint32_t* targets);
+		void MultiDrawElementsIndirect(uint32_t mode, uint32_t type, const void* indirect, uint32_t drawCount, uint32_t stride);
 
 		void GeneratePrimitives();
 

@@ -15,7 +15,6 @@
 #include "ShaderFactory.h"
 #include "MaterialFactory.h"
 #include "RenderTargetFactory.h"
-#include "VertexArrayObjectFactory.h"
 #include "ShaderStorageBuffer.h"
 #include "MeshFactory.h"
 #include "GLBLoader.h"
@@ -92,9 +91,6 @@ namespace JLEngine
 		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name, 
 			int width, int height, std::vector<TextureAttribute>& texAttribs, 
 			JLEngine::DepthType depthType, uint32_t numSources);
-		
-		// VAO LOADING ///////////////////////////////////////
-		std::shared_ptr<VertexArrayObject> CreateVertexArray(const std::string& name);
 
 		// Mesh Loading ///////////////////////////////////
 		std::shared_ptr<Mesh> CreateMesh(const std::string& name);
@@ -115,14 +111,12 @@ namespace JLEngine
 		ResourceManager<Material>* m_materialManager;
 		ResourceManager<RenderTarget>* m_renderTargetManager;
 		ResourceManager<Cubemap>* m_cubemapManager;
-		ResourceManager<VertexArrayObject>* m_vaoManager;
 
 		TextureFactory* m_textureFactory;
 		CubemapFactory* m_cubemapFactory;
 		ShaderFactory* m_shaderFactory;
 		MaterialFactory* m_materialFactory;
 		RenderTargetFactory* m_renderTargetfactory;
-		VertexArrayObjectFactory* m_vaoFactory;
 		MeshFactory* m_meshFactory;
 
 		ShaderProgram* m_basicUnlit = nullptr;

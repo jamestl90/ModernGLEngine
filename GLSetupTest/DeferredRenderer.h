@@ -11,11 +11,7 @@
 #include "VertexArrayObject.h"
 #include "ShaderStorageBuffer.h"
 #include "ResourceLoader.h"
-#include "Batch.h"
-
-using RenderGroupKey = std::pair<int, JLEngine::VertexAttribKey>;
-using RenderGroupValue = std::pair<JLEngine::Batch*, glm::mat4>;
-using RenderGroupMap = std::map<RenderGroupKey, std::vector<RenderGroupValue>>;
+#include "GPUBuffer.h"
 
 namespace JLEngine
 {
@@ -50,7 +46,7 @@ namespace JLEngine
         void Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
-        bool GetDLShadowsEnabled() { return m_enableDLShadows; }
+        bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
         void AddStaticVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);
@@ -62,8 +58,6 @@ namespace JLEngine
 
     private:
         void DrawUI();        
-        void BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit);
-        //void SkyboxPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DrawGeometry(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void DebugGBuffer(int debugMode);

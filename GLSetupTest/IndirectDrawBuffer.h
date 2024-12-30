@@ -1,7 +1,10 @@
 #ifndef INDIRECT_DRAW_BUFFER_H
 #define INDIRECT_DRAW_BUFFER_H
 
-#include "VertexBuffers.h"
+#include "GPUBuffer.h"
+
+#include <vector>
+#include <glm/glm.hpp>
 
 namespace JLEngine
 {
@@ -20,53 +23,51 @@ namespace JLEngine
 		uint32_t baseInstance;
 	};
 
-	class IndirectDrawBuffer : public Buffer<DrawIndirectCommand>, public GraphicsBuffer
+	class IndirectDrawBuffer 
 	{
 	public:
 		IndirectDrawBuffer()
-			: GraphicsBuffer(GL_DRAW_INDIRECT_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW) {}
-
-		IndirectDrawBuffer(uint32_t draw)
-			: GraphicsBuffer(GL_DRAW_INDIRECT_BUFFER, GL_UNSIGNED_INT, draw) {}
-
-		IndirectDrawBuffer(uint32_t draw, const std::vector<DrawIndirectCommand>& commands)
-			: GraphicsBuffer(GL_DRAW_INDIRECT_BUFFER, GL_UNSIGNED_INT, draw)
-		{
-			m_buffer = commands;
-		}
+			: m_gpuBuffer(GL_DRAW_INDIRECT_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}
+		IndirectDrawBuffer(std::vector<DrawIndirectCommand>&& vertices, uint32_t usage = GL_DYNAMIC_STORAGE_BIT)
+			: m_data(std::move(vertices)), m_gpuBuffer(GL_DRAW_INDIRECT_BUFFER, usage) {}
+		~IndirectDrawBuffer() {}
 
 		void AddDrawCommand(const DrawIndirectCommand& command)
 		{
-			m_buffer.push_back(command);
-			SetDirty(true); // Mark buffer as needing an update
+			m_data.push_back(command);
+			m_gpuBuffer.ClearDirty();
 		}
 
 		void RemoveDrawCommand(size_t index)
 		{
-			if (index < m_buffer.size())
+			if (index < m_data.size())
 			{
-				m_buffer.erase(m_buffer.begin() + index);
-				SetDirty(true);
+				m_data.erase(m_data.begin() + index);
+				m_gpuBuffer.ClearDirty();
 			}
 		}
 
 		void UpdateDrawCommand(size_t index, const DrawIndirectCommand& command)
 		{
-			if (index < m_buffer.size())
+			if (index < m_data.size())
 			{
-				m_buffer[index] = command;
-				SetDirty(true);
+				m_data[index] = command;
+				m_gpuBuffer.MarkDirty();
 			}
 		}
 
 		void ClearCommands()
 		{
-			m_buffer.clear();
-			SetDirty(true);
+			m_data.clear();
 		}
 
-		const std::vector<DrawIndirectCommand>& GetDrawCommands() const { return m_buffer; }
-		const DrawIndirectCommand& GetDrawCommands(size_t i) const { return m_buffer[i]; }
+		GPUBuffer& GetGPUBuffer() { return m_gpuBuffer; }
+		const std::vector<DrawIndirectCommand>& GetDataImmutable() const { return m_data; }
+		std::vector<DrawIndirectCommand>& GetDataMutable() { return m_data; }
+
+	private:
+		std::vector<DrawIndirectCommand> m_data;
+		GPUBuffer m_gpuBuffer;
 	};
 }
 

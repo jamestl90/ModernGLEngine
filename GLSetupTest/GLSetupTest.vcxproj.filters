@@ -209,9 +209,6 @@
     <ClInclude Include="Mesh.h">
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
-    <ClInclude Include="Batch.h">
-      <Filter>Header Files\Graphics\Resources</Filter>
-    </ClInclude>
     <ClInclude Include="Texture.h">
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
@@ -317,9 +314,6 @@
     <ClInclude Include="VertexStructures.h">
       <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="GraphicsResource.h">
-      <Filter>Header Files\Graphics\Resources</Filter>
-    </ClInclude>
     <ClInclude Include="TextureFactory.h">
       <Filter>Header Files\Core\Factory</Filter>
     </ClInclude>
@@ -344,13 +338,16 @@
     <ClInclude Include="RenderTargetFactory.h">
       <Filter>Header Files\Core\Factory</Filter>
     </ClInclude>
-    <ClInclude Include="VertexArrayObjectFactory.h">
-      <Filter>Header Files\Core\Factory</Filter>
-    </ClInclude>
     <ClInclude Include="MeshFactory.h">
       <Filter>Header Files\Core\Factory</Filter>
     </ClInclude>
     <ClInclude Include="IndirectDrawBuffer.h">
+      <Filter>Header Files\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUResource.h">
+      <Filter>Header Files\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUBuffer.h">
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
   </ItemGroup>

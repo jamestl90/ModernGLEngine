@@ -238,6 +238,8 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="GPUBuffer.h" />
+    <ClInclude Include="GPUResource.h" />
     <ClInclude Include="Graphics.h">
       <SubType>
       </SubType>
@@ -266,10 +268,6 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Batch.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="DeferredRenderer.h">
       <SubType>
@@ -293,7 +291,6 @@
     </ClInclude>
     <ClInclude Include="GlobalVars.h" />
     <ClInclude Include="GraphicsAPI.h" />
-    <ClInclude Include="GraphicsResource.h" />
     <ClInclude Include="HDRISky.h">
       <SubType>
       </SubType>
@@ -346,10 +343,6 @@
     </ClInclude>
     <ClInclude Include="Types.h" />
     <ClInclude Include="VertexArrayObject.h">
-      <SubType>
-      </SubType>
-    </ClInclude>
-    <ClInclude Include="VertexArrayObjectFactory.h">
       <SubType>
       </SubType>
     </ClInclude>

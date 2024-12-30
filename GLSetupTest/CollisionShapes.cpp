@@ -2,14 +2,6 @@
 
 namespace JLEngine
 {
-	AABB::AABB() : max(1.0f), min(1.0f)
-	{
-	}
-
-	AABB::~AABB()
-	{
-	}
-
 	bool JLEngine::AABB::HasCollided( AABB& other )
 	{
 		if (min.x > other.max.x) return false;
@@ -20,10 +12,6 @@ namespace JLEngine
 		if (max.z < other.min.z) return false;
 
 		return true;
-	}
-
-	Plane::Plane()
-	{
 	}
 
 	Plane::Plane( glm::vec3& v0, glm::vec3& v1, glm::vec3& v2 )
@@ -41,5 +29,26 @@ namespace JLEngine
 	float Plane::DistanceToPoint( glm::vec3& point )
 	{
 		return glm::dot(m_normal, point) + m_distance;
+	}
+
+	AABB CalculateAABB(const std::vector<float>& positions)
+	{
+		if (positions.empty())
+		{
+			std::cerr << "Cannot create AABB from empty positions" << std::endl;
+			return { glm::vec3(0.0f), glm::vec3(0.0f) };
+		}
+
+		glm::vec3 min = glm::vec3(std::numeric_limits<float>::max());
+		glm::vec3 max = glm::vec3(std::numeric_limits<float>::lowest());
+
+		for (auto i = 0; i < positions.size(); i += 3)
+		{
+			glm::vec3 position(positions[i], positions[i + 1], positions[i + 2]);
+			min = glm::min(min, position);
+			max = glm::max(max, position);
+		}
+
+		return { min, max };
 	}
 }

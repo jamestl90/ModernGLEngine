@@ -3,10 +3,13 @@
 
 #include "Texture.h"
 #include "ShaderStorageBuffer.h"
+#include "GPUBuffer.h"
+#include "GraphicsAPI.h"
+
+#include <stdexcept>
 
 namespace JLEngine
 {
-	class GraphicsAPI;
 	class Texture;
 	class Cubemap;
 	class Window;
@@ -16,7 +19,6 @@ namespace JLEngine
 	class IndexBuffer;
 	class VertexBuffer;
 	class IndirectDrawBuffer;
-	class GraphicsBuffer;
 
 	class Graphics
 	{
@@ -33,6 +35,15 @@ namespace JLEngine
 		static void CreateVertexArray(VertexArrayObject* vao);
 		static void DisposeVertexArray(VertexArrayObject* vao);
 
+		// Create a GPU buffer with initial data
+		template <typename T>
+		static void CreateGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data);
+		// Create an empty GPU buffer
+		static void CreateGPUBuffer(GPUBuffer& buffer);
+		// Upload data to an existing GPU buffer
+		template <typename T>
+		static void UploadToGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data, uint32_t offset = 0);
+
 		static void CreateShader(ShaderProgram* shader);
 		static void DisposeShader(ShaderProgram* program);
 
@@ -42,36 +53,38 @@ namespace JLEngine
 
 		static void CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo);
 
-		template <typename T>
-		static void CreateShaderStorageBuffer(ShaderStorageBuffer<T>* ssbo);
-
-		static void DisposeGraphicsBuffer(GraphicsBuffer* idbo);
+		static void DisposeGraphicsBuffer(GPUBuffer* idbo);
 
 	protected:
 		static GraphicsAPI* m_graphicsAPI;
 
 		static void UploadCubemapFace(GLenum face, const ImageData& img, const TexParams& params, int width, int height);
-		static void CreateVertexBuffer(VertexBuffer& vbo);
-		static void CreateIndexBuffer(IndexBuffer& vbo);
 	};
 
 	template <typename T>
-	void Graphics::CreateShaderStorageBuffer(ShaderStorageBuffer<T>* ssbo)
+	void Graphics::CreateGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data)
 	{
-		if (ssbo->GetGPUID() == 0)
+ 		GLuint id;
+		API()->CreateNamedBuffer(id);
+		if (data.size() == 0) return;
+
+		API()->NamedBufferStorage(id, data.size() * sizeof(T), buffer.GetUsageFlags(), data.size() == 0 ? nullptr : data.data());
+		buffer.SetGPUID(id);
+		buffer.SetSize(data.size());
+		buffer.ClearDirty();
+	}
+
+	template <typename T>
+	void Graphics::UploadToGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data, uint32_t offset)
+	{
+		size_t dataSize = data.size() * sizeof(T);
+		if (offset + dataSize > buffer.GetSize())
 		{
-			GLuint id = 0;
-			glGenBuffers(1, &id);
-			ssbo->SetGPUID(id);
+			throw std::runtime_error("Data exceeds GPU buffer size.");
 		}
 
-		auto count = static_cast<int32_t>(ssbo->GetBuffer().size());
-		auto size = count * sizeof(T);
-
-		glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo->GetGPUID());
-		glBufferData(GL_SHADER_STORAGE_BUFFER, size, nullptr, ssbo->DrawType());
-		glBufferData(GL_SHADER_STORAGE_BUFFER, size, ssbo->GetBuffer().data(), ssbo->DrawType());
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo->GetGPUID());
+		API()->NamedBufferSubData(buffer.GetGPUID(), data.data(), buffer.GetSize(), offset);
+		buffer.ClearDirty();
 	}
 }
 

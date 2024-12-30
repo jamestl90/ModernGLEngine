@@ -4,7 +4,7 @@
 #include "Types.h"
 #include "Texture.h"
 #include "Buffer.h"
-#include "GraphicsResource.h"
+#include "GPUResource.h"
 
 #include <vector>
 
@@ -28,10 +28,10 @@ namespace JLEngine
 		Texture
 	};
 
-	class RenderTarget : public GraphicsResource
+	class RenderTarget : public GPUResource
 	{
 	public:
-		RenderTarget(const string& name, GraphicsAPI* graphics);
+		RenderTarget(const string& name);
 
 		~RenderTarget();
 
@@ -82,8 +82,6 @@ namespace JLEngine
 		std::vector<uint32_t> m_sources;	// texture Id's
 		std::vector<uint32_t> m_drawBuffers;
 		uint32_t m_numSources;
-
-		GraphicsAPI* m_graphics;
 	};
 }
 

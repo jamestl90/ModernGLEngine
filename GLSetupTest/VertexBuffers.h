@@ -2,95 +2,74 @@
 #define VERTEX_BUFFERS_H
 
 #include "VertexStructures.h"
-#include "Buffer.h"
+#include "Resource.h"
+#include "Graphics.h"
+#include "GraphicsAPI.h"
+#include "GPUBuffer.h"
 
 #include <glm/glm.hpp>
 #include <set>
 #include <vector>
-#include <glad/glad.h>
+#include <memory>
 
 using std::pair;
 using std::vector;
 
 namespace JLEngine
 {
-	//enum class VertexFormat
-	//{
-	//	POS_NORMAL,
-	//	POS_NORMAL_UV_TANGENT,
-	//	POS_UV
-	//};
-
-	class GraphicsBuffer 
+	class IndexBuffer
 	{
 	public:
-		GraphicsBuffer();
+		IndexBuffer() 
+			: m_gpuBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}		
+		IndexBuffer(const std::string& name)
+			:  m_gpuBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}
+		IndexBuffer(vector<uint32_t>&& indices, uint32_t usage = GL_DYNAMIC_STORAGE_BIT)
+			: m_data(std::move(indices)), m_gpuBuffer(GL_ELEMENT_ARRAY_BUFFER, usage) {}
+		~IndexBuffer() {}
 
-		GraphicsBuffer(uint32_t type, uint32_t data, uint32_t drawType);
+		GPUBuffer& GetGPUBuffer() { return m_gpuBuffer; }
+		const std::vector<uint32_t>& GetDataImmutable() const { return m_data; }
+		std::vector<uint32_t>& GetDataMutable() { return m_data; }
 
-		void SetGPUID(uint32_t& id) { m_id = id; m_uploadedToGPU = true; }
+		void Set(std::vector<uint32_t>&& indices) { m_data = indices; }
 
-		uint32_t GetGPUID() const { return m_id; }
+		uint32_t SizeInBytes() const
+		{
+			return sizeof(uint32_t) * static_cast<uint32_t>(m_data.size());
+		}
 
-		void SetType(uint32_t type) { m_type = type; }
-
-		void SetDataType(uint32_t dataType) { m_dataType = dataType; }
-
-		void SetDrawType(uint32_t drawType) { m_drawType = drawType; }
-
-		uint32_t Type() const { return m_type; }
-
-		uint32_t DataType() const { return m_dataType; }
-
-		uint32_t DrawType() const { return m_drawType; }
-
-		bool Uploaded() { return m_uploadedToGPU; }
-
-		void SetUploaded(bool uploaded) { m_uploadedToGPU = uploaded; }
-
-		bool IsDirty() { return m_isDirty; }
-
-		void SetDirty(bool dirty) { m_isDirty = dirty; }
-
-	protected:
-
-		uint32_t m_type;
-		uint32_t m_dataType;
-		uint32_t m_drawType;
-
-		bool m_uploadedToGPU = false;
-		bool m_isDirty = true;
-
-		uint32_t m_id;
+	private:
+		std::vector<uint32_t> m_data;
+		GPUBuffer m_gpuBuffer;
 	};
 
-	class IndexBuffer : public Buffer<uint32_t>, public GraphicsBuffer
+	class VertexBuffer
 	{
 	public:
-		IndexBuffer() : GraphicsBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_UNSIGNED_INT, GL_STATIC_DRAW){}
+		VertexBuffer() 
+			: m_gpuBuffer(GL_ARRAY_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}
+		VertexBuffer(const std::string& name)
+			: m_gpuBuffer(GL_ARRAY_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}
+		VertexBuffer(vector<float>&& vertices, uint32_t usage = GL_DYNAMIC_STORAGE_BIT)
+			: m_data(std::move(vertices)), m_gpuBuffer(GL_ARRAY_BUFFER, usage) {}
+		~VertexBuffer() {}
 
-		IndexBuffer(uint32_t type, uint32_t data, uint32_t draw);
+		GPUBuffer& GetGPUBuffer() { return m_gpuBuffer; }
+		const std::vector<float>& GetDataImmutable() const { return m_data; }
+		std::vector<float>& GetDataMutable() { return m_data; }
 
-		IndexBuffer(vector<uint32_t>& indices, uint32_t type, uint32_t data, uint32_t draw);
+		void Set(std::vector<float>&& indices) { m_data = indices; }
 
-		~IndexBuffer();
-	};
+		uint32_t SizeInBytes() const
+		{
+			return sizeof(float) * static_cast<uint32_t>(m_data.size());
+		}
 
-	class VertexBuffer : public Buffer<float>, public GraphicsBuffer
-	{
-	public:
-		VertexBuffer() : GraphicsBuffer(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW) {}
-
-		VertexBuffer(uint32_t type, uint32_t data, uint32_t draw);
-
-		VertexBuffer(vector<float>& vertices, uint32_t type, uint32_t data, uint32_t draw);
-
-		~VertexBuffer();
-
-		uint32_t SizeInBytes();
+	private:
+		std::vector<float> m_data;
+		GPUBuffer m_gpuBuffer;
 	};	
-
-	pair<glm::vec3, glm::vec3> findMaxMinPair(VertexBuffer&  vertices);
 }
 
 #endif

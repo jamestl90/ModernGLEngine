@@ -8,7 +8,6 @@
 #include <functional>
 
 #include "VertexBuffers.h"
-#include "Batch.h"
 #include "Mesh.h"
 
 namespace JLEngine

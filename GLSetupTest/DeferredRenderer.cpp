@@ -27,14 +27,14 @@ namespace JLEngine
 
         Graphics::DisposeRenderTarget(m_gBufferTarget);
 
-        for (auto [attrib, vaoRes] : m_staticResources)
+        for (auto& [attrib, vaoRes] : m_staticResources)
         {
-            Graphics::DisposeGraphicsBuffer(vaoRes.drawBuffer.get());
+            Graphics::DisposeGraphicsBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
             //Graphics::DisposeVertexArray(vaoRes.vao.get());
         }
-        for (auto [attrib, vaoRes] : m_dynamicResources)
+        for (auto& [attrib, vaoRes] : m_dynamicResources)
         {
-            Graphics::DisposeGraphicsBuffer(vaoRes.drawBuffer.get());
+            Graphics::DisposeGraphicsBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
             //Graphics::DisposeVertexArray(vaoRes.vao.get());
         }
     }
@@ -83,8 +83,8 @@ namespace JLEngine
         std::vector<float> triVerts(std::begin(triangleVertices), std::end(triangleVertices));
 
         // Initialize the VertexBuffer
-        JLEngine::VertexBuffer triangleVBO(GL_ARRAY_BUFFER, GL_FLOAT, GL_STATIC_DRAW);
-        triangleVBO.Set(triVerts);
+        JLEngine::VertexBuffer triangleVBO;
+        triangleVBO.Set(std::move(triVerts));
 
         // Add attributes to the VertexArrayObject
         m_triangleVAO.AddAttribute(JLEngine::AttributeType::POSITION);
@@ -125,18 +125,17 @@ namespace JLEngine
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
 
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssboStaticPerDraw.GetGPUID());    // Binding 2: Static PerDrawData
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssboStaticPerDraw.GetGPUBuffer().GetGPUID());    // Binding 2: Static PerDrawData
 
         for (const auto& [key, resource] : m_staticResources)
         {
             if (resource.vao->GetGPUID() == 0) continue;
-            if (resource.vao->GetVBO().Size() > 0)
-            {
-                auto size = static_cast<uint32_t>(resource.drawBuffer->GetDrawCommands().size());
-                glBindVertexArray(resource.vao->GetGPUID());
-                glBindBuffer(GL_DRAW_INDIRECT_BUFFER, resource.drawBuffer->GetGPUID());
-                glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
-            }
+
+            auto size = static_cast<uint32_t>(resource.drawBuffer->GetDataImmutable().size());
+            m_graphics->BindVertexArray(resource.vao->GetGPUID());
+            m_graphics->BindBuffer(GL_DRAW_INDIRECT_BUFFER, resource.drawBuffer->GetGPUBuffer().GetGPUID());
+            m_graphics->MultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
+            // glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
         }
 
         GL_CHECK_ERROR();
@@ -160,7 +159,7 @@ namespace JLEngine
     void DeferredRenderer::GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         m_graphics->BindFrameBuffer(m_gBufferTarget->GetFrameBufferId());
-
+        
         m_graphics->SetDepthMask(GL_TRUE);
         m_graphics->Enable(GL_DEPTH_TEST);
         m_graphics->Disable(GL_BLEND);
@@ -174,19 +173,18 @@ namespace JLEngine
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
 
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssboMaterials.GetGPUID()); // Binding 0: Material buffer
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_ssboStaticPerDraw.GetGPUID());    // Binding 2: Static PerDrawData
-
+        m_graphics->BindBufferBase(m_ssboMaterials.GetGPUBuffer().GetGPUID(), GL_SHADER_STORAGE_BUFFER, 0);
+        m_graphics->BindBufferBase(m_ssboStaticPerDraw.GetGPUBuffer().GetGPUID(), GL_SHADER_STORAGE_BUFFER, 1);
+      
         for (const auto& [key, resource] : m_staticResources)
         {
             if (resource.vao->GetGPUID() == 0) continue;
-            if (resource.vao->GetVBO().Size() > 0)
-            {
-                auto size = static_cast<uint32_t>(resource.drawBuffer->GetDrawCommands().size());
-                glBindVertexArray(resource.vao->GetGPUID());
-                glBindBuffer(GL_DRAW_INDIRECT_BUFFER, resource.drawBuffer->GetGPUID());
-                glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
-            }
+
+            auto& drawBuffer = resource.drawBuffer;
+            glBindBuffer(GL_DRAW_INDIRECT_BUFFER, drawBuffer->GetGPUBuffer().GetGPUID());
+            auto size = static_cast<uint32_t>(drawBuffer->GetDataImmutable().size());
+            m_graphics->BindVertexArray(resource.vao->GetGPUID());
+            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
         }
  
         GL_CHECK_ERROR();
@@ -202,23 +200,6 @@ namespace JLEngine
         //        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
         //    }
         //}
-    }
-
-    void DeferredRenderer::BindTexture(ShaderProgram* shader, const std::string& uniformName, const std::string& flagName, Texture* texture, int textureUnit)
-    {
-        if (texture && texture->GetGPUID() != 0)
-        {
-            shader->SetUniformi(flagName, GL_TRUE);
-            glActiveTexture(GL_TEXTURE0 + textureUnit);
-            glBindTexture(GL_TEXTURE_2D, texture->GetGPUID());
-            shader->SetUniformi(uniformName, textureUnit);
-        }
-        else
-        {
-            shader->SetUniformi(flagName, GL_FALSE);
-            glActiveTexture(GL_TEXTURE0 + textureUnit);
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
     }
 
     void DeferredRenderer::DebugGBuffer(int debugMode) 
@@ -373,7 +354,7 @@ namespace JLEngine
     void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         DrawUI();
-
+        GL_CHECK_ERROR();
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
 
         GBufferPass(viewMatrix, projMatrix);
@@ -431,16 +412,15 @@ namespace JLEngine
     {
         if (!sceneRoot) return;
 
-        for (auto [vertexAttrib, vaoresource] : m_staticResources)
+        for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
             Graphics::CreateVertexArray(vaoresource.vao.get());
         }
 
-        for (auto [vertexAttrib, vaoresource] : m_dynamicResources)
+        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
         {
             Graphics::CreateVertexArray(vaoresource.vao.get());
         }
-
         auto matManager = m_resourceLoader->GetMaterialManager();
         auto texManager = m_resourceLoader->GetTextureManager();
         std::vector<MaterialGPU> matBuffer;
@@ -448,9 +428,8 @@ namespace JLEngine
 
         GenerateMaterialAndTextureBuffers(*matManager, *texManager, matBuffer, materialIDMap);
 
-        m_ssboMaterials.SetDrawType(GL_STATIC_DRAW);
-        m_ssboMaterials.Set(matBuffer);
-        Graphics::CreateShaderStorageBuffer(&m_ssboMaterials);
+        m_ssboMaterials.Set(std::move(matBuffer));
+        Graphics::CreateGPUBuffer<MaterialGPU>(m_ssboMaterials.GetGPUBuffer(), m_ssboMaterials.GetDataImmutable());
 
         int count = 0;
         std::function<void(Node*)> traverseScene = [&](Node* node)
@@ -468,12 +447,12 @@ namespace JLEngine
                     //pdd.castShadows = matManager->Get(submesh.materialHandle)->castShadows ? 1 : 0;
                     if (node->mesh->IsStatic())
                     {   
-                        m_ssboStaticPerDraw.Add(pdd);
+                        m_ssboStaticPerDraw.AddData(pdd);
                         m_staticResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);                        
                     }
                     else
                     {
-                        m_ssboDynamicPerDraw.Add(pdd);
+                        m_ssboDynamicPerDraw.AddData(pdd);
                         m_dynamicResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
                     }
                 }
@@ -486,22 +465,18 @@ namespace JLEngine
         };
         traverseScene(sceneRoot);
 
-        for (auto [vertexAttrib, vaoresource] : m_staticResources)
+        for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
-            vaoresource.drawBuffer->SetDrawType(GL_STATIC_DRAW);
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
 
-        for (auto [vertexAttrib, vaoresource] : m_dynamicResources)
+        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
         {
-            vaoresource.drawBuffer->SetDrawType(GL_STATIC_DRAW);
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
 
-        m_ssboStaticPerDraw.SetDrawType(GL_STATIC_DRAW);
-        m_ssboDynamicPerDraw.SetDrawType(GL_DYNAMIC_DRAW);
-        Graphics::CreateShaderStorageBuffer(&m_ssboStaticPerDraw);
-        Graphics::CreateShaderStorageBuffer(&m_ssboDynamicPerDraw);
+        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
+        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
     }
 
     void DeferredRenderer::CycleDebugMode()
@@ -650,7 +625,6 @@ namespace JLEngine
             glMakeTextureHandleResidentARB(handle);
 
             textureIDMap[texture->GetGPUID()] = handle;
-            GL_CHECK_ERROR();
         }
 
         // Map Material GPUID to indices and build MaterialGPU array

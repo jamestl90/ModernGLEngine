@@ -5,8 +5,8 @@
 
 namespace JLEngine
 {
-    Cubemap::Cubemap(const std::string& name, GraphicsAPI* graphics)
-        : GraphicsResource(name, graphics)
+    Cubemap::Cubemap(const std::string& name)
+        : GPUResource(name)
     {
         
     }

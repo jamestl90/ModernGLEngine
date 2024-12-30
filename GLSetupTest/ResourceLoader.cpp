@@ -28,14 +28,12 @@ namespace JLEngine
         m_renderTargetManager = new ResourceManager<RenderTarget>();
         m_meshManager = new ResourceManager<Mesh>();
         m_cubemapManager = new ResourceManager<Cubemap>();
-        m_vaoManager = new ResourceManager<VertexArrayObject>();
 
         m_textureFactory = new TextureFactory(m_textureManager, graphics);
         m_cubemapFactory = new CubemapFactory(m_cubemapManager, graphics);
         m_shaderFactory = new ShaderFactory(m_shaderManager, graphics);
         m_materialFactory = new MaterialFactory(m_materialManager);
         m_renderTargetfactory = new RenderTargetFactory(m_renderTargetManager);
-        m_vaoFactory = new VertexArrayObjectFactory(m_vaoManager);
         m_meshFactory = new MeshFactory(m_meshManager);
 
         auto mat = CreateMaterial("DefaultMaterial");
@@ -299,11 +297,6 @@ namespace JLEngine
     std::shared_ptr<RenderTarget> ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, std::vector<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetfactory->CreateRenderTarget(name, width, height, texAttribs, depthType, numSources);
-    }
-
-    std::shared_ptr<VertexArrayObject> ResourceLoader::CreateVertexArray(const std::string& name)
-    {
-        return m_vaoFactory->CreateVertexArray(name);
     }
 
     std::shared_ptr<Mesh> ResourceLoader::CreateMesh(const std::string& name)

@@ -227,28 +227,32 @@ namespace JLEngine
 		{
 			//std::cerr << "Error: No VAO found for attributes key " << key.attributesKey << "\n";
 			
-			vao = m_resourceLoader->CreateVertexArray("Vao: " + key.attributesKey);
+			vao = std::make_shared<VertexArrayObject>("vao" + std::to_string(key.attributesKey));
 			m_staticVAOs[key.attributesKey] = vao;			
 			vao->SetVertexAttribKey(key.attributesKey);
 		}
 
-		if (vao->GetAttribKey() == 3)
+		if (vao->GetAttribKey() == 3) // POS - NORMAL only
 		{
-			std::cout << "";
+			std::cout << "strange vertex format detected" << std::endl;
 		}
 
 		auto& vbo = vao->GetVBO();
-		uint32_t vertexOffset = (uint32_t)vbo.Size() / (CalculateStride(key.attributesKey) / 4);
-		vbo.Append(interleavedVertexData);
+		auto& vdata = vbo.GetDataMutable();
+		uint32_t vertexOffset = (uint32_t)vdata.size() / (CalculateStride(key.attributesKey) / sizeof(float));
+		vdata.insert(vdata.end(), interleavedVertexData.begin(), interleavedVertexData.end());
 
 		auto& ibo = vao->GetIBO();
-		uint32_t indexBase = (uint32_t)ibo.Size();
-		ibo.Append(indices);
+		auto& idata = ibo.GetDataMutable();
+		uint32_t indexBase = (uint32_t)idata.size();
+		idata.insert(idata.end(), indices.begin(), indices.end());
 
 		SubMesh submesh;
+		submesh.aabb = CalculateAABB(positions);
 		submesh.attribKey = key.attributesKey;
 		submesh.materialHandle = material->GetHandle();
-		submesh.command = {
+		submesh.command = 
+		{
 			.count = static_cast<uint32_t>(indices.size()),
 			.instanceCount = 1,
 			.firstIndex = indexBase,

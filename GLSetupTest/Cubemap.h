@@ -4,17 +4,15 @@
 #include <array>
 
 #include "ImageData.h"
-#include "GraphicsResource.h"
+#include "GPUResource.h"
 #include "Texture.h"
 
 namespace JLEngine
 {
-	class GraphicsAPI;
-
-	class Cubemap : public GraphicsResource
+	class Cubemap : public GPUResource
 	{
 	public:
-		Cubemap(const std::string& name, GraphicsAPI* graphics);
+		Cubemap(const std::string& name);
 		~Cubemap();
 		
 		const std::array<ImageData, 6>& GetImageData() const { return m_cubemapFaceData; }

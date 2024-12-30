@@ -4,17 +4,14 @@
 #include "Types.h"
 
 #include <glm/glm.hpp>
+#include <vector>
+#include <iostream>
 
 namespace JLEngine
 {
 	struct AABB
 	{
-		AABB();
-
-		~AABB();
-
 		glm::vec3 min;
-
 		glm::vec3 max;
 
 		bool HasCollided(AABB& other);
@@ -22,10 +19,8 @@ namespace JLEngine
 
 	struct Plane
 	{
-		Plane();
-
+		Plane() : m_distance(0.0f), m_normal(0.0f) {}
 		Plane(glm::vec3& v0, glm::vec3& v1, glm::vec3& v2);
-
 		~Plane();
 
 		float DistanceToPoint(glm::vec3& point);
@@ -33,6 +28,8 @@ namespace JLEngine
 		float m_distance;
 		glm::vec3 m_normal;
 	};
+
+	AABB CalculateAABB(const std::vector<float>& positions);
 }
 
 #endif

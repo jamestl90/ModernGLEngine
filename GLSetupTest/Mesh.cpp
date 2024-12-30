@@ -1,6 +1,5 @@
 #include "Mesh.h"
 #include "GraphicsAPI.h"
-#include "Batch.h"
 
 namespace JLEngine
 {

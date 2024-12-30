@@ -1,24 +1,19 @@
 #ifndef MESH_H
 #define MESH_H
 
-#include "Types.h"
-#include "CollisionShapes.h"
-#include "VertexBuffers.h"
 #include "Resource.h"
+#include "IndirectDrawBuffer.h"
+#include "CollisionShapes.h"
 
 #include <memory>
 #include <vector>
 #include <string>
-#include "VertexBuffers.h"
-#include "IndirectDrawBuffer.h"
 
 namespace JLEngine
 {
-	class GraphicsAPI;
-	class VertexArrayObject;
-
 	struct SubMesh
 	{
+		AABB aabb;
 		uint32_t attribKey;
 		uint32_t materialHandle;
 		DrawIndirectCommand command;

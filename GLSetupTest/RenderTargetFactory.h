@@ -21,7 +21,7 @@ namespace JLEngine
 		{
             return m_renderTargetManager->Load(name, [&]()
                 {
-                    auto renderTarget = std::make_shared<RenderTarget>(name, Graphics::API());
+                    auto renderTarget = std::make_shared<RenderTarget>(name);
                     renderTarget->SetDepthType(depthType);
                     renderTarget->SetWidth(width);
                     renderTarget->SetHeight(height);

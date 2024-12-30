@@ -1,11 +1,10 @@
 #include "Texture.h"
 #include "GraphicsAPI.h"
-#include "Graphics.h"
 
 namespace JLEngine
 {
-    Texture::Texture(const std::string& name, GraphicsAPI* graphics)
-        : GraphicsResource(name, graphics)
+    Texture::Texture(const std::string& name)
+        : GPUResource(name)
     {
     }
 

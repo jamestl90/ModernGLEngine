@@ -79,7 +79,6 @@ void WindowResizeCallback(int width, int height)
     m_defRenderer->Resize(width, height);
 }
 
-
 int MainApp(std::string assetFolder)
 {
     JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120);
@@ -105,27 +104,27 @@ int MainApp(std::string assetFolder)
 
     sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
 
-    auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    mat->castShadows = false;
-    mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
-    planeNode->translation -= glm::vec3(0, 2.5f, 0);
-    
+    //auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
+    //auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    //mat->castShadows = false;
+    //mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    //planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
+    //planeNode->translation -= glm::vec3(0, 2.5f, 0);
+    //
     auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    
-    auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
-    engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
-    
-    auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
-    potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
-    potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
-    
-    auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
-    fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
-    fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
+    //
+    //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
+    //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
+    //
+    //auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
+    //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
+    //potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
+    //
+    //auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
+    //fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
+    //fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
     //
     //cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
@@ -134,7 +133,7 @@ int MainApp(std::string assetFolder)
 
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    sceneRoot->AddChild(planeNode);
+    //sceneRoot->AddChild(planeNode);
     sceneRoot->AddChild(metallicSpheres);
     //sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);
@@ -145,9 +144,9 @@ int MainApp(std::string assetFolder)
         SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
     m_defRenderer->Initialize();
 
-    for (auto [key, vao] : engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs())
+    for (auto& [key, vao] : engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs())
     {
-        if (vao->GetVBO().Size() > 0)
+        if (vao->GetVBO().GetDataImmutable().size() > 0)
             m_defRenderer->AddStaticVAO(true, key, vao);
     }
 

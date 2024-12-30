@@ -48,7 +48,7 @@ int GenerateBRDFLUT(const std::string& assetFolder)
     JLEngine::Geometry::CreateScreenSpaceQuad(vao);
     JLEngine::Graphics::CreateVertexArray(&vao);
     auto vaoId = vao.GetGPUID();
-    auto ibo = vao.GetIBO();
+    auto& ibo = vao.GetIBO();
     auto quadShader = engine.GetResourceLoader()->CreateShaderFromFile("QuadShader", "pos_uv_vert.glsl", "pos_uv_frag.glsl", finalPath + "/Shaders/");
 
     int brdfLutSize = 512;
@@ -73,7 +73,7 @@ int GenerateBRDFLUT(const std::string& assetFolder)
             graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             graphics->BindVertexArray(vaoId);
-            graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.Size(), GL_UNSIGNED_INT, nullptr);
+            graphics->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.GetDataImmutable().size(), GL_UNSIGNED_INT, nullptr);
     };
 
     auto mouseMove = [](double a, double b)

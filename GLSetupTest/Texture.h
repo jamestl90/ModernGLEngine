@@ -2,15 +2,13 @@
 #define TEXTURE_H
 
 #include "ImageData.h"
-#include "GraphicsResource.h"
+#include "GPUResource.h"
 
 #include <array>
 #include <string>
 
 namespace JLEngine
 {
-	class GraphicsAPI;
-
     struct TexParams
     {
         bool mipmapEnabled =        true;
@@ -26,10 +24,10 @@ namespace JLEngine
         uint32_t dataType =         GL_UNSIGNED_BYTE;
     };
 
-    class Texture : public GraphicsResource
+    class Texture : public GPUResource
     {
     public:
-        Texture(const std::string& name, GraphicsAPI* graphics);
+        Texture(const std::string& name);
         ~Texture();
 
         const ImageData& GetImageData() const { return m_imageData; }
@@ -42,7 +40,7 @@ namespace JLEngine
 
         void SetFormat(uint32_t dataType, uint32_t internalFormat, uint32_t format);
 
-        uint64_t Bindless() { return m_bindlessHandle; }
+        uint64_t Bindless() const { return m_bindlessHandle; }
         void SetBindlessHandle(uint64_t handle) { m_bindlessHandle = handle; }
 
         static TexParams RGBATexParams()
@@ -62,8 +60,6 @@ namespace JLEngine
         }
 
     private:
-        GraphicsAPI* m_graphics = nullptr;  
-
         uint64_t m_bindlessHandle = 0;
 
         ImageData m_imageData;

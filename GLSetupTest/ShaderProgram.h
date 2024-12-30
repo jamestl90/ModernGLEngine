@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 #include "Shader.h"
-#include "Resource.h"
+#include "GPUResource.h"
 
 using std::vector;
 using std::string;
@@ -16,7 +16,7 @@ namespace JLEngine
 {
 	class GraphicsAPI;
 
-	class ShaderProgram : public Resource
+	class ShaderProgram : public GPUResource
 	{
 	public:
 		ShaderProgram(string name);
@@ -24,7 +24,7 @@ namespace JLEngine
 		~ShaderProgram();
 
 		void SetProgramId(uint32_t id) { m_programId = id; }
-		uint32_t GetProgramId() { return m_programId; }
+		uint32_t GetProgramId() const { return m_programId; }
 
 		void ClearShaders() { m_shaders.clear(); }
 		void AddShader(Shader& shader);

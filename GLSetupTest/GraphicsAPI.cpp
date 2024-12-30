@@ -3,7 +3,6 @@
 #include "TextureReader.h"
 #include "FileHelpers.h"
 #include "RenderTarget.h"
-#include "Batch.h"
 #include "Cubemap.h"
 
 #include <set>
@@ -339,6 +338,52 @@ namespace JLEngine
 		glBindVertexArray(vaoID);
 	}
 
+	// VBO
+
+	void GraphicsAPI::CreateNamedBuffer(uint32_t& id)
+	{
+		glCreateBuffers(1, &id);
+	}
+
+	void GraphicsAPI::BindBufferBase(uint32_t bufferID, GLenum target, uint32_t index)
+	{
+		glBindBufferBase(target, index, bufferID);
+	}
+
+	void GraphicsAPI::BindBufferRange(uint32_t bufferID, GLenum target, uint32_t index, size_t offset, size_t size)
+	{
+		glBindBufferRange(target, index, bufferID, offset, size);
+	}
+
+	void GraphicsAPI::NamedBufferStorage(uint32_t& id, size_t size, GLbitfield usageFlags, const void* data)
+	{
+		glNamedBufferStorage(id, size, data, usageFlags);
+	}
+
+	void GraphicsAPI::NamedBufferSubData(uint32_t& id, const void* data, size_t size, size_t offset)
+	{
+		glNamedBufferSubData(id, offset, size, data);
+	}
+
+	void* GraphicsAPI::MapNamedBuffer(uint32_t& id, GLbitfield access)
+	{
+		auto mapped = glMapNamedBuffer(id, access);
+		if (!mapped)
+		{
+			throw std::runtime_error("Failed to map named buffer");
+		}
+		return mapped;
+	}
+
+	void GraphicsAPI::UnmapNamedBuffer(uint32_t& id)
+	{
+		auto result = glUnmapNamedBuffer(id);
+		if (!result)
+		{
+			throw std::runtime_error("Buffer data corruption detected during unmapping");
+		}
+	}
+
 	void GraphicsAPI::CreateBuffer(uint32_t count, uint32_t& id)
 	{
 		glGenBuffers(count, &id);
@@ -658,6 +703,11 @@ namespace JLEngine
 	void GraphicsAPI::DrawBuffers( uint32_t count, uint32_t* targets)
 	{
 		glDrawBuffers(count, targets);
+	}
+
+	void GraphicsAPI::MultiDrawElementsIndirect(uint32_t mode, uint32_t type, const void* indirect, uint32_t drawCount, uint32_t stride)
+	{
+		glMultiDrawElementsIndirect(mode, type, indirect, drawCount, stride);
 	}
 
 	void GraphicsAPI::DisposeBuffer( uint32_t count, uint32_t* id )
