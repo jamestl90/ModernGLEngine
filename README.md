@@ -1,22 +1,20 @@
-Model Loading
+Engine is based on Modern OpenGL 4.6 and utilises it's features such as DSA (Direct State Access), bindless textures (GL_ARB_bindless_texture), SSBOs (Shader Storage Buffer Objects) and Multi-Draw Indirect. 
 
-Using tiny_gltf for loading scenes
-Engine supports 3 vertex formats { POS, NORMAL, UV, TANGENT } and { POS, NORMAL } and { POS, UV }
-For the former, tangents (x,y,z,w) are automatically generated if not present
-ex. Mesh has POS, NORMAL and UV then tangents will be generated from that data
-Multiple UV attributes will be supported later. 
+Rendering Setup:
 
-If the glb/gltf file shows multiple primitives per mesh, they will be batched based on attribute setup
+Supports a basic deferred PBR pipeline with ALBEDO(AO), NORMALS, METALLIC/ROUGHNESS and EMISSIVE being stored in the gbuffer. 
+All geometry with the same vertex layout are batched in a single vertex array object and can be drawn with a single call to glMultiDrawElementsIndirect. 
 
-If all attributes are present we use a PBR shader. This will later support other shading models. 
-If only POS and NORMAL are present, an un-textured shader is used to render a solid color
-If only POS and UV are present, an un-lit shader is used to render a single textured mesh
+The lighting is still a work in progress. Currently there is a single directional light and some ambient and specular indirect lighting from the HDRi Sky textures. These maps are generated at program launch - Cubemap, Irradiance Map, Prefiltered Environment Map and BRDF (bi-directional reflectance distribution function). 
 
+Real-time debugging of the GBuffer, directional shadow-map and sky textures is implemented. 
 
-Rendering Setup
-
-Supports a basic deferred pipeline with ALBEDO(AO), NORMALS, METALLIC/ROUGHNESS and EMISSIVE multi textured render target
-Meshes without UVs or without Normals are rendered separately 
+Libraries Used:
+GLFW - for window creation and management 
+glad - for opengl bindings
+tiny_gltf - for loading GLB and GLTF files
+stb_image - for loading images
+Dear IMGUI - for debug UI rendering
 
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections2.png'/>
