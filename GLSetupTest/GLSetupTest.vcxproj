@@ -230,6 +230,7 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CameraInfo.h" />
     <ClInclude Include="Cubemap.h">
       <SubType>
       </SubType>
@@ -268,7 +269,6 @@
       <SubType>
       </SubType>
     </ClInclude>
-    <ClInclude Include="Buffer.h" />
     <ClInclude Include="DeferredRenderer.h">
       <SubType>
       </SubType>
@@ -342,6 +342,10 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Types.h" />
+    <ClInclude Include="UniformBuffer.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="VertexArrayObject.h">
       <SubType>
       </SubType>

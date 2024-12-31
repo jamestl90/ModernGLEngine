@@ -12,6 +12,9 @@
 #include "ShaderStorageBuffer.h"
 #include "ResourceLoader.h"
 #include "GPUBuffer.h"
+#include "CameraInfo.h"
+#include "UniformBuffer.h"
+#include "CameraInfo.h"
 
 namespace JLEngine
 {
@@ -49,7 +52,8 @@ namespace JLEngine
         bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
-        void AddStaticVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);
+        void AddVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);        
+        void AddVAOs(bool isStatic, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos);
 
         void GenerateGPUBuffers(Node* sceneRoot);
 
@@ -94,6 +98,7 @@ namespace JLEngine
 
         VertexArrayObject m_triangleVAO;
 
+        UniformBuffer m_cameraUBO;
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;

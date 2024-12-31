@@ -16,8 +16,12 @@ layout(std430, binding = 1) readonly buffer PerDrawDataBuffer
     PerDrawData perDrawData[];
 };
 
-uniform mat4 u_View;
-uniform mat4 u_Projection;
+layout(std140, binding = 2) uniform CameraInfo 
+{
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec3 cameraPosition;
+};
 
 out vec3 v_Normal;
 out vec2 v_TexCoord;
@@ -41,5 +45,5 @@ void main()
 
     // clip-space position
     vec4 worldPosition = modelMatrix * vec4(a_Position, 1.0);
-    gl_Position = u_Projection * u_View * worldPosition;
+    gl_Position = projMatrix * viewMatrix * worldPosition;
 }

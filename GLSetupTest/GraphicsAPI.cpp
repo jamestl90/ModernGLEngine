@@ -345,7 +345,7 @@ namespace JLEngine
 		glCreateBuffers(1, &id);
 	}
 
-	void GraphicsAPI::BindBufferBase(uint32_t bufferID, GLenum target, uint32_t index)
+	void GraphicsAPI::BindBufferBase(GLenum target, uint32_t index, uint32_t bufferID)
 	{
 		glBindBufferBase(target, index, bufferID);
 	}
@@ -355,17 +355,17 @@ namespace JLEngine
 		glBindBufferRange(target, index, bufferID, offset, size);
 	}
 
-	void GraphicsAPI::NamedBufferStorage(uint32_t& id, size_t size, GLbitfield usageFlags, const void* data)
+	void GraphicsAPI::NamedBufferStorage(uint32_t id, size_t size, GLbitfield usageFlags, const void* data)
 	{
 		glNamedBufferStorage(id, size, data, usageFlags);
 	}
 
-	void GraphicsAPI::NamedBufferSubData(uint32_t& id, const void* data, size_t size, size_t offset)
+	void GraphicsAPI::NamedBufferSubData(uint32_t id, size_t offset, size_t size, const void* data)
 	{
 		glNamedBufferSubData(id, offset, size, data);
 	}
 
-	void* GraphicsAPI::MapNamedBuffer(uint32_t& id, GLbitfield access)
+	void* GraphicsAPI::MapNamedBuffer(uint32_t id, GLbitfield access)
 	{
 		auto mapped = glMapNamedBuffer(id, access);
 		if (!mapped)
@@ -375,7 +375,7 @@ namespace JLEngine
 		return mapped;
 	}
 
-	void GraphicsAPI::UnmapNamedBuffer(uint32_t& id)
+	void GraphicsAPI::UnmapNamedBuffer(uint32_t id)
 	{
 		auto result = glUnmapNamedBuffer(id);
 		if (!result)

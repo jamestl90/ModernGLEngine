@@ -184,12 +184,12 @@ namespace JLEngine
 		void BindVertexArray(uint32_t vaoID);
 		// VBO
 		void CreateNamedBuffer(uint32_t& id);
-		void BindBufferBase(uint32_t bufferID, GLenum target, uint32_t index);
+		void BindBufferBase(GLenum target, uint32_t index, uint32_t bufferID);
 		void BindBufferRange(uint32_t bufferID, GLenum target, uint32_t index, size_t offset, size_t size);
-		void NamedBufferStorage(uint32_t& id, size_t size, GLbitfield usageFlags, const void* data = nullptr);
-		void NamedBufferSubData(uint32_t& id, const void* data, size_t size, size_t offset = 0);
-		void* MapNamedBuffer(uint32_t& id, GLbitfield access);
-		void UnmapNamedBuffer(uint32_t& id);
+		void NamedBufferStorage(uint32_t id, size_t size, GLbitfield usageFlags, const void* data = nullptr);
+		void NamedBufferSubData(uint32_t id, size_t offset, size_t size, const void* data);
+		void* MapNamedBuffer(uint32_t id, GLbitfield access);
+		void UnmapNamedBuffer(uint32_t id);
 
 		void CreateBuffer(uint32_t count, uint32_t& id);
 		void DisposeBuffer(uint32_t count, uint32_t* id);

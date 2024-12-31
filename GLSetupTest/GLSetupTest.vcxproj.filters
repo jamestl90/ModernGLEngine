@@ -230,9 +230,6 @@
     <ClInclude Include="ResourceLoader.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Buffer.h">
-      <Filter>Header Files\Core</Filter>
-    </ClInclude>
     <ClInclude Include="CollisionShapes.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
@@ -348,6 +345,12 @@
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
     <ClInclude Include="GPUBuffer.h">
+      <Filter>Header Files\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraInfo.h">
+      <Filter>Header Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="UniformBuffer.h">
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
   </ItemGroup>

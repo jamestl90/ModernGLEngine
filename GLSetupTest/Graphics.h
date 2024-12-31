@@ -39,10 +39,14 @@ namespace JLEngine
 		template <typename T>
 		static void CreateGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data);
 		// Create an empty GPU buffer
+		// this will allocate storage so make sure the buffer's size is set
 		static void CreateGPUBuffer(GPUBuffer& buffer);
 		// Upload data to an existing GPU buffer
 		template <typename T>
 		static void UploadToGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data, uint32_t offset = 0);
+		template <typename T>
+		static void UploadToGPUBuffer(GPUBuffer& buffer, const T& data, uint32_t offset = 0);
+		static void BindGPUBuffer(GPUBuffer& buffer, int bindPoint);
 
 		static void CreateShader(ShaderProgram* shader);
 		static void DisposeShader(ShaderProgram* program);
@@ -57,9 +61,20 @@ namespace JLEngine
 
 	protected:
 		static GraphicsAPI* m_graphicsAPI;
-
-		static void UploadCubemapFace(GLenum face, const ImageData& img, const TexParams& params, int width, int height);
 	};
+
+	template <typename T>
+	void Graphics::UploadToGPUBuffer(GPUBuffer& buffer, const T& data, uint32_t offset)
+	{
+		size_t dataSize = sizeof(T);
+		if (offset + dataSize > buffer.GetSize())
+		{
+			throw std::runtime_error("Data exceeds GPU buffer size.");
+		}
+
+		API()->NamedBufferSubData(buffer.GetGPUID(), offset, dataSize, &data);
+		buffer.ClearDirty();
+	}
 
 	template <typename T>
 	void Graphics::CreateGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data)
@@ -83,7 +98,7 @@ namespace JLEngine
 			throw std::runtime_error("Data exceeds GPU buffer size.");
 		}
 
-		API()->NamedBufferSubData(buffer.GetGPUID(), data.data(), buffer.GetSize(), offset);
+		API()->NamedBufferSubData(buffer.GetGPUID(), offset, buffer.GetSize(), data.data());
 		buffer.ClearDirty();
 	}
 }

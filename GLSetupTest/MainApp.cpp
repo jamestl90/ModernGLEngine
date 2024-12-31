@@ -113,7 +113,7 @@ int MainApp(std::string assetFolder)
     //
     auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    //
+    
     //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
     //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
     //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
@@ -133,7 +133,7 @@ int MainApp(std::string assetFolder)
 
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    sceneRoot->AddChild(planeNode);
+    //sceneRoot->AddChild(planeNode);
     sceneRoot->AddChild(metallicSpheres);
     //sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);
@@ -144,11 +144,7 @@ int MainApp(std::string assetFolder)
         SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
     m_defRenderer->Initialize();
 
-    for (auto& [key, vao] : engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs())
-    {
-        if (vao->GetVBO().GetDataImmutable().size() > 0)
-            m_defRenderer->AddStaticVAO(true, key, vao);
-    }
+    m_defRenderer->AddVAOs(true, engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs());
 
     m_defRenderer->GenerateGPUBuffers(sceneRoot.get());
 

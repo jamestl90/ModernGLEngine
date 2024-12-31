@@ -3,6 +3,7 @@
 #include "Graphics.h"
 #include "DirectionalLightShadowMap.h"
 #include "HDRISky.h"
+#include "UniformBuffer.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -44,7 +45,8 @@ namespace JLEngine
         m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
-        //GenerateDefaultTextures();
+        m_cameraUBO.GetGPUBuffer().SetSize(sizeof(CameraInfo));
+        Graphics::CreateGPUBuffer(m_cameraUBO.GetGPUBuffer());
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -124,8 +126,8 @@ namespace JLEngine
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
-
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssboStaticPerDraw.GetGPUBuffer().GetGPUID());    // Binding 2: Static PerDrawData
+        
+        Graphics::BindGPUBuffer(m_ssboStaticPerDraw.GetGPUBuffer(), 0);
 
         for (const auto& [key, resource] : m_staticResources)
         {
@@ -164,22 +166,18 @@ namespace JLEngine
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         Graphics::API()->BindShader(m_gBufferShader->GetProgramId());
-        m_gBufferShader->SetUniform("u_View", viewMatrix);
-        m_gBufferShader->SetUniform("u_Projection", projMatrix);
+
+        Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
+        Graphics::BindGPUBuffer(m_ssboStaticPerDraw.GetGPUBuffer(), 1);
+        Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
-
-        m_graphics->BindBufferBase(m_ssboMaterials.GetGPUBuffer().GetGPUID(), GL_SHADER_STORAGE_BUFFER, 0);
-        m_graphics->BindBufferBase(m_ssboStaticPerDraw.GetGPUBuffer().GetGPUID(), GL_SHADER_STORAGE_BUFFER, 1);
-      
         for (const auto& [key, resource] : m_staticResources)
         {
             if (resource.vao->GetGPUID() == 0) continue;
 
             DrawGeometry(resource, stride);
         }
- 
-        GL_CHECK_ERROR();
         
         //for (const auto& [key, resource] : m_dynamicResources)
         //{
@@ -345,8 +343,16 @@ namespace JLEngine
 
     void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
+        CameraInfo camInfo;
+        camInfo.viewMatrix = viewMatrix;
+        camInfo.projMatrix = projMatrix;
+        camInfo.cameraPos = glm::vec4(eyePos.x, eyePos.y, eyePos.z, 1.0f);
+
+        // update camera info
+        Graphics::UploadToGPUBuffer(m_cameraUBO.GetGPUBuffer(), camInfo, 0);
+
         DrawUI();
-        GL_CHECK_ERROR();
+
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
 
         GBufferPass(viewMatrix, projMatrix);
@@ -380,9 +386,10 @@ namespace JLEngine
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
         }
+        GL_CHECK_ERROR();
     }
 
-    void DeferredRenderer::AddStaticVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao)
+    void DeferredRenderer::AddVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao)
     { 
         auto resource = VAOResource
         {
@@ -397,6 +404,23 @@ namespace JLEngine
         else 
         {
             m_dynamicResources[key] = resource;
+        }
+    }
+
+    void DeferredRenderer::AddVAOs(bool isStatic, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos)
+    {
+        for (auto& [key, vao] : vaos)
+        {
+            auto resource = VAOResource
+            {
+                vao,
+                std::make_shared<IndirectDrawBuffer>()
+            };
+
+            if (isStatic)
+                m_staticResources[key] = resource;
+            else
+                m_dynamicResources[key] = resource;
         }
     }
 

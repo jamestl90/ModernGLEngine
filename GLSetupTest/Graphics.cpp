@@ -15,7 +15,7 @@ namespace JLEngine
 {
 	GraphicsAPI* Graphics::m_graphicsAPI = nullptr;
 
-	void Graphics::Initialise(Window* window)
+	void Graphics::Initialise(Window* window)	
 	{
 		m_graphicsAPI = new GraphicsAPI(window);
 		m_graphicsAPI->Initialise();
@@ -139,9 +139,9 @@ namespace JLEngine
 		auto height = imgData[0].height;
 		if (width <= 0 || height <= 0)
 		{
-			std::cerr << "Graphics::CreateCubemap: Invalid dimensions (" << width << "x" << height << ") for cubemap: "
-				<< cubemap->GetName() << std::endl;
-			return;
+			throw std::runtime_error("Graphics::CreateCubemap: Invalid dimensions (" +
+				std::to_string(width) + "x" + std::to_string(height) + ") for cubemap: " +
+				cubemap->GetName());
 		}
 
 		uint32_t minFilter = params.minFilter;
@@ -155,29 +155,38 @@ namespace JLEngine
 
 		// Generate texture ID
 		GLuint textureId;
-		glGenTextures(1, &textureId);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, textureId);
+		glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &textureId);
+		cubemap->SetGPUID(textureId);
+
+		GLuint mipLevels = params.mipmapEnabled ? static_cast<int>(std::log2(std::max(width, height))) + 1 : 1;
+		glTextureStorage2D(textureId, mipLevels, params.internalFormat, width, height);
 
 		// Upload cubemap data (for each face)
 		for (unsigned int i = 0; i < 6; ++i)
 		{
-			UploadCubemapFace(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, imgData.at(i), params, width, height);
+			auto& faceData = imgData.at(i);
+			if (faceData.isHDR)
+			{
+				glTextureSubImage3D(textureId, 0, 0, 0, i, width, height, 1, params.format, params.dataType,
+					faceData.hdrData.data());
+			}
+			else
+			{
+				glTextureSubImage3D(textureId, 0, 0, 0, i, width, height, 1, params.format, params.dataType,
+					faceData.data.data());
+			}
 		}
 
-		glTexParameteri(params.textureType, GL_TEXTURE_MAG_FILTER, params.magFilter);
-		glTexParameteri(params.textureType, GL_TEXTURE_MIN_FILTER, minFilter);
-		glTexParameteri(params.textureType, GL_TEXTURE_WRAP_S, params.wrapS);
-		glTexParameteri(params.textureType, GL_TEXTURE_WRAP_T, params.wrapT);
-		glTexParameteri(params.textureType, GL_TEXTURE_WRAP_R, params.wrapR);
-
-		cubemap->SetGPUID(textureId);
+		glTextureParameteri(textureId, GL_TEXTURE_MAG_FILTER, params.magFilter);
+		glTextureParameteri(textureId, GL_TEXTURE_MIN_FILTER, minFilter);
+		glTextureParameteri(textureId, GL_TEXTURE_WRAP_S, params.wrapS);
+		glTextureParameteri(textureId, GL_TEXTURE_WRAP_T, params.wrapT);
+		glTextureParameteri(textureId, GL_TEXTURE_WRAP_R, params.wrapR);
 
 		if (params.mipmapEnabled)
 		{
-			glGenerateMipmap(params.textureType); // Generate mipmaps for mutable textures
+			glGenerateTextureMipmap(params.textureType); // Generate mipmaps for mutable textures
 		}
-
-		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	}
 
 	void Graphics::CreateVertexArray(VertexArrayObject* vao)
@@ -404,7 +413,7 @@ namespace JLEngine
 		auto& drawBuffers = target->GetDrawBuffers();
 		glNamedFramebufferDrawBuffers(fbo, static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
 
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
 			GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
 			std::string errorMsg = "Framebuffer not complete: ";
@@ -523,6 +532,11 @@ namespace JLEngine
 		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 	}
 
+	void Graphics::BindGPUBuffer(GPUBuffer& buffer, int bindPoint)
+	{
+		glBindBufferBase(buffer.GetType(), bindPoint, buffer.GetGPUID());
+	}
+
 	void Graphics::CreateGPUBuffer(GPUBuffer& buffer)
 	{
 		GLuint id;
@@ -573,17 +587,5 @@ namespace JLEngine
 	{
 		auto id = gpuBuffer->GetGPUID();
 		glDeleteBuffers(1, &id);
-	}
-
-	void Graphics::UploadCubemapFace(GLenum face, const ImageData& img, const TexParams& params, int width, int height)
-	{
-		if (img.isHDR)
-		{
-			glTexImage2D(face, 0, params.internalFormat, width, height, 0, params.format, params.dataType, img.hdrData.data());
-		}
-		else
-		{
-			glTexImage2D(face, 0, params.internalFormat, width, height, 0, params.format, params.dataType, img.data.data());
-		}
 	}
 }

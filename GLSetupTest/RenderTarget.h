@@ -3,7 +3,6 @@
 
 #include "Types.h"
 #include "Texture.h"
-#include "Buffer.h"
 #include "GPUResource.h"
 
 #include <vector>
