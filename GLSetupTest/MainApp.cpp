@@ -1,5 +1,7 @@
 #include "MainApp.h"
 #include "GlobalVars.h"
+#include "HDRISky.h"
+#include "ListCycler.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
@@ -8,10 +10,13 @@ JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 std::shared_ptr<JLEngine::Node> sceneRoot;
 std::shared_ptr<JLEngine::Node> cardinalDirections;
+std::string m_assetPath;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
 JLEngine::DeferredRenderer* m_defRenderer;
 GLFWwindow* window;
+JLEngine::ListCycler<std::string> hdriSkyCycler;
+JLEngine::HdriSkyInitParams skyInitParams;
 
 void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
 {
@@ -34,6 +39,27 @@ void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
 void gameLogicUpdate(double deltaTime)
 {
     flyCamera->ProcessKeyboard(window, (float)deltaTime);
+
+    ImGui::Begin("HDRI Sky Settings");
+    ImGui::SliderInt("Irradiance Map Size", &skyInitParams.irradianceMapSize, 16, 128);
+    ImGui::SliderInt("Prefiltered Map Size", &skyInitParams.prefilteredMapSize, 32, 512);
+    ImGui::SliderInt("Prefiltered Samples", &skyInitParams.prefilteredSamples, 256, 8192);
+    ImGui::SliderFloat("Compression Threshold", &skyInitParams.compressionThreshold, 1.0f, 5.0f);
+    ImGui::SliderFloat("Max Value", &skyInitParams.maxValue, 1.0f, 20000.0f);
+
+    if (ImGui::Button("Regenerate"))
+    {
+        skyInitParams.fileName = hdriSkyCycler.Current();
+        auto hdriSky = m_defRenderer->GetHDRISky();
+        hdriSky->Reload(m_assetPath, skyInitParams);
+    }
+    if (ImGui::Button("Next"))
+    {
+        skyInitParams.fileName = hdriSkyCycler.Next();
+        auto hdriSky = m_defRenderer->GetHDRISky();
+        hdriSky->Reload(m_assetPath, skyInitParams);
+    }
+    ImGui::End();
 }
 
 void fixedUpdate(double fixedTimeDelta)
@@ -81,6 +107,7 @@ void WindowResizeCallback(int width, int height)
 
 int MainApp(std::string assetFolder)
 {
+    m_assetPath = assetFolder;
     JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120);
 
     auto graphics = engine.GetGraphicsAPI();
@@ -88,13 +115,14 @@ int MainApp(std::string assetFolder)
     input = engine.GetInput();
     input->SetMouseCursor(GLFW_CURSOR_DISABLED);
 
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glDebugMessageCallback(
-    //    [](GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
-    //        std::cerr << "GL Debug: " << message << std::endl;
-    //    },
-    //    nullptr
-    //);
+    std::vector<std::string> skyTextures = {
+        "kloofendal_48d_partly_cloudy_puresky_4k.hdr",
+        "metro_noord_4k.hdr",
+        "moonless_golf_4k.hdr",
+        "rogland_clear_night_4k.hdr",
+        "venice_sunset_4k.hdr"
+    };
+    hdriSkyCycler.Set(std::move(skyTextures));
 
     input->SetKeyboardCallback(KeyboardCallback);
     input->SetMouseCallback(MouseCallback);
@@ -143,9 +171,7 @@ int MainApp(std::string assetFolder)
     m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),
         SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
     m_defRenderer->Initialize();
-
     m_defRenderer->AddVAOs(true, engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs());
-
     m_defRenderer->GenerateGPUBuffers(sceneRoot.get());
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);

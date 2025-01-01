@@ -73,6 +73,7 @@ namespace JLEngine
 		// Shader Loading ///////////////////////////////////
 		std::shared_ptr<ShaderProgram> CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
 		std::shared_ptr<ShaderProgram> CreateShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
+		void DeleteShader(const std::string& name);
 
 		void SetHotReloading(bool hotReload) { m_hotReload = hotReload; }
 		void PollForChanges(float deltaTime);

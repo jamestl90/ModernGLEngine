@@ -18,6 +18,29 @@ namespace JLEngine
     { 
         Graphics::DisposeVertexArray(&m_skyboxVAO);
         Graphics::DisposeShader(m_skyShader);
+
+        DeleteTextures();
+    }
+
+    void HDRISky::Reload(const std::string& assetPath, const HdriSkyInitParams& initParams)
+    {
+        DeleteTextures();
+
+        auto shaderAssetPath = assetPath + "Core/Shaders/";
+        auto textureAssetPath = assetPath + "HDRI/";
+    
+        TextureReader::LoadTexture(assetPath + "HDRI/" + initParams.fileName, m_hdriSkyImageData, 0);
+        int cubemapSize = m_hdriSkyImageData.width / 4;
+
+        CubemapBaker baker(assetPath, m_resourceLoader);
+
+        m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, 
+            true, initParams.compressionThreshold, initParams.maxValue);
+        m_irradianceMap = baker.GenerateIrradianceCubemap(m_hdriSky, initParams.irradianceMapSize);
+        m_prefilteredMap = baker.GeneratePrefilteredEnvMap(m_hdriSky, initParams.prefilteredMapSize, initParams.prefilteredSamples);
+        m_brdfLUTMap = baker.GenerateBRDFLUT(512, 1024);
+        GL_CHECK_ERROR();
+        m_hdriSkyImageData.hdrData.clear();
     }
 
     void HDRISky::Initialise(const std::string& assetPath, const HdriSkyInitParams& initParams)
@@ -36,7 +59,7 @@ namespace JLEngine
 
         CubemapBaker baker(assetPath, m_resourceLoader);
 
-        m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, true);
+        m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, true, initParams.compressionThreshold, initParams.maxValue);
         m_irradianceMap = baker.GenerateIrradianceCubemap(m_hdriSky, initParams.irradianceMapSize);
         m_prefilteredMap = baker.GeneratePrefilteredEnvMap(m_hdriSky, initParams.prefilteredMapSize, initParams.prefilteredSamples);
         m_brdfLUTMap = baker.GenerateBRDFLUT(512, 1024);        
@@ -71,5 +94,17 @@ namespace JLEngine
 
         Graphics::API()->BindVertexArray(0);
         Graphics::API()->SetDepthFunc(previousDepthFunc);
+    }
+
+    void HDRISky::DeleteTextures()
+    {
+        if (m_hdriSky > 0)
+            Graphics::API()->DeleteTexture(1, &m_hdriSky);
+        if (m_irradianceMap > 0)
+            Graphics::API()->DeleteTexture(1, &m_irradianceMap);
+        if (m_prefilteredMap > 0)
+            Graphics::API()->DeleteTexture(1, &m_prefilteredMap);
+        if (m_brdfLUTMap > 0)
+            Graphics::API()->DeleteTexture(1, &m_brdfLUTMap);
     }
 }

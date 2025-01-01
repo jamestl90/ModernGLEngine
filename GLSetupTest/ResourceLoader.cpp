@@ -109,6 +109,11 @@ namespace JLEngine
         return m_shaderFactory->CreateShaderFromSource(name, vertSource, fragSource);
     }
 
+    void ResourceLoader::DeleteShader(const std::string& name)
+    {
+        return m_shaderManager->Remove(name);
+    }
+
     void ResourceLoader::PollForChanges(float deltaTime)
     {
         if (!m_hotReload) return;

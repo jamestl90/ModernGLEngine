@@ -249,6 +249,7 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="ListCycler.h" />
     <ClInclude Include="MaterialFactory.h">
       <SubType>
       </SubType>

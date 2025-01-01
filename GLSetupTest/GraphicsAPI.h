@@ -180,7 +180,7 @@ namespace JLEngine
 
 		void CreateTextures(uint32_t target, uint32_t n, uint32_t* textures);
 		void BindTextures(uint32_t first, uint32_t count, const uint32_t* textures);
-		void DisposeTexture(uint32_t count, uint32_t* textures);
+		void DeleteTexture(uint32_t count, uint32_t* textures);
 
 		uint32_t GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget);
 		std::string InternalFormatToString(GLint internalFormat);

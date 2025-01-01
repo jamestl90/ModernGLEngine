@@ -102,7 +102,6 @@ namespace JLEngine
         // Remove a resource by name
         void Remove(const std::string& name)
         {
-            std::scoped_lock lock(m_mutex);
             auto it = m_nameToId.find(name);
             if (it != m_nameToId.end())
             {

@@ -32,13 +32,13 @@ namespace JLEngine
 	void Graphics::DisposeTexture(Texture* texture)
 	{
 		GLuint id = texture->GetGPUID();
-		API()->DisposeTexture(1, &id);
+		API()->DeleteTexture(1, &id);
 	}
 
 	void Graphics::DisposeCubemap(Cubemap* cubemap)
 	{
 		GLuint id = cubemap->GetGPUID();
-		API()->DisposeTexture(1, &id);
+		API()->DeleteTexture(1, &id);
 	}
 
 	void Graphics::CreateTexture(Texture* texture, bool makeBindless)

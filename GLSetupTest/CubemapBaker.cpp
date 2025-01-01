@@ -425,13 +425,16 @@ namespace JLEngine
     {
         if (!Graphics::Alive()) return;
 
-        Graphics::DisposeShader(m_hdrToCubemapShader);
+        m_assetLoader->DeleteShader("EquirectangularToCubemap");
         m_hdrToCubemapShader = nullptr;
 
-        Graphics::DisposeShader(m_irradianceShader);
+        m_assetLoader->DeleteShader("IrradianceShader");
         m_irradianceShader = nullptr;
 
-        Graphics::DisposeShader(m_brdfLutShader);
+        m_assetLoader->DeleteShader("PrefilteredEnvCubemapShader");
+        m_prefilteredCubemapShader = nullptr;
+        
+        m_assetLoader->DeleteShader("BRDFLUTShader");
         m_brdfLutShader = nullptr;
     }
 

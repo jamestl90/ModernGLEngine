@@ -20,6 +20,9 @@ uniform mat4 u_ProjectionInverse;
 uniform int u_PCFKernelSize;
 uniform float u_Bias;
 
+uniform float u_SpecularIndirectFactor;
+uniform float u_DiffuseIndirectFactor;
+
 uniform float u_Near;
 uniform float u_Far;
 
@@ -134,7 +137,7 @@ vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDir, vec
 vec3 CalculateDiffuseIBL(vec3 normal, vec3 albedo)
 {
     vec3 irradiance = texture(gIrradianceMap, normal).rgb;
-    return irradiance * albedo * 1.0;
+    return irradiance * albedo * u_DiffuseIndirectFactor;
 }
 
 // Specular IBL calculation
@@ -145,7 +148,7 @@ vec3 CalculateSpecularIBL(vec3 normal, vec3 viewDir, float roughness, vec3 F0)
     float NdotV = max(dot(normal, viewDir), 0.0);
     vec2 brdf = texture(gBRDFLUT, vec2(NdotV, roughness)).rg;
 
-    return prefilteredColor * (F0 * brdf.x + brdf.y) * 1.0;
+    return prefilteredColor * (F0 * brdf.x + brdf.y) * u_SpecularIndirectFactor;
 }
 
 // Reconstruct world position from depth

@@ -61,6 +61,8 @@ namespace JLEngine
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
 
+        HDRISky* GetHDRISky() { return m_hdriSky; }
+
     private:
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
@@ -80,7 +82,6 @@ namespace JLEngine
             ResourceManager<JLEngine::Texture>& textureManager,
             std::vector<MaterialGPU>& materialBuffer,
             std::unordered_map<uint32_t, size_t>& materialIDMap);
-        //void GenerateDefaultTextures();
 
         GraphicsAPI* m_graphics;
         ResourceLoader* m_resourceLoader;
@@ -89,6 +90,9 @@ namespace JLEngine
 
         int m_width, m_height;
         std::string m_assetFolder;
+
+        float m_specularIndirectFactor = 1.0f;
+        float m_diffuseIndirectFactor = 1.0f;
 
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;

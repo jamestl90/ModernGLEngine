@@ -13,6 +13,9 @@ namespace JLEngine
 	{
 		std::string fileName;
 		
+		float compressionThreshold = 3.0f;
+		float maxValue = 10000.0f;
+
 		int irradianceMapSize = 32;
 		int prefilteredMapSize = 128;
 		int prefilteredSamples = 2048;
@@ -26,6 +29,7 @@ namespace JLEngine
 		HDRISky(ResourceLoader* resourceLoader); 
 		~HDRISky();
 
+		void Reload(const std::string& assetPath, const HdriSkyInitParams& initParams);
 		void Initialise(const std::string& assetPath, const HdriSkyInitParams& initParams);
 		void Render(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, int debugTexId = 0);
 
@@ -38,6 +42,8 @@ namespace JLEngine
 		const VertexArrayObject& GetSkyboxVAO() const { return m_skyboxVAO; }
 
 	protected:
+
+		void DeleteTextures();
 
 		uint32_t m_hdriSky			= 0;
 		uint32_t m_irradianceMap	= 0;

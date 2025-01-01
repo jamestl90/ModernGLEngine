@@ -746,7 +746,7 @@ namespace JLEngine
 		glBindTextures(first, count, textures);
 	}
 
-	void GraphicsAPI::DisposeTexture(uint32_t count, uint32_t* textures)
+	void GraphicsAPI::DeleteTexture(uint32_t count, uint32_t* textures)
 	{
 		glDeleteTextures(count, textures);
 	}

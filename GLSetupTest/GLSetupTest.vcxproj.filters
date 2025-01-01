@@ -356,6 +356,9 @@
     <ClInclude Include="RenderTargetPool.h">
       <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="ListCycler.h">
+      <Filter>Header Files\Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

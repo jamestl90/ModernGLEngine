@@ -67,6 +67,8 @@ namespace JLEngine
         params.irradianceMapSize = 32;
         params.prefilteredMapSize = 128;
         params.prefilteredSamples = 2048;
+        params.compressionThreshold = 3.0f;
+        params.maxValue = 10000.0f;
         m_hdriSky = new HDRISky(m_resourceLoader);
         m_hdriSky->Initialise(m_assetFolder, params);
         InitScreenSpaceTriangle();   
@@ -514,6 +516,11 @@ namespace JLEngine
         ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
         ImGui::SliderInt("PCF Kernel Size", &m_dlShadowMap->GetPCFKernelSize(), 0, 5);
         ImGui::End();
+
+        ImGui::Begin("HDRI Sky Settings");
+        ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 2.0f);
+        ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 2.0f);
+        ImGui::End();
     }
 
     void DeferredRenderer::DrawGeometry(const VAOResource& vaoResource, uint32_t stride)
@@ -572,6 +579,9 @@ namespace JLEngine
 
         m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
         m_lightingTestShader->SetUniformi("u_PCFKernelSize", m_dlShadowMap->GetPCFKernelSize());
+
+        m_lightingTestShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
+        m_lightingTestShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
 
         RenderScreenSpaceTriangle();
     }
