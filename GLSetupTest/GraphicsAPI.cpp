@@ -208,6 +208,76 @@ namespace JLEngine
 		return true;
 	}
 
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x)
+	{
+		glProgramUniform1i(progId, location, x);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y)
+	{
+		glProgramUniform2i(progId, location, x, y);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z)
+	{
+		glProgramUniform3i(progId, location, x, y, z);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
+	{
+		glProgramUniform4i(progId, location, x, y, z, w);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x)
+	{
+		glProgramUniform1f(progId, location, x);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x, float y)
+	{
+		glProgramUniform2f(progId, location, x, y);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z)
+	{
+		glProgramUniform3f(progId, location, x, y, z);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z, float w)
+	{
+		glProgramUniform4f(progId, location, x, y, z, w);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::vec2& vec)
+	{
+		glProgramUniform2fv(progId, location, 1, &vec[0]);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::vec3& vec)
+	{
+		glProgramUniform3fv(progId, location, 1, &vec[0]);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::vec4& vec)
+	{
+		glProgramUniform4fv(progId, location, 1, &vec[0]);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, int count, bool transpose, const glm::mat2& mat)
+	{
+		glProgramUniformMatrix2fv(progId, location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, int count, bool transpose, const glm::mat3& mat)
+	{
+		glProgramUniformMatrix3fv(progId, location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+	}
+
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, int count, bool transpose, const glm::mat4& mat)
+	{
+		glProgramUniformMatrix4fv(progId, location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+	}
+
 	std::vector<std::tuple<std::string, int>> GraphicsAPI::GetActiveUniforms(uint32_t programId)
 	{
 		std::vector<std::tuple<std::string, int>> activeUniforms;
@@ -326,6 +396,12 @@ namespace JLEngine
 	void GraphicsAPI::BindFrameBuffer( uint32_t id )
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
+	}
+
+	void GraphicsAPI::BlitNamedFramebuffer(uint32_t readFrameBuffer, uint32_t drawFrameBuffer, uint32_t srcX0, uint32_t srcY0, uint32_t srcX1, uint32_t srcY1, uint32_t dstX0, uint32_t dstY0, uint32_t dstX1, uint32_t dstY1, GLbitfield mask, uint32_t filter)
+	{
+		glBlitNamedFramebuffer(readFrameBuffer, drawFrameBuffer, srcX0, srcY0,
+			srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
 	}
 
 	void GraphicsAPI::CreateFrameBuffer(uint32_t count, uint32_t& id )
@@ -660,6 +736,16 @@ namespace JLEngine
 		std::cout << "Successfully read Cubemap with " << (imgData.at(0).isHDR ? "HDR" : "LDR") << " data." << std::endl;
 	}
 
+	void GraphicsAPI::CreateTextures(uint32_t target, uint32_t n, uint32_t* textures)
+	{
+		glCreateTextures(target, n, textures);
+	}
+
+	void GraphicsAPI::BindTextures(uint32_t first, uint32_t count, const uint32_t* textures)
+	{
+		glBindTextures(first, count, textures);
+	}
+
 	void GraphicsAPI::DisposeTexture(uint32_t count, uint32_t* textures)
 	{
 		glDeleteTextures(count, textures);
@@ -890,136 +976,3 @@ namespace JLEngine
 		std::cout << "****************************************************" << std::endl;
 	}
 }
-
-//void Graphics::loadMeshAdv(Mesh* mesh)
-//{
-//	BufferObjectAdv vbo = mesh->getBufferObjectAdv();
-
-//	GLuint vaoID;
-//	GLuint vboID;
-//	GLuint iboID;
-
-//	glGenVertexArrays(1, &vaoID);
-//	glBindVertexArray(vaoID);
-
-//	mesh->setVao(vaoID);
-
-//	glGenBuffers(1, &vboID);
-//	glBindBuffer(GL_ARRAY_BUFFER, vboID);
-//	glBufferData(GL_ARRAY_BUFFER, vbo.getVertexArray().size() * sizeof(VertexAdv), &vbo.getVertexArray()[0], GL_STATIC_DRAW);
-
-//	// position
-//	glEnableVertexAttribArray(0);
-//	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexAdv), BUFFER_OFFSET(0));
-
-//	// normal
-//	glEnableVertexAttribArray(1);
-//	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexAdv), BUFFER_OFFSET(12));
-
-//	// tex-coords
-//	glEnableVertexAttribArray(2);
-//	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexAdv), BUFFER_OFFSET(24));
-
-//	// tangent
-//	glEnableVertexAttribArray(3);
-//	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(VertexAdv), BUFFER_OFFSET(36));
-
-//	// bitangent
-//	glEnableVertexAttribArray(4);
-//	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(VertexAdv), BUFFER_OFFSET(48));
-
-//	vbo.setVbo(vboID);
-
-//	glGenBuffers(1, &iboID);
-//	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboID);
-//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vbo.getIndexArray().size() * sizeof(uint32_t), &vbo.getIndexArray()[0], GL_STATIC_DRAW);
-
-//	vbo.setIbo(iboID);
-//}
-
-//void Graphics::loadMeshBasic(Mesh* mesh)
-//{
-//	BufferObjectBasic vbo = mesh->getBufferObjectBasic();
-
-//	GLuint vaoID;
-//	GLuint vboID;
-//	GLuint iboID;
-
-//	glGenVertexArrays(1, &vaoID);
-//	glBindVertexArray(vaoID);
-
-//	mesh->setVao(vaoID);
-
-//	glGenBuffers(1, &vboID);
-//	glBindBuffer(GL_ARRAY_BUFFER, vboID);
-//	glBufferData(GL_ARRAY_BUFFER, vbo.getVertexArray().size() * sizeof(VertexBasic), &vbo.getVertexArray()[0], GL_STATIC_DRAW);
-
-//	// position
-//	glEnableVertexAttribArray(0);
-//	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexBasic), BUFFER_OFFSET(0));
-
-//	// normal
-//	glEnableVertexAttribArray(1);
-//	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexBasic), BUFFER_OFFSET(12));
-
-//	// tex-coords
-//	glEnableVertexAttribArray(2);
-//	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexBasic), BUFFER_OFFSET(24));
-
-//	vbo.setVbo(vboID);
-
-//	glGenBuffers(1, &iboID);
-//	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboID);
-//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vbo.getIndexArray().size() * sizeof(uint32_t), &vbo.getIndexArray()[0], GL_STATIC_DRAW);
-
-//	vbo.setIbo(iboID);
-//}
-
-//void Graphics::unloadMesh( Mesh* mesh )
-//{
-//	GLuint vao = mesh->getVaoId();
-//	GLuint vbo;
-//	GLuint ibo;
-
-//	if (mesh->usesAdvancedVertexStructure())
-//	{
-//		vbo = mesh->getBufferObjectAdv().getVboId();
-//		ibo = mesh->getBufferObjectAdv().getIboId();
-//	}
-//	else
-//	{
-//		vbo = mesh->getBufferObjectBasic().getVboId();
-//		ibo = mesh->getBufferObjectBasic().getIboId();
-//	}
-
-//	glDeleteBuffers(1, &vbo);
-//	glDeleteBuffers(1, &ibo);
-//	glDeleteBuffers(1, &vao);
-//}
-
-//void Graphics::unloadModel(Model* model)
-//{
-//	for (int i = 0; i < (signed)model->getMeshes().size(); i++)
-//	{
-//		Mesh* mesh = model->getMeshAt(i);
-
-//		GLuint vao = mesh->getVaoId();
-//		GLuint vbo;
-//		GLuint ibo;
-
-//		if (mesh->usesAdvancedVertexStructure())
-//		{
-//			vbo = mesh->getBufferObjectAdv().getVboId();
-//			ibo = mesh->getBufferObjectAdv().getIboId();
-//		}
-//		else
-//		{
-//			vbo = mesh->getBufferObjectBasic().getVboId();
-//			ibo = mesh->getBufferObjectBasic().getIboId();
-//		}
-
-//		glDeleteBuffers(1, &vbo);
-//		glDeleteBuffers(1, &ibo);
-//		glDeleteBuffers(1, &vao);
-//	}
-//}

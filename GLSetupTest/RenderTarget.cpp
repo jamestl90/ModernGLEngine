@@ -27,34 +27,16 @@ namespace JLEngine
 
 	void RenderTarget::BindTexture(int texIndex, int texUnit)
 	{
-		if (texIndex < 0 || texIndex >= (int)GetNumSources())
+		if (texIndex < 0 || texIndex >= (int)GetNumTextures())
 		{
 			std::cerr << "RenderTarget: Invalid texture index!" << std::endl;
 			return;
 		}
-		GLuint textureId = m_sources[texIndex];
+		GLuint textureId = m_textures[texIndex];
 		if (textureId != 0) 
 		{
 			Graphics::API()->SetActiveTexture(texUnit);
 			Graphics::API()->BindTexture(GL_TEXTURE_2D, textureId);
-		}
-	}
-
-	void RenderTarget::BindTextures()
-	{
-		for (uint32_t i = 0; i < m_numSources; i++)
-		{
-			Graphics::API()->SetActiveTexture(i);
-			Graphics::API()->BindTexture(GL_TEXTURE_2D, m_sources[i]);
-		}
-	}
-
-	void RenderTarget::Unbind() const
-	{
-		for (uint32_t i = 0; i < m_numSources; i++)
-		{
-			Graphics::API()->SetActiveTexture(i);
-			Graphics::API()->BindTexture(GL_TEXTURE_2D, 0);
 		}
 	}
 
@@ -66,14 +48,14 @@ namespace JLEngine
 		m_width = newWidth;
 		m_height = newHeight;
 
-		Graphics::ResizeRenderTarget(this, newWidth, newHeight);
+		Graphics::RecreateRenderTarget(this, newWidth, newHeight);
 	}
 
 	void RenderTarget::SetNumSources( uint32_t numSources )
 	{
 		m_numSources = numSources;
 
-		m_sources.resize(m_numSources);
+		m_textures.resize(m_numSources);
 		m_drawBuffers.resize(m_numSources);
 		m_attributes.resize(m_numSources);
 
@@ -83,7 +65,7 @@ namespace JLEngine
 		}
 	}
 
-	void RenderTarget::SetTextureAttribute(uint32_t index, const TextureAttribute& attributes)
+	void RenderTarget::SetTextureAttribute(uint32_t index, const RTParams& attributes)
 	{
 		if (index < m_attributes.size())
 		{

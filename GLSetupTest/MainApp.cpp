@@ -114,9 +114,9 @@ int MainApp(std::string assetFolder)
     auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
     metallicSpheres->translation += glm::vec3(0, 2.5, -5);
     
-    //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
-    //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
+    auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
+    engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
     //
     //auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
     //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
@@ -133,9 +133,9 @@ int MainApp(std::string assetFolder)
 
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    //sceneRoot->AddChild(planeNode);
+    sceneRoot->AddChild(planeNode);
     sceneRoot->AddChild(metallicSpheres);
-    //sceneRoot->AddChild(helmet);
+    sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);
     //sceneRoot->AddChild(fish);
     //sceneRoot->AddChild(cardinalDirections);

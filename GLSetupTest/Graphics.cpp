@@ -11,6 +11,9 @@
 #include "GPUResource.h"
 #include "RenderTarget.h"
 
+#include <sstream>
+#include <stdexcept>
+
 namespace JLEngine
 {
 	GraphicsAPI* Graphics::m_graphicsAPI = nullptr;
@@ -336,6 +339,22 @@ namespace JLEngine
 		glDeleteProgram(program->GetProgramId());
 	}
 
+	void Graphics::Blit(RenderTarget* src, RenderTarget* dst, uint32_t bitfield, uint32_t filter)
+	{
+		auto srcId = src->GetFrameBufferId();
+		auto dstId = dst->GetFrameBufferId();
+		auto srcWidth = src->GetWidth();
+		auto srcHeight = src->GetHeight();
+		auto dstWidth = dst->GetWidth();
+		auto dstHeight = dst->GetHeight();
+
+		API()->BlitNamedFramebuffer(
+			srcId, dstId, 
+			0, 0, srcWidth, srcHeight, 
+			0, 0, dstWidth, dstHeight, 
+			bitfield, filter);
+	}
+
 	void Graphics::CreateRenderTarget(RenderTarget* target)
 	{
 		if (target->GetWidth() == 0 || target->GetHeight() == 0)
@@ -347,68 +366,8 @@ namespace JLEngine
 		glCreateFramebuffers(1, &fbo);
 		target->SetFrameBufferId(fbo);
 
-		auto& attributes = target->GetTextureAttributes();
-		for (uint32_t i = 0; i < target->GetNumSources(); i++)
-		{
-			GLuint tex;
-			glCreateTextures(GL_TEXTURE_2D, 1, &tex);
-
-			auto& attrib = attributes[i];
-			if (target->IsMultisampled())
-			{
-				glTextureStorage2DMultisample(tex, target->GetSamples(), attrib.internalFormat, 
-					target->GetWidth(), target->GetHeight(), GL_TRUE);
-			}
-			else
-			{
-				glTextureStorage2D(tex, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
-			}
-			
-			glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, attrib.minFilter);
-			glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, attrib.magFilter);
-			glTextureParameteri(tex, GL_TEXTURE_WRAP_S, attrib.wrapS);
-			glTextureParameteri(tex, GL_TEXTURE_WRAP_T, attrib.wrapT);
-
-			glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0 + i, tex, 0);
-			target->SetSourceId(i, tex);
-		}
-
-		GLuint depth;
-		if (target->DepthType() == DepthType::Renderbuffer)
-		{
-			glCreateRenderbuffers(1, &depth);
-			if (target->IsMultisampled())
-			{
-				glNamedRenderbufferStorageMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32,
-					target->GetWidth(), target->GetHeight());
-			}
-			else
-			{
-				glNamedRenderbufferStorage(depth, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight());
-			}
-			target->SetDepthId(depth);
-			glNamedFramebufferRenderbuffer(fbo, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
-		}
-		else if (target->DepthType() == DepthType::Texture)
-		{
-			glCreateTextures(GL_TEXTURE_2D, 1, &depth);
-			if (target->IsMultisampled())
-			{
-				glTextureStorage2DMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32,
-					target->GetWidth(), target->GetHeight(), GL_TRUE);
-			}
-			else
-			{
-				glTextureStorage2D(depth, 1, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight());
-			}
-
-			glTextureParameteri(depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTextureParameteri(depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTextureParameteri(depth, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTextureParameteri(depth, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			target->SetDepthId(depth);
-			glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depth, 0);
-		}
+		AttachTextures(target);
+		AttachDepth(target);
 
 		auto& drawBuffers = target->GetDrawBuffers();
 		glNamedFramebufferDrawBuffers(fbo, static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
@@ -416,22 +375,23 @@ namespace JLEngine
 		if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
 			GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
-			std::string errorMsg = "Framebuffer not complete: ";
+			std::ostringstream errorMsg;
+			errorMsg << "Framebuffer (ID: " << fbo << ") not complete: ";
 			switch (status)
 			{
-			case GL_FRAMEBUFFER_UNDEFINED: errorMsg += "GL_FRAMEBUFFER_UNDEFINED"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
-			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: errorMsg += "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
-			case GL_FRAMEBUFFER_UNSUPPORTED: errorMsg += "GL_FRAMEBUFFER_UNSUPPORTED"; break;
-			default: errorMsg += "Unknown Error"; break;
+			case GL_FRAMEBUFFER_UNDEFINED: errorMsg << "GL_FRAMEBUFFER_UNDEFINED"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: errorMsg << "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: errorMsg << "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: errorMsg << "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"; break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: errorMsg << "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"; break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: errorMsg << "GL_FRAMEBUFFER_UNSUPPORTED"; break;
+			default: errorMsg << "Unknown Error"; break;
 			}
 
 			glDeleteFramebuffers(1, &fbo);
-			for (uint32_t i = 0; i < target->GetNumSources(); i++)
+			for (uint32_t i = 0; i < target->GetNumTextures(); i++)
 			{
-				GLuint tex = target->GetSourceId(i);
+				GLuint tex = target->GetTexId(i);
 				glDeleteTextures(1, &tex);
 			}
 			if (target->DepthType() == DepthType::Renderbuffer)
@@ -445,7 +405,91 @@ namespace JLEngine
 				glDeleteTextures(1, &dboId);
 			}
 
-			throw std::runtime_error(errorMsg);
+			throw std::runtime_error(errorMsg.str());
+		}
+	}
+
+	void Graphics::AttachTextures(RenderTarget* target)
+	{
+		auto fbo = target->GetFrameBufferId();
+		auto& attributes = target->GetTextureAttributes();
+		for (uint32_t i = 0; i < target->GetNumTextures(); ++i)
+		{
+			GLuint tex;
+			glCreateTextures(GL_TEXTURE_2D, 1, &tex);
+
+			const auto& attrib = attributes[i];
+			if (target->IsMultisampled())
+			{
+				glTextureStorage2DMultisample(tex, target->GetSamples(), attrib.internalFormat,
+					target->GetWidth(), target->GetHeight(), GL_TRUE);
+			}
+			else
+			{
+				glTextureStorage2D(tex, 1, attrib.internalFormat, target->GetWidth(), target->GetHeight());
+			}
+
+			glTextureParameteri(tex, GL_TEXTURE_MIN_FILTER, attrib.minFilter);
+			glTextureParameteri(tex, GL_TEXTURE_MAG_FILTER, attrib.magFilter);
+			glTextureParameteri(tex, GL_TEXTURE_WRAP_S, attrib.wrapS);
+			glTextureParameteri(tex, GL_TEXTURE_WRAP_T, attrib.wrapT);
+
+			glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0 + i, tex, 0);
+			target->SetTexId(i, tex);
+		}
+	}
+
+	void Graphics::AttachDepth(RenderTarget* target)
+	{
+		auto fbo = target->GetFrameBufferId();
+		GLuint depth;
+		if (target->DepthType() == DepthType::Renderbuffer || target->DepthType() == DepthType::DepthStencil)
+		{
+			glCreateRenderbuffers(1, &depth);
+
+			if (target->IsMultisampled())
+			{
+				glNamedRenderbufferStorageMultisample(
+					depth,
+					target->GetSamples(),
+					target->DepthType() == DepthType::DepthStencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT32,
+					target->GetWidth(),
+					target->GetHeight()
+				);
+			}
+			else
+			{
+				glNamedRenderbufferStorage(
+					depth,
+					target->DepthType() == DepthType::DepthStencil ? GL_DEPTH24_STENCIL8 : GL_DEPTH_COMPONENT32,
+					target->GetWidth(),
+					target->GetHeight()
+				);
+			}
+
+			target->SetDepthId(depth);
+
+			GLenum attachment = target->DepthType() == DepthType::DepthStencil ? GL_DEPTH_STENCIL_ATTACHMENT : GL_DEPTH_ATTACHMENT;
+			glNamedFramebufferRenderbuffer(fbo, attachment, GL_RENDERBUFFER, depth);
+		}
+		else if (target->DepthType() == DepthType::Texture)
+		{
+			glCreateTextures(GL_TEXTURE_2D, 1, &depth);
+			if (target->IsMultisampled())
+			{
+				glTextureStorage2DMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32,
+					target->GetWidth(), target->GetHeight(), GL_TRUE);
+			}
+			else
+			{
+				glTextureStorage2D(depth, 1, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight());
+			}
+			glTextureParameteri(depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTextureParameteri(depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTextureParameteri(depth, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTextureParameteri(depth, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			target->SetDepthId(depth);
+			glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depth, 0);
 		}
 	}
 
@@ -453,7 +497,7 @@ namespace JLEngine
 	{
 		GLuint fboId = target->GetFrameBufferId();
 
-		glDeleteTextures(target->GetNumSources(), target->GetSources().data());
+		glDeleteTextures(target->GetNumTextures(), target->GetTextures().data());
 		glDeleteFramebuffers(1, &fboId);
 
 		if (target->DepthType() == DepthType::Renderbuffer)
@@ -468,7 +512,7 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::ResizeRenderTarget(RenderTarget* target, int newWidth, int newHeight)
+	void Graphics::RecreateRenderTarget(RenderTarget* target, int newWidth, int newHeight)
 	{
 		if (newWidth == 0 || newHeight == 0)
 		{
@@ -476,39 +520,37 @@ namespace JLEngine
 			return;
 		}
 
+		for (uint32_t i = 0; i < target->GetNumTextures(); i++)
+		{
+			GLuint tex = target->GetTexId(i);
+			glDeleteTextures(1, &tex);
+		}
+
+		GLuint depthBuffer = target->GetDepthBufferId();
+		if (depthBuffer)
+		{
+			if (target->DepthType() == DepthType::Renderbuffer || target->DepthType() == DepthType::DepthStencil)
+			{
+				glDeleteRenderbuffers(1, &depthBuffer);
+			}
+			else if (target->DepthType() == DepthType::Texture)
+			{
+				glDeleteTextures(1, &depthBuffer);
+			}
+		}
+
 		target->SetWidth(newWidth);
 		target->SetHeight(newHeight);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, target->GetFrameBufferId());
-
 		// Resize textures for color attachments
-		auto& attributes = target->GetTextureAttributes();
-		for (uint32_t i = 0; i < target->GetNumSources(); i++)
-		{
-			GLuint tex = target->GetSourceId(i);
-			glBindTexture(GL_TEXTURE_2D, tex);
-
-			auto& attrib = attributes[i];
-			glTexImage2D(GL_TEXTURE_2D, 0, attrib.internalFormat, newWidth, newHeight, 0, attrib.format, attrib.dataType, nullptr);
-		}
-
-		// Resize depth buffer
-		GLuint depth = target->GetDepthBufferId();
-		if (target->DepthType() == DepthType::Renderbuffer)
-		{
-			glBindRenderbuffer(GL_RENDERBUFFER, depth);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, newWidth, newHeight);
-		}
-		else if (target->DepthType() == DepthType::Texture)
-		{
-			glBindTexture(GL_TEXTURE_2D, depth);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, newWidth, newHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-		}
+		AttachTextures(target);
+		AttachDepth(target);
 
 		// Check framebuffer completeness
-		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		uint32_t fbo = target->GetFrameBufferId();
+		if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+			GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);
 			std::cerr << "Framebuffer resize failed: ";
 			switch (status)
 			{
@@ -521,14 +563,10 @@ namespace JLEngine
 			default: std::cerr << "Unknown Error"; break;
 			}
 			std::cerr << std::endl;
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 			return;
 		}
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
+		GL_CHECK_ERROR();
 		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 	}
 
@@ -583,7 +621,7 @@ namespace JLEngine
 		gpuBuffer.ClearDirty();
 	}
 
-	void Graphics::DisposeGraphicsBuffer(GPUBuffer* gpuBuffer)
+	void Graphics::DisposeGPUBuffer(GPUBuffer* gpuBuffer)
 	{
 		auto id = gpuBuffer->GetGPUID();
 		glDeleteBuffers(1, &id);

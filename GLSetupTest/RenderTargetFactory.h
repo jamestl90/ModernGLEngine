@@ -17,7 +17,7 @@ namespace JLEngine
 		RenderTargetFactory(ResourceManager<RenderTarget>* renderTargetManager) 
 			: m_renderTargetManager(renderTargetManager) {}
 
-		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name, int width, int height, std::vector<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
+		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name, int width, int height, std::vector<RTParams>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
 		{
             return m_renderTargetManager->Load(name, [&]()
                 {
@@ -38,6 +38,26 @@ namespace JLEngine
                     return renderTarget;
                 });
 		}
+
+        static RenderTarget* Create(
+            int width, 
+            int height, 
+            uint32_t internalFormat, 
+            DepthType depthType = DepthType::None)
+        {
+            auto renderTarget = new RenderTarget();
+            renderTarget->SetDepthType(depthType);
+            renderTarget->SetWidth(width);
+            renderTarget->SetHeight(height);
+            renderTarget->SetNumSources(1);
+            RTParams params;
+            params.internalFormat = internalFormat;
+            renderTarget->SetTextureAttribute(0, params);
+
+            Graphics::CreateRenderTarget(renderTarget);
+
+            return renderTarget;
+        }
 
 	protected:
 		ResourceManager<RenderTarget>* m_renderTargetManager;

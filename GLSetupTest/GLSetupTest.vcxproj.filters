@@ -353,6 +353,9 @@
     <ClInclude Include="UniformBuffer.h">
       <Filter>Header Files\Graphics\Resources</Filter>
     </ClInclude>
+    <ClInclude Include="RenderTargetPool.h">
+      <Filter>Header Files\Graphics\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

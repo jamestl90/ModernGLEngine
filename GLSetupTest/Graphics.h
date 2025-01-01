@@ -47,19 +47,23 @@ namespace JLEngine
 		template <typename T>
 		static void UploadToGPUBuffer(GPUBuffer& buffer, const T& data, uint32_t offset = 0);
 		static void BindGPUBuffer(GPUBuffer& buffer, int bindPoint);
+		static void DisposeGPUBuffer(GPUBuffer* idbo);
+
+		static void Blit(RenderTarget* src, RenderTarget* dst, uint32_t bitfield = GL_COLOR_BUFFER_BIT, uint32_t filter = GL_NEAREST);
 
 		static void CreateShader(ShaderProgram* shader);
 		static void DisposeShader(ShaderProgram* program);
 
 		static void CreateRenderTarget(RenderTarget* renderTarget);
 		static void DisposeRenderTarget(RenderTarget* target);
-		static void ResizeRenderTarget(RenderTarget* renderTarget, int w, int h);
+		static void RecreateRenderTarget(RenderTarget* renderTarget, int w, int h);
 
 		static void CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo);
 
-		static void DisposeGraphicsBuffer(GPUBuffer* idbo);
-
 	protected:
+		static void AttachDepth(RenderTarget* target);
+		static void AttachTextures(RenderTarget* target);
+
 		static GraphicsAPI* m_graphicsAPI;
 	};
 

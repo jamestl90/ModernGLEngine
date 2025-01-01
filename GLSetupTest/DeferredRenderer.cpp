@@ -30,12 +30,12 @@ namespace JLEngine
 
         for (auto& [attrib, vaoRes] : m_staticResources)
         {
-            Graphics::DisposeGraphicsBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
+            Graphics::DisposeGPUBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
             //Graphics::DisposeVertexArray(vaoRes.vao.get());
         }
         for (auto& [attrib, vaoRes] : m_dynamicResources)
         {
-            Graphics::DisposeGraphicsBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
+            Graphics::DisposeGPUBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
             //Graphics::DisposeVertexArray(vaoRes.vao.get());
         }
     }
@@ -103,11 +103,11 @@ namespace JLEngine
     void DeferredRenderer::SetupGBuffer() 
     {
         // Configure G-buffer render target
-        std::vector<TextureAttribute> attributes(4);
-        attributes[0] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };   // Albedo (RGB) + AO (A)
-        attributes[1] = { GL_RGBA16F, GL_RGBA, GL_FLOAT };        // Normals (RGB) + Cast/Receive Shadows (A)
-        attributes[2] = { GL_RG8, GL_RG, GL_UNSIGNED_BYTE };      // Metallic (R) + Roughness (G)
-        attributes[3] = { GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE };  // Emissive (RGB) + Reserved (A)
+        std::vector<RTParams> attributes(4);
+        attributes[0] = { GL_RGBA8 };   // Albedo (RGB) + AO (A)
+        attributes[1] = { GL_RGBA16F };        // Normals (RGB) + Cast/Receive Shadows (A)
+        attributes[2] = { GL_RG8 };      // Metallic (R) + Roughness (G)
+        attributes[3] = { GL_RGBA16F };  // Emissive (RGB) + Reserved (A)
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
             "GBufferTarget", 
@@ -359,28 +359,7 @@ namespace JLEngine
 
         if (m_debugModes != DebugModes::None)
         {
-            std::string debugString;
-            if (m_debugModes == DebugModes::GBuffer)
-            {
-                debugString = "Bottom Left to Top Right:\nGBuffer - Albedo, Normal, Metallic, Occlusion, Depth, Emission";
-                for (int mode = 0; mode < 6; ++mode)
-                {
-                    DebugGBuffer(mode);
-                }
-            }
-            else if (m_debugModes == DebugModes::DirectionalLightShadows)
-            {
-                debugString = "Bottom Left to Top Right:\nDirectional Shadowmap Depth, Camera Depth";
-                DebugDirectionalLightShadows();
-            }
-            else if (m_debugModes == DebugModes::HDRISkyTextures)
-            {
-                debugString = "Bottom Left to Top Right:\nBRDF, HDR Sky, Irradiance, Prefiltered";
-                DebugHDRISky(viewMatrix, projMatrix);
-            }
-            ImGui::Begin("Debug Views");
-            ImGui::Text(debugString.c_str());
-            ImGui::End();
+            DebugPass(viewMatrix, projMatrix);
         }
         else
         {
@@ -554,35 +533,31 @@ namespace JLEngine
         m_graphics->BindShader(m_lightingTestShader->GetProgramId());
         m_graphics->SetViewport(0, 0, m_width, m_height);
 
-        // G-Buffer textures
-        m_gBufferTarget->BindTexture(0, 0);
-        m_lightingTestShader->SetUniformi("gAlbedoAO", 0);
-        m_gBufferTarget->BindTexture(1, 1); 
-        m_lightingTestShader->SetUniformi("gNormals", 1);
-        m_gBufferTarget->BindTexture(2, 2);
-        m_lightingTestShader->SetUniformi("gMetallicRoughness", 2);
-        m_gBufferTarget->BindTexture(3, 3);
-        m_lightingTestShader->SetUniformi("gEmissive", 3);
-        // Camera Depth
-        m_gBufferTarget->BindDepthTexture(4);        
-        m_lightingTestShader->SetUniformi("gDepth", 4);
-        // Shadowmap Depth
-        m_graphics->SetActiveTexture(5);
-        m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
-        m_lightingTestShader->SetUniformi("gDLShadowMap", 5);
-        // Sky Textures
-        m_graphics->SetActiveTexture(6);
-        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_hdriSky->GetSkyGPUID());
-        m_lightingTestShader->SetUniformi("gSkyTexture", 6);
-        m_graphics->SetActiveTexture(7);
-        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_hdriSky->GetIrradianceGPUID());
-        m_lightingTestShader->SetUniformi("gIrradianceMap", 7);
-        m_graphics->SetActiveTexture(8);
-        m_graphics->BindTexture(GL_TEXTURE_CUBE_MAP, m_hdriSky->GetPrefilteredGPUID());
-        m_lightingTestShader->SetUniformi("gPrefilteredMap", 8);
-        m_graphics->SetActiveTexture(9);
-        m_graphics->BindTexture(GL_TEXTURE_2D, m_hdriSky->GetBRDFLutGPUID());
-        m_lightingTestShader->SetUniformi("gBRDFLUT", 9);
+        GLuint textures[] = 
+        {
+            m_gBufferTarget->GetTexId(0),         // gAlbedoAO
+            m_gBufferTarget->GetTexId(1),         // gNormals
+            m_gBufferTarget->GetTexId(2),         // gMetallicRoughness
+            m_gBufferTarget->GetTexId(3),         // gEmissive
+            m_gBufferTarget->GetDepthBufferId(),     // gDepth
+            m_dlShadowMap->GetShadowMapID(),         // gDLShadowMap
+            m_hdriSky->GetSkyGPUID(),                // gSkyTexture
+            m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
+            m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
+            m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
+        };
+
+        Graphics::API()->BindTextures(0, 10, textures);
+
+        const char* textureUniforms[] = {
+            "gAlbedoAO", "gNormals", "gMetallicRoughness", "gEmissive", "gDepth",
+            "gDLShadowMap", "gSkyTexture", "gIrradianceMap", "gPrefilteredMap", "gBRDFLUT"
+        };
+
+        for (int i = 0; i < 10; ++i)
+        {
+            m_lightingTestShader->SetUniformi(textureUniforms[i], i);
+        }
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
@@ -599,6 +574,32 @@ namespace JLEngine
         m_lightingTestShader->SetUniformi("u_PCFKernelSize", m_dlShadowMap->GetPCFKernelSize());
 
         RenderScreenSpaceTriangle();
+    }
+
+    void DeferredRenderer::DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        std::string debugString;
+        if (m_debugModes == DebugModes::GBuffer)
+        {
+            debugString = "Bottom Left to Top Right:\nGBuffer - Albedo, Normal, Metallic, Occlusion, Depth, Emission";
+            for (int mode = 0; mode < 6; ++mode)
+            {
+                DebugGBuffer(mode);
+            }
+        }
+        else if (m_debugModes == DebugModes::DirectionalLightShadows)
+        {
+            debugString = "Bottom Left to Top Right:\nDirectional Shadowmap Depth, Camera Depth";
+            DebugDirectionalLightShadows();
+        }
+        else if (m_debugModes == DebugModes::HDRISkyTextures)
+        {
+            debugString = "Bottom Left to Top Right:\nBRDF, HDR Sky, Irradiance, Prefiltered";
+            DebugHDRISky(viewMatrix, projMatrix);
+        }
+        ImGui::Begin("Debug Views");
+        ImGui::Text(debugString.c_str());
+        ImGui::End();
     }
 
     void DeferredRenderer::RenderScreenSpaceTriangle() 
@@ -674,45 +675,6 @@ namespace JLEngine
             materialIDMap[id] = materialIndex++;
         }
     }
-
-    //void DeferredRenderer::GenerateDefaultTextures()
-    //{
-    //    std::vector<unsigned char> DefaultWhitePixel = { 255, 255, 255, 255 };       // RGBA White
-    //    std::vector<unsigned char> DefaultBlackPixel = { 0, 0, 0, 255 };             // RGBA Black
-    //    std::vector<unsigned char> DefaultNeutralNormalPixel = { 128, 128, 255 };    // RGB Neutral Normal
-    //    std::vector<unsigned char> DefaultAOWhitePixel = { 255 };                    // R White (Full AO)
-    //    std::vector<unsigned char> DefaultEmissiveBlackPixel = { 0, 0, 0 };
-    //    
-    //    // Default white texture for Base Color
-    //    auto defaultBaseColor = m_resourceLoader->CreateTexture("Default_RGBA8_White");
-    //    ImageData baseColorImg = ImageData::CreateDefaultImageData(1, 1, GL_RGBA, DefaultWhitePixel);
-    //    defaultBaseColor->InitFromData(std::move(baseColorImg));
-    //    Graphics::CreateTexture(defaultBaseColor.get());
-    //    
-    //    // Default black texture for Metallic-Roughness
-    //    auto defaultMetallicRoughness = m_resourceLoader->CreateTexture("Default_RG8_Black");
-    //    ImageData metallicRoughnessImg = ImageData::CreateDefaultImageData(1, 1, GL_RG, { 0, 255 }); // Metallic = 0, Roughness = 1
-    //    defaultMetallicRoughness->InitFromData(std::move(metallicRoughnessImg));
-    //    Graphics::CreateTexture(defaultMetallicRoughness.get());
-    //    
-    //    // Default neutral normal map
-    //    auto defaultNormal = m_resourceLoader->CreateTexture("Default_RGB8_NeutralNormal");
-    //    ImageData normalImg = ImageData::CreateDefaultImageData(1, 1, GL_RGB, DefaultNeutralNormalPixel);
-    //    defaultNormal->InitFromData(std::move(normalImg));
-    //    Graphics::CreateTexture(defaultNormal.get());
-    //    
-    //    // Default white AO texture
-    //    auto defaultAO = m_resourceLoader->CreateTexture("Default_R8_White");
-    //    ImageData aoImg = ImageData::CreateDefaultImageData(1, 1, GL_RED, DefaultAOWhitePixel);
-    //    defaultAO->InitFromData(std::move(aoImg));
-    //    Graphics::CreateTexture(defaultAO.get());
-    //    
-    //    // Default black texture for Emissive
-    //    auto defaultEmissive = m_resourceLoader->CreateTexture("Default_RGB8_Black");
-    //    ImageData emissiveImg = ImageData::CreateDefaultImageData(1, 1, GL_RGB, DefaultEmissiveBlackPixel);
-    //    defaultEmissive->InitFromData(std::move(emissiveImg));
-    //    Graphics::CreateTexture(defaultEmissive.get());
-    //}
 
     void DeferredRenderer::Resize(int width, int height) 
     {

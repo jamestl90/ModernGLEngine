@@ -38,7 +38,7 @@ void main()
     mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));
 
     v_Normal = normalize(normalMatrix * a_Normal);
-    v_Tangent = normalize(mat3(modelMatrix) * a_Tangent);
+    v_Tangent = normalize(normalMatrix  * a_Tangent);
     v_Bitangent = normalize(cross(v_Normal, v_Tangent)); 
 
     v_TexCoord = a_TexCoord;

@@ -134,7 +134,7 @@ vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDir, vec
 vec3 CalculateDiffuseIBL(vec3 normal, vec3 albedo)
 {
     vec3 irradiance = texture(gIrradianceMap, normal).rgb;
-    return irradiance * albedo * 0.5;
+    return irradiance * albedo * 1.0;
 }
 
 // Specular IBL calculation
@@ -145,7 +145,7 @@ vec3 CalculateSpecularIBL(vec3 normal, vec3 viewDir, float roughness, vec3 F0)
     float NdotV = max(dot(normal, viewDir), 0.0);
     vec2 brdf = texture(gBRDFLUT, vec2(NdotV, roughness)).rg;
 
-    return prefilteredColor * (F0 * brdf.x + brdf.y) * 1.5;
+    return prefilteredColor * (F0 * brdf.x + brdf.y) * 1.0;
 }
 
 // Reconstruct world position from depth
@@ -166,7 +166,7 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     vec4 normalSample = texture(gNormals, texCoords);
     gData.albedo = texture(gAlbedoAO, texCoords).rgb;
     gData.ao = texture(gAlbedoAO, texCoords).a;
-    gData.normal = normalize(normalSample.xyz * 2.0 - 1.0);
+    gData.normal = normalize(normalSample.xyz);
     gData.worldPos = ReconstructWorldPosition(texCoords, texture(gDepth, texCoords).r);
     vec2 metallicRoughness = texture(gMetallicRoughness, texCoords).rg;
     gData.metallic = metallicRoughness.r;

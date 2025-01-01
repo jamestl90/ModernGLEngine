@@ -70,9 +70,9 @@ vec3 getNormal(MaterialGPU material)
         vec3 normalTex = texture(sampler2D(material.normalHandle), v_TexCoord).rgb;
         normalTex = normalTex * 2.0 - 1.0; // Map [0, 1] to [-1, 1]
         mat3 TBN = mat3(normalize(v_Tangent), normalize(v_Bitangent), normalize(v_Normal));
-        return normalize(TBN * normalTex) * 0.5 + 0.5;
+        return normalize(TBN * normalTex);
     }
-    return normalize(v_Normal) * 0.5 + 0.5;
+    return normalize(v_Normal);
 }
 
 float GetAmbientOcclusion(MaterialGPU material)

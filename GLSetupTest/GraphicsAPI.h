@@ -121,20 +121,38 @@ namespace JLEngine
 		 bool ShaderCompileErrorCheck(uint32_t id);
 		 bool ShaderProgramLinkErrorCheck(uint32_t programid);
 
+		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x);
+		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y);
+		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z);
+		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w);
+						
+		 void SetProgUniform(uint32_t progId, uint32_t location, float x);
+		 void SetProgUniform(uint32_t progId, uint32_t location, float x, float y);
+		 void SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z);
+		 void SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z, float w);
+						
+		 void SetProgUniform(uint32_t progId,uint32_t location, const glm::vec2& vec);
+		 void SetProgUniform(uint32_t progId,uint32_t location, const glm::vec3& vec);
+		 void SetProgUniform(uint32_t progId,uint32_t location, const glm::vec4& vec);
+						
+		 void SetProgUniform(uint32_t progId,uint32_t location, int count, bool transpose, const glm::mat2& mat);
+		 void SetProgUniform(uint32_t progId,uint32_t location, int count, bool transpose, const glm::mat3& mat);
+		 void SetProgUniform(uint32_t progId,uint32_t location, int count, bool transpose, const glm::mat4& mat);
+
 		 void SetUniform(uint32_t location, uint32_t x);
 		 void SetUniform(uint32_t location, uint32_t x, uint32_t y);
 		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z);
 		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w);
-						
+
 		 void SetUniform(uint32_t location, float x);
 		 void SetUniform(uint32_t location, float x, float y);
 		 void SetUniform(uint32_t location, float x, float y, float z);
 		 void SetUniform(uint32_t location, float x, float y, float z, float w);
-						
+
 		 void SetUniform(uint32_t location, const glm::vec2& vec);
 		 void SetUniform(uint32_t location, const glm::vec3& vec);
 		 void SetUniform(uint32_t location, const glm::vec4& vec);
-						
+
 		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat2& mat);
 		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat3& mat);
 		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat4& mat);
@@ -160,15 +178,20 @@ namespace JLEngine
 		void ReadTexture2D(uint32_t texId, ImageData& imageData, int width, int height, int channels, bool hdr, bool useFramebuffer);
 		void ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
 
-		void CreateTextures(uint32_t count, uint32_t& id);
-		void BindTexture(uint32_t target, uint32_t id);
+		void CreateTextures(uint32_t target, uint32_t n, uint32_t* textures);
+		void BindTextures(uint32_t first, uint32_t count, const uint32_t* textures);
 		void DisposeTexture(uint32_t count, uint32_t* textures);
-		void SetActiveTexture(uint32_t texunit);
 
 		uint32_t GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget);
 		std::string InternalFormatToString(GLint internalFormat);
 
 		// FBO
+		void BlitNamedFramebuffer(uint32_t readFrameBuffer, uint32_t drawFrameBuffer,
+			uint32_t srcX0, uint32_t srcY0,
+			uint32_t srcX1, uint32_t srcY1,
+			uint32_t dstX0, uint32_t dstY0,
+			uint32_t dstX1, uint32_t dstY1,
+			GLbitfield mask, uint32_t filter);
 		void CreateFrameBuffer(uint32_t count, uint32_t& id);
 		void BindFrameBuffer(uint32_t id);
 		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
@@ -191,6 +214,7 @@ namespace JLEngine
 		void* MapNamedBuffer(uint32_t id, GLbitfield access);
 		void UnmapNamedBuffer(uint32_t id);
 
+		// deprecated
 		void CreateBuffer(uint32_t count, uint32_t& id);
 		void DisposeBuffer(uint32_t count, uint32_t* id);
 		void BindBuffer(uint32_t buffType, uint32_t boID);
@@ -205,6 +229,10 @@ namespace JLEngine
 		void* MapBufferData(uint32_t target, uint32_t access);
 		bool UnmapBufferData(uint32_t target);
 
+		void CreateTextures(uint32_t count, uint32_t& id);
+		void BindTexture(uint32_t target, uint32_t id);
+		void SetActiveTexture(uint32_t texunit);
+
 		// Render calls
 		void BeginPrimitiveDraw();
 		void RenderPrimitive(glm::mat4& mvp, uint32_t type, uint32_t shaderId = -1);
@@ -216,7 +244,6 @@ namespace JLEngine
 		void MultiDrawElementsIndirect(uint32_t mode, uint32_t type, const void* indirect, uint32_t drawCount, uint32_t stride);
 
 		void GeneratePrimitives();
-
 		void DumpInfo() const;
 
 	private:

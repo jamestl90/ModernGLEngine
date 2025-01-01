@@ -261,6 +261,7 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="RenderTargetPool.h" />
     <ClInclude Include="ResourceLoader.h">
       <SubType>
       </SubType>

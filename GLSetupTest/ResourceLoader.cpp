@@ -294,7 +294,7 @@ namespace JLEngine
         return m_materialFactory->CreateMaterial(name);
     }
 
-    std::shared_ptr<RenderTarget> ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, std::vector<TextureAttribute>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
+    std::shared_ptr<RenderTarget> ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, std::vector<RTParams>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetfactory->CreateRenderTarget(name, width, height, texAttribs, depthType, numSources);
     }

@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 #include "GraphicsAPI.h"
 #include "RenderTarget.h"
+#include "RenderTargetPool.h"
 #include "ShaderProgram.h"
 #include "Node.h"
 #include "VertexArrayObject.h"
@@ -64,6 +65,7 @@ namespace JLEngine
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
+        void DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
@@ -88,6 +90,7 @@ namespace JLEngine
         int m_width, m_height;
         std::string m_assetFolder;
 
+        RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
 
         ShaderProgram* m_gBufferShader;

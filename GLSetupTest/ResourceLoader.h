@@ -28,7 +28,7 @@ namespace JLEngine
 	class GraphicsAPI;
 	class VertexArrayObject;
 
-	struct TextureAttribute;
+	struct RTParams;
 	
 	enum class DepthType;
 
@@ -88,7 +88,7 @@ namespace JLEngine
 
 		// RenderTarget Loading ///////////////////////////////////
 		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name, 
-			int width, int height, std::vector<TextureAttribute>& texAttribs, 
+			int width, int height, std::vector<RTParams>& texAttribs, 
 			JLEngine::DepthType depthType, uint32_t numSources);
 
 		// Mesh Loading ///////////////////////////////////

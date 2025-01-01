@@ -9,11 +9,9 @@
 
 namespace JLEngine
 {
-	struct TextureAttribute
+	struct RTParams
 	{
 		GLuint internalFormat = GL_RGBA8;			// Internal format (e.g., GL_RGBA8, GL_RGB32F)
-		GLuint format =			GL_RGBA;			// Format (e.g., GL_RGBA, GL_RGB)
-		GLuint dataType =		GL_UNSIGNED_BYTE;	// Data type (e.g., GL_UNSIGNED_BYTE, GL_FLOAT)
 		GLuint minFilter =		GL_LINEAR;			// Minification filter
 		GLuint magFilter =		GL_LINEAR;			// Magnification filter
 		GLuint wrapS =			GL_CLAMP_TO_EDGE;	// Wrap mode for S
@@ -24,31 +22,34 @@ namespace JLEngine
 	{
 		None,
 		Renderbuffer,
-		Texture
+		Texture,
+		DepthStencil
 	};
 
 	class RenderTarget : public GPUResource
 	{
 	public:
 		RenderTarget(const string& name);
-
+		RenderTarget() : GPUResource(""), m_fbo(0), m_dbo(0), m_numSources(1),
+			m_height(0), m_width(0), m_depthType(DepthType::None), m_useWindowSize(false) {}
 		~RenderTarget();
 
 		void SetFrameBufferId(uint32_t id) { m_fbo = id; }
 		void SetDepthId(uint32_t id) { m_dbo = id; }
-		void SetSourceId(uint32_t index, uint32_t id) { m_sources[index] = id; }
+		void SetTexId(uint32_t index, uint32_t id) { m_textures[index] = id; }
 
 		const uint32_t GetSamples() const { return m_numSamples; }
 		const uint32_t GetFrameBufferId() const { return m_fbo; }
 		const uint32_t GetDepthBufferId() const { return m_dbo; }
-		int GetSourceId(int index) { return m_sources[index]; }
-		const uint32_t GetNumSources() const { return m_numSources; }
-		const std::vector<uint32_t>& GetSources() { return m_sources; }
+		uint32_t GetTexId(int index) { return m_textures[index]; }
+		const uint32_t GetNumTextures() const { return m_numSources; }
+		const std::vector<uint32_t>& GetTextures() { return m_textures; }
 		const std::vector<uint32_t>& GetDrawBuffers() { return m_drawBuffers; }
 		bool IsMultisampled() const { return m_multisampled; }
 		const bool UseWindowSize() const { return m_useWindowSize; }
 		JLEngine::DepthType DepthType() const { return m_depthType; }
-		const std::vector<TextureAttribute>& GetTextureAttributes() { return m_attributes; }
+		const std::vector<RTParams>& GetTextureAttributes() { return m_attributes; }
+		const RTParams& GetTextureAttribute(int index) { return m_attributes[index]; }
 
 		uint32_t GetWidth() const { return m_width; }
 		uint32_t GetHeight() const { return m_height; }
@@ -60,12 +61,10 @@ namespace JLEngine
 		void SetHeight(uint32_t height) { m_height = height; }
 		void SetDepthType(JLEngine::DepthType depthType) { m_depthType = depthType; }
 		void SetNumSources(uint32_t numSources);
-		void SetTextureAttribute(uint32_t index, const TextureAttribute& attributes);
+		void SetTextureAttribute(uint32_t index, const RTParams& attributes);
 
 		void BindDepthTexture(int texUnit) const;
 		void BindTexture(int texIndex, int texUnit);
-		void BindTextures();
-		void Unbind() const;
 
 		void ResizeTextures(int newWidth, int newHeight);
 
@@ -77,7 +76,7 @@ namespace JLEngine
 		uint32_t m_width;
 		uint32_t m_height;
 
-		std::vector<TextureAttribute> m_attributes;
+		std::vector<RTParams> m_attributes;
 
 		uint32_t m_fbo;	// main FBO
 		uint32_t m_dbo;	// depth FBO
@@ -85,7 +84,7 @@ namespace JLEngine
 		bool m_multisampled = false;
 		int m_numSamples = 4;
 
-		std::vector<uint32_t> m_sources;	// texture Id's
+		std::vector<uint32_t> m_textures;	// texture Id's
 		std::vector<uint32_t> m_drawBuffers;
 		uint32_t m_numSources;
 	};
