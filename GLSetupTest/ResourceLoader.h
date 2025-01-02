@@ -5,6 +5,8 @@
 #include <memory>
 #include <filesystem>
 #include <unordered_map>
+#include <typeindex>
+#include <any>
 
 #include "ResourceManager.h"
 #include "VertexBuffers.h"
@@ -17,6 +19,7 @@
 #include "ShaderStorageBuffer.h"
 #include "MeshFactory.h"
 #include "GLBLoader.h"
+
 
 namespace JLEngine
 {
@@ -71,6 +74,7 @@ namespace JLEngine
 		std::shared_ptr<Cubemap> CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
 
 		// Shader Loading ///////////////////////////////////
+		std::shared_ptr<ShaderProgram> CreateComputeFromFile(const std::string& name, const std::string& computeFile, const std::string& folderPath);
 		std::shared_ptr<ShaderProgram> CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath);
 		std::shared_ptr<ShaderProgram> CreateShaderFromSource(const std::string& name, const std::string& vert, const std::string& frag);
 		void DeleteShader(const std::string& name);
@@ -91,12 +95,54 @@ namespace JLEngine
 		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name, 
 			int width, int height, std::vector<RTParams>& texAttribs, 
 			JLEngine::DepthType depthType, uint32_t numSources);
+		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name,
+			int width, int height,RTParams& texAttribs,
+			JLEngine::DepthType depthType, uint32_t numSources);
 
 		// Mesh Loading ///////////////////////////////////
 		std::shared_ptr<Mesh> CreateMesh(const std::string& name);
 
 		GLBLoader* GetGLBLoader() { return m_glbLoader; }
 		GraphicsAPI* GetGraphics() { return m_graphics; }
+
+		template <typename T>
+		static std::shared_ptr<T> Get(const std::string& name)
+		{
+			auto it = m_managers.find(typeid(T));
+			if (it != m_managers.end())
+			{
+				// this feels real dirty
+				auto mgr = std::any_cast<ResourceManager<T>*>(it->second);
+				return mgr->Get(name);
+			}
+			return nullptr;
+		}
+
+		template <typename T>
+		static std::shared_ptr<T> Get(uint32_t handle)
+		{
+			auto it = m_managers.find(typeid(T));
+			if (it != m_managers.end())
+			{
+				// this feels real dirty
+				auto mgr = std::any_cast<ResourceManager<T>*>(it->second);
+				return mgr->Get(handle);
+			}
+			return nullptr;
+		}
+
+		static std::shared_ptr<Material> GetMat(Node* node, int index = 0)
+		{
+			auto it = m_managers.find(typeid(Material));
+			if (it != m_managers.end())
+			{
+				// this feels real dirty
+				auto mgr = std::any_cast<ResourceManager<Material>*>(it->second);
+				return mgr->Get(node->mesh->GetSubmeshes().at(index).materialHandle);
+			}
+			return nullptr;
+		}
+
 	protected:
 
 		AssetGenerationSettings m_settings;
@@ -111,6 +157,8 @@ namespace JLEngine
 		ResourceManager<Material>* m_materialManager;
 		ResourceManager<RenderTarget>* m_renderTargetManager;
 		ResourceManager<Cubemap>* m_cubemapManager;
+
+		static std::unordered_map<std::type_index, std::any> m_managers;
 
 		TextureFactory* m_textureFactory;
 		CubemapFactory* m_cubemapFactory;

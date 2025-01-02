@@ -355,6 +355,19 @@ namespace JLEngine
 			bitfield, filter);
 	}
 
+	void Graphics::BlitToDefault(RenderTarget* src, uint32_t bitfield, uint32_t filter)
+	{
+		auto srcId = src->GetFrameBufferId();
+		auto srcWidth = src->GetWidth();
+		auto srcHeight = src->GetHeight();
+
+		API()->BlitNamedFramebuffer(
+			srcId, 0,
+			0, 0, srcWidth, srcHeight,
+			0, 0, srcWidth, srcHeight,
+			bitfield, filter);
+	}
+
 	void Graphics::CreateRenderTarget(RenderTarget* target)
 	{
 		if (target->GetWidth() == 0 || target->GetHeight() == 0)

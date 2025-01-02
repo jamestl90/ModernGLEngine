@@ -75,7 +75,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(location, 1, false, matrix);
+			m_graphics->SetProgUniform(GetProgramId(), location, matrix);
 		}
 	}
 
@@ -84,7 +84,16 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(location, vector);
+			m_graphics->SetProgUniform(GetProgramId(), location, vector);
+		}
+	}
+
+	void ShaderProgram::SetUniform(const std::string& name, const glm::vec2& vector)
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetProgUniform(GetProgramId(), location, vector);
 		}
 	}
 
@@ -93,7 +102,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(location, value);
+			m_graphics->SetProgUniform(GetProgramId(), location, value);
 		}
 	}
 
@@ -102,7 +111,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(location, vector);
+			m_graphics->SetProgUniform(GetProgramId(), location, vector);
 		}
 	}
 
@@ -111,7 +120,7 @@ namespace JLEngine
 		GLint location = GetUniformLocation(name);
 		if (location != -1)
 		{
-			m_graphics->SetUniform(location, value);
+			m_graphics->SetProgUniform(GetProgramId(), location, value);
 		}
 	}
 

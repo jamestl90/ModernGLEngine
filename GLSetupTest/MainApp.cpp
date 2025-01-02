@@ -41,9 +41,55 @@ void gameLogicUpdate(double deltaTime)
     flyCamera->ProcessKeyboard(window, (float)deltaTime);
 
     ImGui::Begin("HDRI Sky Settings");
-    ImGui::SliderInt("Irradiance Map Size", &skyInitParams.irradianceMapSize, 16, 128);
-    ImGui::SliderInt("Prefiltered Map Size", &skyInitParams.prefilteredMapSize, 32, 512);
-    ImGui::SliderInt("Prefiltered Samples", &skyInitParams.prefilteredSamples, 256, 8192);
+
+    // Define allowed texture sizes for each parameter
+    std::vector<int> fullTextureSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
+    std::vector<int> irradianceSizes(fullTextureSizes.begin(), fullTextureSizes.begin() + 4); // 16 to 128
+    std::vector<int> prefilteredMapSizes(fullTextureSizes.begin() + 1, fullTextureSizes.begin() + 6); // 32 to 512
+    std::vector<int> prefilteredSamples(fullTextureSizes.begin() + 3, fullTextureSizes.end()); // 128 to 8192
+
+    // Helper function to find the closest index for a value
+    auto findClosestIndex = [](const std::vector<int>& values, int value) {
+        auto it = std::lower_bound(values.begin(), values.end(), value);
+        if (it == values.end()) return static_cast<int>(values.size()) - 1;
+        return static_cast<int>(it - values.begin());
+        };
+
+    // Indices for each slider
+    int irrMapIndex = findClosestIndex(irradianceSizes, skyInitParams.irradianceMapSize);
+    int prefilteredMapIndex = findClosestIndex(prefilteredMapSizes, skyInitParams.prefilteredMapSize);
+    int prefilteredSamplesIndex = findClosestIndex(prefilteredSamples, skyInitParams.prefilteredSamples);
+
+    // Adjust slider width
+    ImGui::PushItemWidth(150);
+
+    // Irradiance Map Size Slider
+    if (ImGui::SliderInt("##IrradianceMapSize", &irrMapIndex, 0, static_cast<int>(irradianceSizes.size()) - 1))
+    {
+        skyInitParams.irradianceMapSize = irradianceSizes[irrMapIndex];
+    }
+    ImGui::SameLine();
+    ImGui::Text("Irradiance Map Size: %d", irradianceSizes[irrMapIndex]);
+
+    // Prefiltered Map Size Slider
+    if (ImGui::SliderInt("##PrefilteredMapSize", &prefilteredMapIndex, 0, static_cast<int>(prefilteredMapSizes.size()) - 1))
+    {
+        skyInitParams.prefilteredMapSize = prefilteredMapSizes[prefilteredMapIndex];
+    }
+    ImGui::SameLine();
+    ImGui::Text("Prefiltered Map Size: %d", prefilteredMapSizes[prefilteredMapIndex]);
+
+    // Prefiltered Samples Slider
+    if (ImGui::SliderInt("##PrefilteredSamples", &prefilteredSamplesIndex, 0, static_cast<int>(prefilteredSamples.size()) - 1))
+    {
+        skyInitParams.prefilteredSamples = prefilteredSamples[prefilteredSamplesIndex];
+    }
+    ImGui::SameLine();
+    ImGui::Text("Prefiltered Samples: %d", prefilteredSamples[prefilteredSamplesIndex]);
+
+    // Restore default slider width
+    ImGui::PopItemWidth();
+
     ImGui::SliderFloat("Compression Threshold", &skyInitParams.compressionThreshold, 1.0f, 5.0f);
     ImGui::SliderFloat("Max Value", &skyInitParams.maxValue, 1.0f, 20000.0f);
 
@@ -156,6 +202,11 @@ int MainApp(std::string assetFolder)
     //
     //cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
+    auto bed = engine.GetResourceLoader()->LoadGLB(assetFolder + "bed_single_01.glb");
+    bed->translation = glm::vec3(5.0f, -2.0f, 5.0f);
+    auto bedMat = JLEngine::ResourceLoader::GetMat(bed.get());
+    bedMat->roughnessFactor = 1.0f;
+
     //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
     //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
 
@@ -163,6 +214,7 @@ int MainApp(std::string assetFolder)
     //sceneRoot->AddChild(virtualCity);
     sceneRoot->AddChild(planeNode);
     sceneRoot->AddChild(metallicSpheres);
+    sceneRoot->AddChild(bed);
     sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);
     //sceneRoot->AddChild(fish);

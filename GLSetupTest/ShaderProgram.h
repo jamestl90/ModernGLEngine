@@ -37,6 +37,7 @@ namespace JLEngine
 		void SetUniform(const std::string& name, const glm::mat4& matrix);
 		void SetUniform(const std::string& name, const glm::vec4& vector);
 		void SetUniform(const std::string& name, const glm::vec3& vector);
+		void SetUniform(const std::string& name, const glm::vec2& vector);
 		void SetUniformf(const std::string& name, float value);
 		void SetUniformi(const std::string& name, uint32_t value);
 

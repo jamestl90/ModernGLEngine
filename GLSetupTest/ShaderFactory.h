@@ -57,6 +57,33 @@ namespace JLEngine
                 });
         }
 
+        std::shared_ptr<ShaderProgram> CreateComputeFromFile(const std::string& name, const std::string& computeFile, const std::string& folderPath)
+        {
+            return m_shaderManager->Load(name, [&]()
+                {
+                    auto program = std::make_shared<ShaderProgram>(name, folderPath);
+
+                    Shader computeProgram(GL_COMPUTE_SHADER, computeFile);
+
+                    std::string computeShaderText;
+                    if (!ReadTextFile(program->GetFilePath() + computeProgram.GetName(), computeShaderText))
+                    {
+                        throw "Could not find file: " + program->GetFilePath() + computeProgram.GetName(), "Graphics";
+                    }
+                    computeProgram.SetSource(computeShaderText);
+                    program->AddShader(computeProgram);
+
+                    Graphics::CreateShader(program.get());
+
+                    auto shaderPathVert = program->GetFilePath() + computeProgram.GetName();
+                    auto currentTimestamp = std::filesystem::last_write_time(shaderPathVert);
+                    m_shaderTimestamps[shaderPathVert] = currentTimestamp;
+
+                    GL_CHECK_ERROR();
+                    return program;
+                });
+        }
+
         std::shared_ptr<ShaderProgram> CreateShaderFromSource(const std::string& name, const std::string& vertSource, const std::string& fragSource)
         {
             return m_shaderManager->Load(name, [&]()

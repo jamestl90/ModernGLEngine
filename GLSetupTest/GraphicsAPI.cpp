@@ -1,14 +1,14 @@
+#include "Cubemap.h"
+#include "FileHelpers.h"
 #include "GraphicsAPI.h"
 #include "Mesh.h"
-#include "TextureReader.h"
-#include "FileHelpers.h"
 #include "RenderTarget.h"
-#include "Cubemap.h"
+#include "TextureReader.h"
 
-#include <set>
 #include <array>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <set>
 
 PFNGLGETTEXTUREHANDLEARBPROC glGetTextureHandleARB = nullptr;
 PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
@@ -16,7 +16,7 @@ PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
 namespace JLEngine
 {
 	GraphicsAPI::GraphicsAPI(Window* window) 
-		: m_drawAABB(false), m_shaderInfo(""), m_versionInfo(""), m_activeTextureUnit(0), m_activeShaderProgram(0),
+		: m_drawAABB(false), m_shaderInfo(""), m_versionInfo(""), 
 		m_vendorInfo(""), m_extensionInfo(""), m_rendererInfo(""), m_window(window), m_usingMSAA(false)
 	{
 		float fov = 45.0f;
@@ -24,7 +24,7 @@ namespace JLEngine
 		float farDist = 200.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
-
+		m_viewPort = { 0, 0, 0, 0 };
 		m_clearColour = glm::vec4(1.0f);
 
 		Initialise();
@@ -59,7 +59,6 @@ namespace JLEngine
 
 		GLint maxUnits;
 		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxUnits);
-		m_boundTextures = std::vector<uint32_t>(maxUnits);
 
 		// enable bindless textures
 		glGetTextureHandleARB = (PFNGLGETTEXTUREHANDLEARBPROC)glfwGetProcAddress("glGetTextureHandleARB");
@@ -139,6 +138,11 @@ namespace JLEngine
 		glClearColor(m_clearColour.x, m_clearColour.y, m_clearColour.z, m_clearColour.w);
 	}
 
+	void GraphicsAPI::SyncCompute()
+	{
+		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	}
+
 	glm::mat4& GraphicsAPI::CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view)
 	{
 		m_mvp = projection * view * modelMat;
@@ -208,74 +212,44 @@ namespace JLEngine
 		return true;
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x)
-	{
-		glProgramUniform1i(progId, location, x);
+	template <>
+	void GraphicsAPI::SetProgUniform<uint32_t>(uint32_t progId, uint32_t location, const uint32_t& value) {
+		glProgramUniform1i(progId, location, value);
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y)
-	{
-		glProgramUniform2i(progId, location, x, y);
+	template <>
+	void GraphicsAPI::SetProgUniform<float>(uint32_t progId, uint32_t location, const float& value) {
+		glProgramUniform1f(progId, location, value);
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z)
-	{
-		glProgramUniform3i(progId, location, x, y, z);
+	template <>
+	void GraphicsAPI::SetProgUniform<glm::vec2>(uint32_t progId, uint32_t location, const glm::vec2& value) {
+		glProgramUniform2fv(progId, location, 1, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
-	{
-		glProgramUniform4i(progId, location, x, y, z, w);
+	template <>
+	void GraphicsAPI::SetProgUniform<glm::vec3>(uint32_t progId, uint32_t location, const glm::vec3& value) {
+		glProgramUniform3fv(progId, location, 1, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x)
-	{
-		glProgramUniform1f(progId, location, x);
+	template <>
+	void GraphicsAPI::SetProgUniform<glm::vec4>(uint32_t progId, uint32_t location, const glm::vec4& value) {
+		glProgramUniform4fv(progId, location, 1, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x, float y)
-	{
-		glProgramUniform2f(progId, location, x, y);
+	template <>
+	void GraphicsAPI::SetProgUniform<glm::mat2>(uint32_t progId, uint32_t location, const glm::mat2& value) {
+		glProgramUniformMatrix2fv(progId, location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z)
-	{
-		glProgramUniform3f(progId, location, x, y, z);
+	template <>
+	void GraphicsAPI::SetProgUniform<glm::mat3>(uint32_t progId, uint32_t location, const glm::mat3& value) {
+		glProgramUniformMatrix3fv(progId, location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z, float w)
-	{
-		glProgramUniform4f(progId, location, x, y, z, w);
-	}
-
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::vec2& vec)
-	{
-		glProgramUniform2fv(progId, location, 1, &vec[0]);
-	}
-
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::vec3& vec)
-	{
-		glProgramUniform3fv(progId, location, 1, &vec[0]);
-	}
-
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::vec4& vec)
-	{
-		glProgramUniform4fv(progId, location, 1, &vec[0]);
-	}
-
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, int count, bool transpose, const glm::mat2& mat)
-	{
-		glProgramUniformMatrix2fv(progId, location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
-	}
-
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, int count, bool transpose, const glm::mat3& mat)
-	{
-		glProgramUniformMatrix3fv(progId, location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
-	}
-
-	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, int count, bool transpose, const glm::mat4& mat)
-	{
-		glProgramUniformMatrix4fv(progId, location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
+	template <>
+	void GraphicsAPI::SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4& value) {
+		glProgramUniformMatrix4fv(progId, location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
 	std::vector<std::tuple<std::string, int>> GraphicsAPI::GetActiveUniforms(uint32_t programId)
@@ -315,74 +289,44 @@ namespace JLEngine
 		}
 	}
 	
-	void GraphicsAPI::SetUniform(uint32_t location, uint32_t x)
-	{
-		glUniform1i(location, x);
+	template <>
+	void GraphicsAPI::SetUniform<uint32_t>(uint32_t location, const uint32_t& value) {
+		glUniform1i(location, value);
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, uint32_t x, uint32_t y)
-	{
-		glUniform2i(location, x, y);
+	template <>
+	void GraphicsAPI::SetUniform<float>(uint32_t location, const float& value) {
+		glUniform1f(location, value);
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z)
-	{
-		glUniform3i(location, x, y, z);
+	template <>
+	void GraphicsAPI::SetUniform<glm::vec2>(uint32_t location, const glm::vec2& value) {
+		glUniform2fv(location, 1, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w)
-	{
-		glUniform4i(location, x, y, z, w);
+	template <>
+	void GraphicsAPI::SetUniform<glm::vec3>(uint32_t location, const glm::vec3& value) {
+		glUniform3fv(location, 1, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, float x)
-	{
-		glUniform1f(location, x);
+	template <>
+	void GraphicsAPI::SetUniform<glm::vec4>(uint32_t location, const glm::vec4& value) {
+		glUniform4fv(location, 1, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, float x, float y)
-	{
-		glUniform2f(location, x, y);
+	template <>
+	void GraphicsAPI::SetUniform<glm::mat2>(uint32_t location, const glm::mat2& value) {
+		glUniformMatrix2fv(location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, float x, float y, float z)
-	{
-		glUniform3f(location, x, y, z);
+	template <>
+	void GraphicsAPI::SetUniform<glm::mat3>(uint32_t location, const glm::mat3& value) {
+		glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
-	void GraphicsAPI::SetUniform(uint32_t location, float x, float y, float z, float w)
-	{
-		glUniform4f(location, x, y, z, w);
-	}
-
-	void GraphicsAPI::SetUniform(uint32_t location, const glm::vec2& vec)
-	{
-		glUniform2fv(location, 1, &vec[0]);
-	}
-
-	void GraphicsAPI::SetUniform(uint32_t location, const glm::vec3& vec)
-	{
-		glUniform3fv(location, 1, &vec[0]);
-	}
-
-	void GraphicsAPI::SetUniform(uint32_t location, const glm::vec4& vec)
-	{
-		glUniform4fv(location, 1, &vec[0]);
-	}
-
-	void GraphicsAPI::SetUniform(uint32_t location, int count, bool transpose, const glm::mat2& mat)
-	{
-		glUniformMatrix2fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
-	}
-
-	void GraphicsAPI::SetUniform(uint32_t location, int count, bool transpose, const glm::mat3& mat)
-	{
-		glUniformMatrix3fv(location, count, transpose ? GL_TRUE : GL_FALSE, &mat[0][0]);
-	}
-
-	void GraphicsAPI::SetUniform(uint32_t location, int count, bool transpose, const glm::mat4& mat)
-	{
-		glUniformMatrix4fv(location, count, transpose ? GL_TRUE : GL_FALSE, glm::value_ptr(mat));
+	template <>
+	void GraphicsAPI::SetUniform<glm::mat4>(uint32_t location, const glm::mat4& value) {
+		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
 	uint32_t GraphicsAPI::CreateVertexArray()
@@ -396,6 +340,11 @@ namespace JLEngine
 	void GraphicsAPI::BindFrameBuffer( uint32_t id )
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, id);
+	}
+
+	void GraphicsAPI::BindDrawBuffer(uint32_t id)
+	{
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, id);
 	}
 
 	void GraphicsAPI::BlitNamedFramebuffer(uint32_t readFrameBuffer, uint32_t drawFrameBuffer, uint32_t srcX0, uint32_t srcY0, uint32_t srcX1, uint32_t srcY1, uint32_t dstX0, uint32_t dstY0, uint32_t dstX1, uint32_t dstY1, GLbitfield mask, uint32_t filter)
@@ -460,39 +409,9 @@ namespace JLEngine
 		}
 	}
 
-	void GraphicsAPI::CreateBuffer(uint32_t count, uint32_t& id)
-	{
-		glGenBuffers(count, &id);
-	}
-
-	void GraphicsAPI::SetBufferData( uint32_t buffType, ptrdiff_t size, void* data, uint32_t usage )
-	{
-		glBufferData(buffType, size, data, usage);
-	}
-
-	void GraphicsAPI::SetBufferSubData( uint32_t target, ptrdiff_t offset, int32_t size, void* data)
-	{
-		glBufferSubData(target, offset, size, data);
-	}
-
-	void GraphicsAPI::SetAttributePointer( uint32_t index, int32_t count, uint32_t datatype, bool normalise, int32_t size, void* offset )
-	{
-		glVertexAttribPointer(index, count, datatype, normalise ? GL_TRUE : GL_FALSE, size, offset);
-	}
-
 	void GraphicsAPI::BindBuffer( uint32_t buffType, uint32_t vboID )
 	{
 		glBindBuffer(buffType, vboID);
-	}
-
-	void* GraphicsAPI::MapBufferData( uint32_t target, uint32_t access )
-	{
-		return glMapBuffer(target, access);
-	}
-
-	bool GraphicsAPI::UnmapBufferData( uint32_t target )
-	{
-		return glUnmapBuffer(target) ? true : false;
 	}
 
 	void GraphicsAPI::DrawArrayBuffer( uint32_t drawMode, uint32_t first, uint32_t count )
@@ -505,22 +424,12 @@ namespace JLEngine
 		glDrawElements(drawMode, count, dataType, offset);
 	}
 
-	void GraphicsAPI::EnableVertexAttribArray(uint32_t pos)
-	{
-		glEnableVertexAttribArray(pos);
-	}
-
-	void GraphicsAPI::DisableVertexAttribArray(uint32_t pos)
-	{
-		glDisableVertexAttribArray(pos);
-	}
-
 	void GraphicsAPI::BindShader(uint32_t programId)
 	{
-		if (m_activeShaderProgram != programId)
+		if (m_boundShader != programId)
 		{
 			glUseProgram(programId);
-			m_activeShaderProgram = programId;
+			m_boundShader = programId;
 		}
 	}
 
@@ -529,9 +438,9 @@ namespace JLEngine
 		glUseProgram(0);
 	}
 
-	void GraphicsAPI::CreateTextures( uint32_t count, uint32_t& id )
+	void GraphicsAPI::DispatchCompute(uint32_t numGroupsX, uint32_t numGroupsY, uint32_t numGroupsZ)
 	{
-		glGenTextures(count, &id);
+		glDispatchCompute(numGroupsX, numGroupsY, numGroupsZ);
 	}
 
 	void GraphicsAPI::BindTexture( uint32_t target, uint32_t id )
@@ -746,6 +655,16 @@ namespace JLEngine
 		glBindTextures(first, count, textures);
 	}
 
+	void GraphicsAPI::BindTextureUnit(uint32_t unit, uint32_t texture)
+	{
+		glBindTextureUnit(unit, texture);
+	}
+
+	void GraphicsAPI::BindImageTexture(uint32_t unit, uint32_t texture, uint32_t level, bool layered, uint32_t layer, GLenum access, GLenum format)
+	{
+		glBindImageTexture(unit, texture, level, layered, layer, access, format);
+	}
+
 	void GraphicsAPI::DeleteTexture(uint32_t count, uint32_t* textures)
 	{
 		glDeleteTextures(count, textures);
@@ -754,11 +673,6 @@ namespace JLEngine
 	void GraphicsAPI::Clear(uint32_t flags)
 	{
 		glClear(flags);
-	}
-
-	void GraphicsAPI::SwapBuffers()
-	{
-		m_window->SwapBuffers();
 	}
 
 	void GraphicsAPI::CreateRenderBuffer(uint32_t count, uint32_t& id)
@@ -808,7 +722,15 @@ namespace JLEngine
 
 	void GraphicsAPI::SetViewport( uint32_t x, uint32_t y, uint32_t width, uint32_t height )
 	{
-		glViewport(x, y, width, height);
+		// can uncomment this once i remove all raw glViewport calls
+		//if (m_viewPort[0] != x || m_viewPort[1] != y || m_viewPort[2] != width || m_viewPort[3] != height)
+		//{
+			glViewport(x, y, width, height);
+			m_viewPort[0] = x;
+			m_viewPort[1] = y;
+			m_viewPort[2] = width;
+			m_viewPort[3] = height;
+		//}
 	}
 
 	void GraphicsAPI::SetViewport(glm::ivec4& params)
@@ -926,12 +848,12 @@ namespace JLEngine
 		if (shaderId == -1)
 		{	
 			auto loc = glGetUniformLocation(m_defaultShader, "u_MVP");
-			SetUniform(loc, 1, false, mvp);
+			SetUniform<glm::mat4>(loc, mvp);
 		}
 		else
 		{
 			auto loc = glGetUniformLocation(shaderId, "u_MVP");
-			SetUniform(loc, 1, false, mvp);
+			SetUniform<glm::mat4>(loc, mvp);
 		}
 
 		switch (type)

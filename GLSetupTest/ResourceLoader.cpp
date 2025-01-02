@@ -19,6 +19,8 @@
 
 namespace JLEngine
 {
+    std::unordered_map<std::type_index, std::any> ResourceLoader::m_managers;
+
     ResourceLoader::ResourceLoader(GraphicsAPI* graphics)
         : m_graphics(graphics), m_hotReload(false)
     {
@@ -28,6 +30,13 @@ namespace JLEngine
         m_renderTargetManager = new ResourceManager<RenderTarget>();
         m_meshManager = new ResourceManager<Mesh>();
         m_cubemapManager = new ResourceManager<Cubemap>();
+
+        m_managers[typeid(Texture)] = m_textureManager;
+        m_managers[typeid(ShaderProgram)] = m_shaderManager;
+        m_managers[typeid(Mesh)] = m_meshManager;
+        m_managers[typeid(Material)] = m_materialManager;
+        m_managers[typeid(RenderTarget)] = m_renderTargetManager;
+        m_managers[typeid(Cubemap)] = m_cubemapManager;
 
         m_textureFactory = new TextureFactory(m_textureManager, graphics);
         m_cubemapFactory = new CubemapFactory(m_cubemapManager, graphics);
@@ -98,6 +107,11 @@ namespace JLEngine
     }
 
     void ResourceLoader::DeleteTexture(const std::string& name) { m_textureFactory->Delete(name); }
+
+    std::shared_ptr<ShaderProgram> ResourceLoader::CreateComputeFromFile(const std::string& name, const std::string& computeFile, const std::string& folderPath)
+    {
+        return m_shaderFactory->CreateComputeFromFile(name, computeFile, folderPath);
+    }
 
     std::shared_ptr<ShaderProgram> ResourceLoader::CreateShaderFromFile(const std::string& name, const std::string& vert, const std::string& frag, std::string folderPath)
     {
@@ -302,6 +316,13 @@ namespace JLEngine
     std::shared_ptr<RenderTarget> ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, std::vector<RTParams>& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
     {
         return m_renderTargetfactory->CreateRenderTarget(name, width, height, texAttribs, depthType, numSources);
+    }
+
+    std::shared_ptr<RenderTarget> ResourceLoader::CreateRenderTarget(const std::string& name, int width, int height, RTParams& texAttribs, JLEngine::DepthType depthType, uint32_t numSources)
+    {
+        std::vector<RTParams> paramsVector;
+        paramsVector.push_back(texAttribs);
+        return m_renderTargetfactory->CreateRenderTarget(name, width, height, paramsVector, depthType, numSources);
     }
 
     std::shared_ptr<Mesh> ResourceLoader::CreateMesh(const std::string& name)

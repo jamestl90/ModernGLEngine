@@ -167,8 +167,9 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     GBufferData gData;
 
     vec4 normalSample = texture(gNormals, texCoords);
-    gData.albedo = texture(gAlbedoAO, texCoords).rgb;
-    gData.ao = texture(gAlbedoAO, texCoords).a;
+    vec4 albedoAOSample = texture(gAlbedoAO, texCoords);
+    gData.albedo = albedoAOSample.rgb;
+    gData.ao = albedoAOSample.a;
     gData.normal = normalize(normalSample.xyz);
     gData.worldPos = ReconstructWorldPosition(texCoords, texture(gDepth, texCoords).r);
     vec2 metallicRoughness = texture(gMetallicRoughness, texCoords).rg;
@@ -224,6 +225,7 @@ void main()
 
     vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
     totalLighting += gData.emissive;
+    totalLighting *= gData.ao;
 
     //totalLighting = ApplyToneMapping(totalLighting);
     //totalLighting = ApplyGammaCorrection(totalLighting);

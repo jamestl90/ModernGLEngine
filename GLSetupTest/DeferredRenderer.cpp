@@ -56,12 +56,16 @@ namespace JLEngine
         m_dlShadowMap->Initialise();
 
         SetupGBuffer();
+        RTParams rtParams;
+        rtParams.internalFormat = GL_RGBA8;
+        m_lightOutputTarget = m_resourceLoader->CreateRenderTarget("LightOutputTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
         m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "pos_uv_vert.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferDebugShader = m_resourceLoader->CreateShaderFromFile("DebugGBuffer", "pos_uv_vert.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
         m_lightingTestShader = m_resourceLoader->CreateShaderFromFile("LightingTest", "lighting_test_vert.glsl", "lighting_test_frag.glsl", shaderAssetPath).get();
-        m_debugTextureShader = m_resourceLoader->CreateShaderFromFile("DebugTexture", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
-
+        m_passthroughShader = m_resourceLoader->CreateShaderFromFile("PassthroughShader", "pos_uv_vert.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
+        m_simpleBlurCompute = m_resourceLoader->CreateComputeFromFile("SimpleBlur", "gaussianblur.glsl", shaderAssetPath + "Compute/").get();
+        
         HdriSkyInitParams params;
         params.fileName = "kloofendal_48d_partly_cloudy_puresky_4k.hdr";
         params.irradianceMapSize = 32;
@@ -328,10 +332,10 @@ namespace JLEngine
         m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        m_graphics->BindShader(m_debugTextureShader->GetProgramId());
+        m_graphics->BindShader(m_passthroughShader->GetProgramId());
         m_graphics->SetActiveTexture(0);
         m_graphics->BindTexture(GL_TEXTURE_2D, brdfLut);
-        m_debugTextureShader->SetUniformi("u_Texture", 0);
+        m_passthroughShader->SetUniformi("u_Texture", 0);
 
         RenderScreenSpaceTriangle();
 
@@ -366,7 +370,48 @@ namespace JLEngine
         else
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
+
+            auto rtHorizontal = m_rtPool.RequestRenderTarget(
+                m_gBufferTarget->GetWidth(), m_gBufferTarget->GetHeight(), GL_RGBA8);
+            Graphics::API()->BindShader(m_simpleBlurCompute->GetProgramId());
+            float texelSizeX = 1.0f / m_width;
+            float texelSizeY = 0.0f;
+            m_simpleBlurCompute->SetUniformi("u_Radius", 35);
+            m_simpleBlurCompute->SetUniform("u_TexelSize", glm::vec2(texelSizeX, texelSizeY));
+            Graphics::API()->BindImageTexture(0, m_lightOutputTarget->GetTexId(0), 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA8);
+            Graphics::API()->BindImageTexture(1, rtHorizontal->GetTexId(0), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+            Graphics::API()->DispatchCompute((m_width + 15) / 16, (m_height + 15) / 16, 1);
+            Graphics::API()->SyncCompute();
+
+            auto rtVertical = m_rtPool.RequestRenderTarget(
+                m_gBufferTarget->GetWidth(), m_gBufferTarget->GetHeight(), GL_RGBA8);
+            Graphics::API()->BindShader(m_simpleBlurCompute->GetProgramId());
+            texelSizeX = 0.0f; 
+            texelSizeY = 1.0f / m_height;
+            m_simpleBlurCompute->SetUniformi("u_Radius", 35);
+            m_simpleBlurCompute->SetUniform("u_TexelSize", glm::vec2(texelSizeX, texelSizeY));
+            Graphics::API()->BindImageTexture(0, rtHorizontal->GetTexId(0), 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA8);
+            Graphics::API()->BindImageTexture(1, rtVertical->GetTexId(0), 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8);
+            Graphics::API()->DispatchCompute((m_width + 15) / 16, (m_height + 15) / 16, 1);
+            Graphics::API()->SyncCompute();
+
+            // try this 
+            // Graphics::BlitToDefault(rtVertical);
+            // it removes the ui for some reason though
+            // also debug it in nsight
+
+            Graphics::API()->BindFrameBuffer(0);
+            Graphics::API()->SetViewport(0, 0, m_width, m_height);
+            Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            Graphics::API()->BindShader(m_passthroughShader->GetProgramId());
+            Graphics::API()->BindTextureUnit(0, rtVertical->GetTexId(0));
+            m_passthroughShader->SetUniformi("u_Texture", 0);
+            RenderScreenSpaceTriangle();
+
+            m_rtPool.ReleaseRenderTarget(rtHorizontal);
+            m_rtPool.ReleaseRenderTarget(rtVertical);
         }
+
         GL_CHECK_ERROR();
     }
 
@@ -534,7 +579,7 @@ namespace JLEngine
 
     void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
     {
-        m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
+        m_graphics->BindFrameBuffer(m_lightOutputTarget->GetFrameBufferId()); // Render to the default framebuffer
         m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         m_graphics->BindShader(m_lightingTestShader->GetProgramId());

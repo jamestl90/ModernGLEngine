@@ -110,10 +110,10 @@ namespace JLEngine
 
 		 void SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 		 void SetViewport(glm::ivec4& params);
-		 void SwapBuffers();
 		 void Clear(uint32_t flags);
 		 void ClearColour(float x, float y, float z, float w);
 		 void ClearColour();
+		 void SyncCompute();
 				
 		 // Shader
 		 std::vector<std::tuple<std::string, int>> GetActiveUniforms(uint32_t programId);
@@ -121,44 +121,48 @@ namespace JLEngine
 		 bool ShaderCompileErrorCheck(uint32_t id);
 		 bool ShaderProgramLinkErrorCheck(uint32_t programid);
 
-		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x);
-		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y);
-		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z);
-		 void SetProgUniform(uint32_t progId, uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w);
-						
-		 void SetProgUniform(uint32_t progId, uint32_t location, float x);
-		 void SetProgUniform(uint32_t progId, uint32_t location, float x, float y);
-		 void SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z);
-		 void SetProgUniform(uint32_t progId, uint32_t location, float x, float y, float z, float w);
-						
-		 void SetProgUniform(uint32_t progId,uint32_t location, const glm::vec2& vec);
-		 void SetProgUniform(uint32_t progId,uint32_t location, const glm::vec3& vec);
-		 void SetProgUniform(uint32_t progId,uint32_t location, const glm::vec4& vec);
-						
-		 void SetProgUniform(uint32_t progId,uint32_t location, int count, bool transpose, const glm::mat2& mat);
-		 void SetProgUniform(uint32_t progId,uint32_t location, int count, bool transpose, const glm::mat3& mat);
-		 void SetProgUniform(uint32_t progId,uint32_t location, int count, bool transpose, const glm::mat4& mat);
+		 // Template-based uniform setter
+		 template <typename T>
+		 void SetProgUniform(uint32_t progId, uint32_t location, const T& value);
+		 template <>
+		 void SetProgUniform<uint32_t>(uint32_t progId, uint32_t location, const uint32_t& value);
+		 template <>
+		 void SetProgUniform<float>(uint32_t progId, uint32_t location, const float& value);
+		 template <>
+		 void SetProgUniform<glm::vec2>(uint32_t progId, uint32_t location, const glm::vec2& value);
+		 template <>
+		 void SetProgUniform<glm::vec3>(uint32_t progId, uint32_t location, const glm::vec3& value);
+		 template <>
+		 void SetProgUniform<glm::vec4>(uint32_t progId, uint32_t location, const glm::vec4& value);
+		 template <>
+		 void SetProgUniform<glm::mat2>(uint32_t progId, uint32_t location, const glm::mat2& value);
+		 template <>
+		 void SetProgUniform<glm::mat3>(uint32_t progId, uint32_t location, const glm::mat3& value);
+		 template <>
+		 void SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4& value);
 
-		 void SetUniform(uint32_t location, uint32_t x);
-		 void SetUniform(uint32_t location, uint32_t x, uint32_t y);
-		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z);
-		 void SetUniform(uint32_t location, uint32_t x, uint32_t y, uint32_t z, uint32_t w);
-
-		 void SetUniform(uint32_t location, float x);
-		 void SetUniform(uint32_t location, float x, float y);
-		 void SetUniform(uint32_t location, float x, float y, float z);
-		 void SetUniform(uint32_t location, float x, float y, float z, float w);
-
-		 void SetUniform(uint32_t location, const glm::vec2& vec);
-		 void SetUniform(uint32_t location, const glm::vec3& vec);
-		 void SetUniform(uint32_t location, const glm::vec4& vec);
-
-		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat2& mat);
-		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat3& mat);
-		 void SetUniform(uint32_t location, int count, bool transpose, const glm::mat4& mat);
+		 template <typename T>
+		 void SetUniform(uint32_t location, const T& value);
+		 template <>
+		 void SetUniform<uint32_t>(uint32_t location, const uint32_t& value);
+		 template <>
+		 void SetUniform<float>(uint32_t location, const float& value);
+		 template <>
+		 void SetUniform<glm::vec2>(uint32_t location, const glm::vec2& value);
+		 template <>
+		 void SetUniform<glm::vec3>(uint32_t location, const glm::vec3& value);
+		 template <>
+		 void SetUniform<glm::vec4>(uint32_t location, const glm::vec4& value);
+		 template <>
+		 void SetUniform<glm::mat2>(uint32_t location, const glm::mat2& value);
+		 template <>
+		 void SetUniform<glm::mat3>(uint32_t location, const glm::mat3& value);
+		 template <>
+		 void SetUniform<glm::mat4>(uint32_t location, const glm::mat4& value);
 
 		 void BindShader(uint32_t programId);
 		 void UnbindShader();
+		 void DispatchCompute(uint32_t numGroupsX, uint32_t numGroupsY, uint32_t numGroupsZ);
 
 		// State modifier
 		void SetMSAA(bool flag);
@@ -171,7 +175,6 @@ namespace JLEngine
 		void SetDepthMask(uint32_t val);
 
 		void SetBlendFunc(uint32_t first, uint32_t second);
-
 		void SetCullFace(uint32_t face);
 
 		// Texture 
@@ -179,8 +182,10 @@ namespace JLEngine
 		void ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer = false);
 
 		void CreateTextures(uint32_t target, uint32_t n, uint32_t* textures);
-		void BindTextures(uint32_t first, uint32_t count, const uint32_t* textures);
 		void DeleteTexture(uint32_t count, uint32_t* textures);
+		void BindTextures(uint32_t first, uint32_t count, const uint32_t* textures);
+		void BindTextureUnit(uint32_t unit, uint32_t texture);
+		void BindImageTexture(uint32_t unit, uint32_t texture, uint32_t level, bool layered, uint32_t layer, GLenum access, GLenum format);
 
 		uint32_t GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget);
 		std::string InternalFormatToString(GLint internalFormat);
@@ -194,6 +199,7 @@ namespace JLEngine
 			GLbitfield mask, uint32_t filter);
 		void CreateFrameBuffer(uint32_t count, uint32_t& id);
 		void BindFrameBuffer(uint32_t id);
+		void BindDrawBuffer(uint32_t id);
 		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
 		void BindFrameBufferToTexture(uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level = 0);
 		uint32_t CheckFrameBuffer();
@@ -213,23 +219,10 @@ namespace JLEngine
 		void NamedBufferSubData(uint32_t id, size_t offset, size_t size, const void* data);
 		void* MapNamedBuffer(uint32_t id, GLbitfield access);
 		void UnmapNamedBuffer(uint32_t id);
+		void BindBuffer(uint32_t buffType, uint32_t boID);
+		void DisposeBuffer(uint32_t count, uint32_t* id);
 
 		// deprecated
-		void CreateBuffer(uint32_t count, uint32_t& id);
-		void DisposeBuffer(uint32_t count, uint32_t* id);
-		void BindBuffer(uint32_t buffType, uint32_t boID);
-		void SetBufferData(uint32_t buffType, ptrdiff_t size, void* data, uint32_t usage);
-
-		void EnableVertexAttribArray(uint32_t pos);
-		void DisableVertexAttribArray(uint32_t pos);
-
-		void SetBufferSubData( uint32_t target, ptrdiff_t offset, int32_t size, void* data);
-		void SetAttributePointer(uint32_t index, int32_t count, uint32_t datatype, bool normalise, int32_t size, void* offset);
-
-		void* MapBufferData(uint32_t target, uint32_t access);
-		bool UnmapBufferData(uint32_t target);
-
-		void CreateTextures(uint32_t count, uint32_t& id);
 		void BindTexture(uint32_t target, uint32_t id);
 		void SetActiveTexture(uint32_t texunit);
 
@@ -267,11 +260,13 @@ namespace JLEngine
 		uint32_t m_octahedronGeom[4];
 		uint32_t m_defaultShader;
 
-		uint32_t m_activeShaderProgram;
-		uint32_t m_activeTextureUnit;      
-		std::vector<GLuint> m_boundTextures;
+		uint32_t m_boundShader = 0;
+		uint32_t m_boundTexture = 0;
+		uint32_t m_boundFramebuffer = 0;
+		uint32_t m_boundDrawBuffer = 0;
 
 		glm::vec4 m_clearColour;
+		std::array<uint32_t, 4> m_viewPort;
 
 		Window* m_window;
 		ViewFrustum* m_viewFrustum;

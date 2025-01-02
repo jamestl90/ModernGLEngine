@@ -96,12 +96,14 @@ namespace JLEngine
 
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
+        RenderTarget* m_lightOutputTarget;
 
         ShaderProgram* m_gBufferShader;
         ShaderProgram* m_lightingTestShader;         
         ShaderProgram* m_gBufferDebugShader;
         ShaderProgram* m_shadowDebugShader;
-        ShaderProgram* m_debugTextureShader;
+        ShaderProgram* m_passthroughShader;
+        ShaderProgram* m_simpleBlurCompute;
 
         VertexArrayObject m_triangleVAO;
 
