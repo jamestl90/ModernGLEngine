@@ -186,6 +186,9 @@
     <ClCompile Include="VertexArrayObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ImageHelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainApp.h">
@@ -358,6 +361,15 @@
     </ClInclude>
     <ClInclude Include="ListCycler.h">
       <Filter>Header Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="JLMath.h">
+      <Filter>Header Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="TexturePool.h">
+      <Filter>Header Files\Graphics\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageHelpers.h">
+      <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

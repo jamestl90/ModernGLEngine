@@ -38,7 +38,6 @@ namespace JLEngine
 			}
 
 			RenderTarget* newTarget = RenderTargetFactory::Create(width, height, format);
-			Graphics::CreateRenderTarget(newTarget);
 			return newTarget;
 		}
 

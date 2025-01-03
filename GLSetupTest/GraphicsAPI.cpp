@@ -133,14 +133,14 @@ namespace JLEngine
 		m_clearColour = glm::vec4(x, y, z, w);
 	}
 
-	void GraphicsAPI::ClearColour()
-	{
-		glClearColor(m_clearColour.x, m_clearColour.y, m_clearColour.z, m_clearColour.w);
-	}
-
 	void GraphicsAPI::SyncCompute()
 	{
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	}
+
+	void GraphicsAPI::SyncFramebuffer()
+	{
+		glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
 	}
 
 	glm::mat4& GraphicsAPI::CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view)
@@ -363,6 +363,11 @@ namespace JLEngine
 		glBindVertexArray(vaoID);
 	}
 
+	void GraphicsAPI::DeleteVertexArray(uint32_t vaoID)
+	{
+		glDeleteVertexArrays(1, &vaoID);
+	}
+
 	// VBO
 
 	void GraphicsAPI::CreateNamedBuffer(uint32_t& id)
@@ -470,7 +475,7 @@ namespace JLEngine
 		return internalFormat;
 	}
 
-	inline std::string GraphicsAPI::InternalFormatToString(GLint internalFormat)
+	std::string GraphicsAPI::InternalFormatToString(GLint internalFormat)
 	{
 		switch (internalFormat)
 		{
@@ -665,6 +670,11 @@ namespace JLEngine
 		glBindImageTexture(unit, texture, level, layered, layer, access, format);
 	}
 
+	void GraphicsAPI::TextureParameter(uint32_t texture, uint32_t pname, uint32_t value)
+	{
+		glTextureParameteri(texture, pname, value);
+	}
+
 	void GraphicsAPI::DeleteTexture(uint32_t count, uint32_t* textures)
 	{
 		glDeleteTextures(count, textures);
@@ -690,6 +700,11 @@ namespace JLEngine
 		glFramebufferTexture2D(type, attachment, target, id, level);
 	}
 
+	bool GraphicsAPI::FramebufferComplete(uint32_t fboID)
+	{
+		return glCheckNamedFramebufferStatus(fboID, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+	}
+
 	void GraphicsAPI::BindFrameBufferToRenderbuffer( uint32_t type, uint32_t attachment, uint32_t target, uint32_t id)
 	{
 		glFramebufferRenderbuffer(type, attachment, target, id);
@@ -713,11 +728,6 @@ namespace JLEngine
 	void GraphicsAPI::DisposeBuffer( uint32_t count, uint32_t* id )
 	{
 		glDeleteBuffers(count, id);
-	}
-
-	uint32_t GraphicsAPI::CheckFrameBuffer()
-	{
-		return glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	}
 
 	void GraphicsAPI::SetViewport( uint32_t x, uint32_t y, uint32_t width, uint32_t height )

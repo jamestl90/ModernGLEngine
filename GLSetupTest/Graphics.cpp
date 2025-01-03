@@ -65,23 +65,18 @@ namespace JLEngine
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &anisotropy);
 		glTextureParameterf(image, GL_TEXTURE_MAX_ANISOTROPY, anisotropy);
 
-		if (imgData.hdrData.empty() && imgData.data.empty())
-		{
-			throw std::runtime_error("Graphics::CreateTexture: No valid texture data provided for " + texture->GetName());
-		}
-
 		GLuint mipLevels = params.mipmapEnabled
 			? static_cast<int>(std::log2(std::max(imgData.width, imgData.height))) + 1 : 1;
 
 		glTextureStorage2D(image, mipLevels, params.internalFormat, imgData.width, imgData.height);
 
-		if (imgData.isHDR)
+		if (imgData.isHDR && !imgData.hdrData.empty())
 		{
 			glTextureSubImage2D(image, 
 				0, 0, 0, imgData.width, imgData.height, params.format, 
 				params.dataType, imgData.hdrData.data());
 		}
-		else
+		else if (!imgData.data.empty())
 		{
 			glTextureSubImage2D(image,
 				0, 0, 0, imgData.width, imgData.height, params.format,
@@ -341,8 +336,8 @@ namespace JLEngine
 
 	void Graphics::Blit(RenderTarget* src, RenderTarget* dst, uint32_t bitfield, uint32_t filter)
 	{
-		auto srcId = src->GetFrameBufferId();
-		auto dstId = dst->GetFrameBufferId();
+		auto srcId = src->GetGPUID();
+		auto dstId = dst->GetGPUID();
 		auto srcWidth = src->GetWidth();
 		auto srcHeight = src->GetHeight();
 		auto dstWidth = dst->GetWidth();
@@ -355,16 +350,16 @@ namespace JLEngine
 			bitfield, filter);
 	}
 
-	void Graphics::BlitToDefault(RenderTarget* src, uint32_t bitfield, uint32_t filter)
+	void Graphics::BlitToDefault(RenderTarget* src, int destWidth, int destHeight, uint32_t bitfield, uint32_t filter)
 	{
-		auto srcId = src->GetFrameBufferId();
+		auto srcId = src->GetGPUID();
 		auto srcWidth = src->GetWidth();
 		auto srcHeight = src->GetHeight();
 
 		API()->BlitNamedFramebuffer(
 			srcId, 0,
 			0, 0, srcWidth, srcHeight,
-			0, 0, srcWidth, srcHeight,
+			0, 0, destWidth, destHeight,
 			bitfield, filter);
 	}
 
@@ -377,7 +372,7 @@ namespace JLEngine
 
 		GLuint fbo;
 		glCreateFramebuffers(1, &fbo);
-		target->SetFrameBufferId(fbo);
+		target->SetGPUID(fbo);
 
 		AttachTextures(target);
 		AttachDepth(target);
@@ -424,7 +419,7 @@ namespace JLEngine
 
 	void Graphics::AttachTextures(RenderTarget* target)
 	{
-		auto fbo = target->GetFrameBufferId();
+		auto fbo = target->GetGPUID();
 		auto& attributes = target->GetTextureAttributes();
 		for (uint32_t i = 0; i < target->GetNumTextures(); ++i)
 		{
@@ -454,7 +449,7 @@ namespace JLEngine
 
 	void Graphics::AttachDepth(RenderTarget* target)
 	{
-		auto fbo = target->GetFrameBufferId();
+		auto fbo = target->GetGPUID();
 		GLuint depth;
 		if (target->DepthType() == DepthType::Renderbuffer || target->DepthType() == DepthType::DepthStencil)
 		{
@@ -508,7 +503,7 @@ namespace JLEngine
 
 	void Graphics::DisposeRenderTarget(RenderTarget* target)
 	{
-		GLuint fboId = target->GetFrameBufferId();
+		GLuint fboId = target->GetGPUID();
 
 		glDeleteTextures(target->GetNumTextures(), target->GetTextures().data());
 		glDeleteFramebuffers(1, &fboId);
@@ -560,7 +555,7 @@ namespace JLEngine
 		AttachDepth(target);
 
 		// Check framebuffer completeness
-		uint32_t fbo = target->GetFrameBufferId();
+		uint32_t fbo = target->GetGPUID();
 		if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
 			GLenum status = glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER);

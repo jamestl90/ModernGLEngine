@@ -2,6 +2,7 @@
 #include "GlobalVars.h"
 #include "HDRISky.h"
 #include "ListCycler.h"
+#include "JLMath.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;

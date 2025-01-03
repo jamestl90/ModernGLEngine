@@ -82,6 +82,30 @@ namespace JLEngine
                 });
         }
 
+        static Texture* Create(
+            int width, 
+            int height, 
+            int internalFormat, 
+            int texType = GL_TEXTURE_2D, 
+            int dataType = GL_UNSIGNED_BYTE)
+        {
+            ImageData data;
+            data.width = width;
+            data.height = height;
+
+            TexParams params;
+            params.internalFormat = internalFormat;
+            params.textureType = texType;
+            params.dataType = dataType;
+
+            auto texture = new Texture();
+            texture->InitFromData(data);
+            texture->SetParams(params);
+
+            Graphics::CreateTexture(texture);
+            return texture;
+        }
+
         void Delete(const std::string& name)
         {
             m_textureManager->Remove(name);

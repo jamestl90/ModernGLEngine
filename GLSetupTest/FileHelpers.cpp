@@ -22,4 +22,22 @@ namespace JLEngine
 		}
 		return true;
 	}
+
+	bool WriteTextFile(const std::string& filename, std::string& output)
+	{
+		std::ofstream ofile(filename, std::ios::out);
+
+		if (!ofile.is_open())
+		{
+			return false;
+		}
+
+		ofile << output;
+
+		if (ofile.fail())
+		{
+			return false;
+		}
+		return true;
+	}
 }

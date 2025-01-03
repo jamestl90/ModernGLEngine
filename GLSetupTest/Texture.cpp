@@ -24,6 +24,19 @@ namespace JLEngine
         m_imageData = std::move(imageData);
     }
 
+    void Texture::InitFromData(ImageData& imageData)
+    {
+        m_imageData.width = imageData.width;
+        m_imageData.height = imageData.height;
+        m_imageData.isHDR = imageData.isHDR;
+        m_imageData.channels = imageData.channels;        
+
+        if (!m_imageData.data.empty() && !m_imageData.isHDR)
+            m_imageData.data = imageData.data; // copy
+        if (!m_imageData.hdrData.empty() && m_imageData.isHDR)
+            m_imageData.hdrData = imageData.hdrData;
+    }
+
     void Texture::SetParams(const TexParams& params) 
     {
         m_texParams = params; 

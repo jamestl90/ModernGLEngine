@@ -7,7 +7,7 @@
 namespace JLEngine
 {
 	RenderTarget::RenderTarget(const string& name)
-		: GPUResource(name), m_fbo(0), m_dbo(0), m_numSources(1),
+		: GPUResource(name), m_dbo(0), m_numSources(1),
 		m_height(0), m_width(0), m_depthType(DepthType::Renderbuffer), m_useWindowSize(false)
 	{
 

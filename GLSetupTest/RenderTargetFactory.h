@@ -42,7 +42,7 @@ namespace JLEngine
         static RenderTarget* Create(
             int width, 
             int height, 
-            uint32_t internalFormat, 
+            uint32_t internalFormat,
             DepthType depthType = DepthType::None)
         {
             auto renderTarget = new RenderTarget();

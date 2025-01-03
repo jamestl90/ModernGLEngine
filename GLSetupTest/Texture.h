@@ -27,6 +27,7 @@ namespace JLEngine
     class Texture : public GPUResource
     {
     public:
+        Texture() : GPUResource("") {}
         Texture(const std::string& name);
         ~Texture();
 
@@ -34,6 +35,11 @@ namespace JLEngine
         ImageData& GetMutableImageData() { return m_imageData; }        
 
         void InitFromData(ImageData&& imageData);
+
+        // this will not move the data but probably hard copy it
+        // only use this when you want to keep the original ImageData
+        // or if imagedata has no actual data in it
+        void InitFromData(ImageData& imageData);
 
         const TexParams& GetParams() const { return m_texParams; }
         void SetParams(const TexParams& params);

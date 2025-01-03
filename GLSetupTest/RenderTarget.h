@@ -30,16 +30,14 @@ namespace JLEngine
 	{
 	public:
 		RenderTarget(const string& name);
-		RenderTarget() : GPUResource(""), m_fbo(0), m_dbo(0), m_numSources(1),
+		RenderTarget() : GPUResource(""), m_dbo(0), m_numSources(1),
 			m_height(0), m_width(0), m_depthType(DepthType::None), m_useWindowSize(false) {}
 		~RenderTarget();
 
-		void SetFrameBufferId(uint32_t id) { m_fbo = id; }
 		void SetDepthId(uint32_t id) { m_dbo = id; }
 		void SetTexId(uint32_t index, uint32_t id) { m_textures[index] = id; }
 
 		const uint32_t GetSamples() const { return m_numSamples; }
-		const uint32_t GetFrameBufferId() const { return m_fbo; }
 		const uint32_t GetDepthBufferId() const { return m_dbo; }
 		uint32_t GetTexId(int index) { return m_textures[index]; }
 		const uint32_t GetNumTextures() const { return m_numSources; }
@@ -78,7 +76,6 @@ namespace JLEngine
 
 		std::vector<RTParams> m_attributes;
 
-		uint32_t m_fbo;	// main FBO
 		uint32_t m_dbo;	// depth FBO
 
 		bool m_multisampled = false;

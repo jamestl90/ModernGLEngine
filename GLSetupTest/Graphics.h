@@ -50,7 +50,7 @@ namespace JLEngine
 		static void DisposeGPUBuffer(GPUBuffer* idbo);
 
 		static void Blit(RenderTarget* src, RenderTarget* dst, uint32_t bitfield = GL_COLOR_BUFFER_BIT, uint32_t filter = GL_NEAREST);
-		static void BlitToDefault(RenderTarget* src, uint32_t bitfield = GL_COLOR_BUFFER_BIT, uint32_t filter = GL_NEAREST);
+		static void BlitToDefault(RenderTarget* src, int destWidth, int destHeight, uint32_t bitfield = GL_COLOR_BUFFER_BIT, uint32_t filter = GL_NEAREST);
 
 		static void CreateShader(ShaderProgram* shader);
 		static void DisposeShader(ShaderProgram* program);

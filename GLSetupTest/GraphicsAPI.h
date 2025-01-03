@@ -112,8 +112,8 @@ namespace JLEngine
 		 void SetViewport(glm::ivec4& params);
 		 void Clear(uint32_t flags);
 		 void ClearColour(float x, float y, float z, float w);
-		 void ClearColour();
 		 void SyncCompute();
+		 void SyncFramebuffer();
 				
 		 // Shader
 		 std::vector<std::tuple<std::string, int>> GetActiveUniforms(uint32_t programId);
@@ -187,6 +187,8 @@ namespace JLEngine
 		void BindTextureUnit(uint32_t unit, uint32_t texture);
 		void BindImageTexture(uint32_t unit, uint32_t texture, uint32_t level, bool layered, uint32_t layer, GLenum access, GLenum format);
 
+		void TextureParameter(uint32_t texture, uint32_t pname, uint32_t value);
+
 		uint32_t GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget);
 		std::string InternalFormatToString(GLint internalFormat);
 
@@ -202,7 +204,7 @@ namespace JLEngine
 		void BindDrawBuffer(uint32_t id);
 		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
 		void BindFrameBufferToTexture(uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level = 0);
-		uint32_t CheckFrameBuffer();
+		bool FramebufferComplete(uint32_t fboID);
 		// RBO
 		void CreateRenderBuffer(uint32_t count, uint32_t& id);
 		void BindRenderBuffer(uint32_t id);
@@ -211,6 +213,7 @@ namespace JLEngine
 		// VAO
 		uint32_t CreateVertexArray();
 		void BindVertexArray(uint32_t vaoID);
+		void DeleteVertexArray(uint32_t vaoID);
 		// VBO
 		void CreateNamedBuffer(uint32_t& id);
 		void BindBufferBase(GLenum target, uint32_t index, uint32_t bufferID);

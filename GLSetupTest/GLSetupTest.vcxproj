@@ -140,6 +140,10 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="ImageHelpers.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="ResourceLoader.cpp">
       <SubType>
       </SubType>
@@ -245,10 +249,15 @@
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="ImageHelpers.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
     <ClInclude Include="IndirectDrawBuffer.h">
       <SubType>
       </SubType>
     </ClInclude>
+    <ClInclude Include="JLMath.h" />
     <ClInclude Include="ListCycler.h" />
     <ClInclude Include="MaterialFactory.h">
       <SubType>
@@ -338,6 +347,7 @@
     <ClInclude Include="BakeCubemapIrradiance.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TextureFactory.h" />
+    <ClInclude Include="TexturePool.h" />
     <ClInclude Include="TextureReader.h" />
     <ClInclude Include="TextureWriter.h">
       <SubType>

@@ -15,7 +15,7 @@
 #include "GPUBuffer.h"
 #include "CameraInfo.h"
 #include "UniformBuffer.h"
-#include "CameraInfo.h"
+#include "TexturePool.h"
 
 namespace JLEngine
 {
@@ -94,6 +94,7 @@ namespace JLEngine
         float m_specularIndirectFactor = 1.0f;
         float m_diffuseIndirectFactor = 1.0f;
 
+        TexturePool m_texPool;
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
         RenderTarget* m_lightOutputTarget;
@@ -103,6 +104,7 @@ namespace JLEngine
         ShaderProgram* m_gBufferDebugShader;
         ShaderProgram* m_shadowDebugShader;
         ShaderProgram* m_passthroughShader;
+        ShaderProgram* m_downsampleShader;
         ShaderProgram* m_simpleBlurCompute;
 
         VertexArrayObject m_triangleVAO;
