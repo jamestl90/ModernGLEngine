@@ -92,11 +92,7 @@ namespace JLEngine
 			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
 			referencingNodes.push_back(node);
 
-			// Parse the mesh
 			node->mesh = ParseMesh(model, gltfNode.mesh);
-
-			// Debug: Log the mesh association
-			//std::cout << "Node " << node->name << " references mesh " << node->mesh->GetName() << std::endl;
 		}
 		else if (gltfNode.camera >= 0)
 		{
@@ -144,7 +140,7 @@ namespace JLEngine
 		auto it = meshCache.find(meshIndex);
 		if (it != meshCache.end())
 		{
-			return it->second; // Return cached mesh
+			return it->second; 
 		}
 
 		if (meshIndex < 0 || meshIndex >= model.meshes.size())
@@ -191,7 +187,6 @@ namespace JLEngine
 			mesh->AddSubmesh(subMesh);
 		}
 
-		// Cache the mesh for future use
 		meshCache[meshIndex] = mesh;
 
 		return mesh;
@@ -208,33 +203,43 @@ namespace JLEngine
 
 		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
 
-		// Interleave vertex data
-		std::vector<float> interleavedVertexData;
-		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
-
 		Material* material;
 		if (!model.materials.empty())
 		{
-			material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex).get();
+			if (key.materialIndex < 0)
+			{
+				material = m_resourceLoader->GetDefaultMaterial();
+			}
+			else
+			{
+				material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex).get();
+				UpdateUVsFromScaleOffset(texCoords, material->scale, material->offset);
+			}
 		}
 		else
 		{
 			material = m_resourceLoader->GetDefaultMaterial();
 		}
 
-		auto& vao = m_staticVAOs[key.attributesKey];
+		// Interleave vertex data
+		std::vector<float> interleavedVertexData;
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
+
+		auto& vao = material->useTransparency ? m_transparentVAOs[key.attributesKey] : m_staticVAOs[key.attributesKey];
 		if (!vao)
 		{
 			//std::cerr << "Error: No VAO found for attributes key " << key.attributesKey << "\n";
 			
 			vao = std::make_shared<VertexArrayObject>("vao" + std::to_string(key.attributesKey));
-			m_staticVAOs[key.attributesKey] = vao;			
+			if (material->useTransparency)
+			{
+				m_transparentVAOs[key.attributesKey] = vao;
+			}
+			else
+			{
+				m_staticVAOs[key.attributesKey] = vao;
+			}
 			vao->SetVertexAttribKey(key.attributesKey);
-		}
-
-		if (vao->GetAttribKey() == 3) // POS - NORMAL only
-		{
-			std::cout << "strange vertex format detected" << std::endl;
 		}
 
 		auto& vbo = vao->GetVBO();
@@ -263,6 +268,17 @@ namespace JLEngine
 		return submesh;
 	}
 
+	void GLBLoader::UpdateUVsFromScaleOffset(std::vector<float>& uvs, glm::vec2 scale, glm::vec2 offset)
+	{
+		for (auto i = 0; i < uvs.size(); i += 2)
+		{
+			uvs[i] *= scale.x;
+			uvs[i + 1] *= scale.y;
+			uvs[i] += offset.x;
+			uvs[i + 1] += offset.y;
+		}
+	}
+
 	std::shared_ptr<Material> GLBLoader::ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx)
 	{
 		// Check cache
@@ -282,6 +298,10 @@ namespace JLEngine
 		{
 			const auto& factor = gltfMaterial.values.at(BASE_COLOR_FACTOR).ColorFactor();
 			material->baseColorFactor = glm::vec4(factor[0], factor[1], factor[2], factor[3]);
+			if (material->baseColorFactor.a > 0.0f && material->baseColorFactor.a < 1.0f)
+			{
+				material->useTransparency = true;
+			}
 		}
 		else
 		{
@@ -294,7 +314,9 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.values.at(BASE_COLOR_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->baseColorTexture = ParseTexture(model, texName, textureIndex);
+			material->baseColorTexture = ParseTexture(model, texName, std::string(BASE_COLOR_TEXTURE), textureIndex);
+
+			loadKHRTextureTransform(gltfMaterial, material);
 		}
 
 		// Parse metallic factor
@@ -333,7 +355,7 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.values.at(METALLIC_ROUGHNESS_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->metallicRoughnessTexture = ParseTexture(model, texName, textureIndex);
+			material->metallicRoughnessTexture = ParseTexture(model, texName, std::string(METALLIC_ROUGHNESS_TEXTURE), textureIndex);
 		}
 
 		// Parse normal texture
@@ -342,7 +364,7 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.additionalValues.at(NORMAL_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->normalTexture = ParseTexture(model, texName, textureIndex);
+			material->normalTexture = ParseTexture(model, texName, std::string(NORMAL_TEXTURE), textureIndex);
 		}
 
 		// Parse occlusion texture
@@ -351,7 +373,7 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.additionalValues.at(OCCLUSION_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->occlusionTexture = ParseTexture(model, texName, textureIndex);
+			material->occlusionTexture = ParseTexture(model, texName, std::string(OCCLUSION_TEXTURE), textureIndex);
 		}
 
 		// Parse emissive texture
@@ -360,7 +382,7 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.additionalValues.at(EMISSIVE_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->emissiveTexture = ParseTexture(model, texName, textureIndex);
+			material->emissiveTexture = ParseTexture(model, texName, std::string(EMISSIVE_TEXTURE), textureIndex);
 		}
 
 		// Parse emissive factor
@@ -375,6 +397,93 @@ namespace JLEngine
 			material->emissiveFactor = glm::vec3(0.0f);
 		}
 
+		// Parse KHR_materials_transmission
+		constexpr const char* KHR_MATERIALS_TRANSMISSION = "KHR_materials_transmission";
+		if (gltfMaterial.extensions.find(KHR_MATERIALS_TRANSMISSION) != gltfMaterial.extensions.end())
+		{
+			const tinygltf::Value& transmission = gltfMaterial.extensions.at(KHR_MATERIALS_TRANSMISSION);
+			if (transmission.Has("transmissionFactor") && transmission.Get("transmissionFactor").IsNumber())
+			{
+				material->transmissionFactor = static_cast<float>(transmission.Get("transmissionFactor").GetNumberAsDouble());
+				if (material->transmissionFactor)
+					material->useTransparency = true;
+			}
+			else
+			{
+				material->transmissionFactor = 0.0f; 
+			}
+		}
+		else
+		{
+			material->transmissionFactor = 0.0f; 
+		}
+
+		// Parse KHR_materials_volume
+		constexpr const char* KHR_MATERIALS_VOLUME = "KHR_materials_volume";
+		if (gltfMaterial.extensions.find(KHR_MATERIALS_VOLUME) != gltfMaterial.extensions.end())
+		{
+			const tinygltf::Value& volume = gltfMaterial.extensions.at(KHR_MATERIALS_VOLUME);
+
+			if (volume.Has("thicknessFactor") && volume.Get("thicknessFactor").IsNumber())
+			{
+				material->thickness = static_cast<float>(volume.Get("thicknessFactor").GetNumberAsDouble());
+			}
+			else
+			{
+				material->thickness = 0.0f; 
+			}
+
+			// Attenuation color
+			if (volume.Has("attenuationColor") && volume.Get("attenuationColor").IsArray())
+			{
+				const auto& colorArray = volume.Get("attenuationColor");
+				material->attenuationColor = glm::vec3(
+					static_cast<float>(colorArray.Get(0).GetNumberAsDouble()),
+					static_cast<float>(colorArray.Get(1).GetNumberAsDouble()),
+					static_cast<float>(colorArray.Get(2).GetNumberAsDouble())
+				);
+			}
+			else
+			{
+				material->attenuationColor = glm::vec3(1.0f); 
+			}
+
+			// Attenuation distance
+			if (volume.Has("attenuationDistance") && volume.Get("attenuationDistance").IsNumber())
+			{
+				material->attenuationDistance = static_cast<float>(volume.Get("attenuationDistance").GetNumberAsDouble());
+			}
+			else
+			{
+				material->attenuationDistance = std::numeric_limits<float>::max(); 
+			}
+		}
+		else
+		{
+			material->thickness = 0.0f;
+			material->attenuationColor = glm::vec3(1.0f);
+			material->attenuationDistance = std::numeric_limits<float>::max();
+		}
+
+		// Refraction Index (KHR_materials_ior)
+		constexpr const char* KHR_MATERIALS_IOR = "KHR_materials_ior";
+		if (gltfMaterial.extensions.find(KHR_MATERIALS_IOR) != gltfMaterial.extensions.end())
+		{
+			const tinygltf::Value& ior = gltfMaterial.extensions.at(KHR_MATERIALS_IOR);
+			if (ior.Has("ior") && ior.Get("ior").IsNumber())
+			{
+				material->refractionIndex = static_cast<float>(ior.Get("ior").GetNumberAsDouble());
+			}
+			else
+			{
+				material->refractionIndex = 1.5f; // Default IOR for glass
+			}
+		}
+		else
+		{
+			material->refractionIndex = 1.5f; // Default IOR for glass
+		}
+
 		// Alpha properties
 		material->alphaMode = AlphaModeFromString(gltfMaterial.alphaMode);
 		material->alphaCutoff = static_cast<float>(gltfMaterial.alphaCutoff);
@@ -386,7 +495,7 @@ namespace JLEngine
 		return material;
 	}
 
-	std::shared_ptr<Texture> GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex)
+	std::shared_ptr<Texture> GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& name, int textureIndex)
 	{
 		// Check if the texture index is valid
 		if (textureIndex < 0 || textureIndex >= model.textures.size())
@@ -404,7 +513,7 @@ namespace JLEngine
 		const auto& glbImageData = model.images[texture.source];
 
 		// Generate a final name for the texture
-		const std::string& finalName = name + (texture.name.empty() ? "UnnamedTexture" : texture.name);
+		const std::string& finalName = matName + "_" + name;
 
 		// Extract texture details
 		uint32_t width = static_cast<uint32_t>(glbImageData.width);
@@ -486,6 +595,25 @@ namespace JLEngine
 		node->localMatrix = glm::translate(glm::mat4(1.0f), node->translation) *
 			glm::mat4_cast(node->rotation) *
 			glm::scale(glm::mat4(1.0f), node->scale);
+	}
+
+	void GLBLoader::loadKHRTextureTransform(const tinygltf::Material& gltfMaterial, std::shared_ptr<Material> material)
+	{
+		auto& extensions = gltfMaterial.pbrMetallicRoughness.baseColorTexture.extensions;
+
+		if (extensions.find("KHR_texture_transform") != extensions.end())
+		{
+			const tinygltf::Value& transform = extensions.at("KHR_texture_transform");
+
+			if (transform.Has("scale") && transform.Get("scale").IsArray())
+			{
+				const auto& scaleArray = transform.Get("scale");
+				bool isArray = scaleArray.IsArray();
+				auto valX = static_cast<float>(scaleArray.Get(0).GetNumberAsDouble());
+				auto valY = static_cast<float>(scaleArray.Get(1).GetNumberAsDouble());
+				material->scale = glm::vec2(valX, valY);
+			}
+		}
 	}
 
 	void GLBLoader::BatchLoadAttributes(const tinygltf::Model& model,

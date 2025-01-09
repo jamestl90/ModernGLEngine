@@ -43,8 +43,6 @@ namespace JLEngine
         glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
         glClear(GL_DEPTH_BUFFER_BIT);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
 
         m_graphics->BindShader(m_shadowMapShader->GetProgramId());
         m_shadowMapShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);

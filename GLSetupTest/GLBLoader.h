@@ -6,6 +6,7 @@
 #include <string>
 #include <iostream>
 #include <functional>
+#include <unordered_map>
 
 #include "VertexBuffers.h"
 #include "Mesh.h"
@@ -45,6 +46,7 @@ namespace JLEngine
 
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetStaticVAOs() { return m_staticVAOs; }
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetDynamicVAOs() { return m_dynamicVAOs; }
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetTransparentVAOs() { return m_transparentVAOs; }
 
 		void ClearCaches();
 
@@ -52,10 +54,11 @@ namespace JLEngine
 		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode);
 		std::shared_ptr<Mesh> ParseMesh(const tinygltf::Model& model, int meshIndex);
 		std::shared_ptr<Material> ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
-		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& name, int textureIndex);
+		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& texName, int textureIndex);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
+		void loadKHRTextureTransform(const tinygltf::Material& gltfMaterial, std::shared_ptr<Material> material);
 		SubMesh CreateSubMesh(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
-		
+		void UpdateUVsFromScaleOffset(std::vector<float>& uvs, glm::vec2 scale, glm::vec2 offset);
 		bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<unsigned int>& indices);
 		bool LoadTangentAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& tangentData);
 		bool LoadTexCoordAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
@@ -78,6 +81,7 @@ namespace JLEngine
 
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_transparentVAOs;
 
 		ResourceLoader* m_resourceLoader;
 	};

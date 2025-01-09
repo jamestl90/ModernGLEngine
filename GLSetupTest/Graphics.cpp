@@ -595,14 +595,14 @@ namespace JLEngine
 	void Graphics::CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo)
 	{
 		GPUBuffer& gpuBuffer = idbo->GetGPUBuffer();
-
+		GL_CHECK_ERROR();
 		if (gpuBuffer.GetGPUID() == 0)
 		{
 			GLuint id = 0;
 			glCreateBuffers(1, &id);
 			gpuBuffer.SetGPUID(id);
 		}
-
+		GL_CHECK_ERROR();
 		const auto& bufferData = idbo->GetDataImmutable();
 		size_t bufferSize = bufferData.size() * sizeof(DrawIndirectCommand);
 
@@ -625,7 +625,7 @@ namespace JLEngine
 				glNamedBufferSubData(gpuBuffer.GetGPUID(), 0, bufferSize, bufferData.data());
 			}
 		}
-
+		GL_CHECK_ERROR();
 		gpuBuffer.ClearDirty();
 	}
 

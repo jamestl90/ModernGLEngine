@@ -49,6 +49,8 @@ namespace JLEngine
         m_cameraUBO.GetGPUBuffer().SetSize(sizeof(CameraInfo));
         Graphics::CreateGPUBuffer(m_cameraUBO.GetGPUBuffer());
 
+        m_sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
+
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
 
@@ -60,13 +62,18 @@ namespace JLEngine
         RTParams rtParams;
         rtParams.internalFormat = GL_RGBA8;
         m_lightOutputTarget = m_resourceLoader->CreateRenderTarget("LightOutputTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
-        
+        m_transparentTarget = m_resourceLoader->CreateRenderTarget("TransparentTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
+
         m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "screenspacetriangle.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferDebugShader = m_resourceLoader->CreateShaderFromFile("DebugGBuffer", "screenspacetriangle.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
         m_lightingTestShader = m_resourceLoader->CreateShaderFromFile("LightingTest", "screenspacetriangle.glsl", "lighting_test_frag.glsl", shaderAssetPath).get();
         m_passthroughShader = m_resourceLoader->CreateShaderFromFile("PassthroughShader", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
+        m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
+        m_transmissionShader = m_resourceLoader->CreateShaderFromFile("TransmissionShader", "gbuffer_vert.glsl", "transmission_frag.glsl", shaderAssetPath).get();
+        m_composeFramebufferShader = m_resourceLoader->CreateShaderFromFile("ComposeFramebuffer", "screenspacetriangle.glsl", "compose_fb_frag.glsl", shaderAssetPath).get();
+        // compute shader
         m_simpleBlurCompute = m_resourceLoader->CreateComputeFromFile("SimpleBlur", "gaussianblur.glsl", shaderAssetPath + "Compute/").get();
         
         HdriSkyInitParams params;
@@ -118,7 +125,7 @@ namespace JLEngine
         std::vector<RTParams> attributes(4);
         attributes[0] = { GL_RGBA8 };   // Albedo (RGB) + AO (A)
         attributes[1] = { GL_RGBA16F };        // Normals (RGB) + Cast/Receive Shadows (A)
-        attributes[2] = { GL_RG8 };      // Metallic (R) + Roughness (G)
+        attributes[2] = { GL_RGBA8 };      // Metallic (R) + Roughness (G)
         attributes[3] = { GL_RGBA16F };  // Emissive (RGB) + Reserved (A)
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
@@ -162,20 +169,21 @@ namespace JLEngine
         //    }
         //}
 
-        m_graphics->BindFrameBuffer(0);
         return lightSpaceMatrix;
     }
 
     void DeferredRenderer::GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        m_graphics->BindFrameBuffer(m_gBufferTarget->GetGPUID());
-        
-        m_graphics->SetDepthMask(GL_TRUE);
-        m_graphics->Enable(GL_DEPTH_TEST);
-        m_graphics->Disable(GL_BLEND);
-        m_graphics->SetViewport(0, 0, m_width, m_height);
-        m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
-        m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        Graphics::API()->BindFrameBuffer(m_gBufferTarget->GetGPUID());
+
+        Graphics::API()->Disable(GL_BLEND);
+        Graphics::API()->Enable(GL_DEPTH_TEST);
+        Graphics::API()->Disable(GL_BLEND);
+        Graphics::API()->SetDepthMask(GL_TRUE);
+        Graphics::API()->SetDepthFunc(GL_LEQUAL);
+        Graphics::API()->SetViewport(0, 0, m_width, m_height);
+        Graphics::API()->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
+        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         Graphics::API()->BindShader(m_gBufferShader->GetProgramId());
 
@@ -204,7 +212,159 @@ namespace JLEngine
         //}
     }
 
-    void DeferredRenderer::DebugGBuffer(int debugMode) 
+    void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        CameraInfo camInfo;
+        camInfo.viewMatrix = viewMatrix;
+        camInfo.projMatrix = projMatrix;
+        camInfo.cameraPos = glm::vec4(eyePos.x, eyePos.y, eyePos.z, 1.0f);
+
+        // update camera info
+        Graphics::UploadToGPUBuffer(m_cameraUBO.GetGPUBuffer(), camInfo, 0);
+
+        DrawUI();
+
+        // prepare the default framebuffer
+        Graphics::API()->BindFrameBuffer(0);
+        Graphics::API()->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
+        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
+
+        GBufferPass(viewMatrix, projMatrix);
+
+        if (m_debugModes != DebugModes::None)
+        {
+            DebugPass(viewMatrix, projMatrix);
+        }
+        else
+        {
+            LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
+            //ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
+
+            //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
+            //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
+            //ImageHelpers::BlurInPlaceCompute(rtPingPong, m_simpleBlurCompute);
+            //ImageHelpers::CopyToDefault(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
+            //m_rtPool.ReleaseRenderTarget(rtPingPong);
+
+            TransparencyPass(eyePos, viewMatrix, projMatrix);
+        }
+
+        GL_CHECK_ERROR();
+    }
+
+    void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
+    {
+        Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
+        // unbind any depth attachments from the lighting stage
+        Graphics::API()->NamedFramebufferTexture(m_lightOutputTarget->GetGPUID(), GL_DEPTH_ATTACHMENT, 0, 0);
+        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
+        Graphics::API()->BindShader(m_lightingTestShader->GetProgramId());
+        Graphics::API()->SetViewport(0, 0, m_width, m_height);
+
+        GLuint textures[] =
+        {
+            m_gBufferTarget->GetTexId(0),         // gAlbedoAO
+            m_gBufferTarget->GetTexId(1),         // gNormals
+            m_gBufferTarget->GetTexId(2),         // gMetallicRoughness
+            m_gBufferTarget->GetTexId(3),         // gEmissive
+            m_gBufferTarget->GetDepthBufferId(),     // gDepth
+            m_dlShadowMap->GetShadowMapID(),         // gDLShadowMap
+            m_hdriSky->GetSkyGPUID(),                // gSkyTexture
+            m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
+            m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
+            m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
+        };
+
+        Graphics::API()->BindTextures(0, 10, textures);
+
+        const char* textureUniforms[] = {
+            "gAlbedoAO", "gNormals", "gMetallicRoughness", "gEmissive", "gDepth",
+            "gDLShadowMap", "gSkyTexture", "gIrradianceMap", "gPrefilteredMap", "gBRDFLUT"
+        };
+
+        for (int i = 0; i < 10; ++i)
+        {
+            m_lightingTestShader->SetUniformi(textureUniforms[i], i);
+        }
+
+        m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
+        m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
+        m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
+        m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
+        m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
+        m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
+
+        auto frustum = m_graphics->GetViewFrustum();
+        m_lightingTestShader->SetUniformf("u_Near", frustum->GetNear());
+        m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
+
+        m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
+        m_lightingTestShader->SetUniformi("u_PCFKernelSize", m_dlShadowMap->GetPCFKernelSize());
+
+        m_lightingTestShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
+        m_lightingTestShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
+
+        RenderScreenSpaceTriangle();
+    }
+
+    void DeferredRenderer::TransparencyPass(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
+    {
+        RenderBlended(eyePos, viewMat, projMatrix);
+        //RenderTransmissive(eyePos, viewMat, projMatrix);
+
+        //Graphics::API()->SetDepthMask(GL_TRUE); // Re-enable depth writes
+        //Graphics::API()->Disable(GL_BLEND);
+        //
+        //Graphics::API()->BindFrameBuffer(0);
+        //Graphics::API()->SetViewport(0, 0, m_width, m_height);
+        //Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //Graphics::API()->BindShader(m_composeFramebufferShader->GetProgramId());
+        //Graphics::API()->BindTextureUnit(0, m_transparentTarget->GetTexId(0));
+        //Graphics::API()->BindTextureUnit(1, m_lightOutputTarget->GetTexId(0));
+        //m_composeFramebufferShader->SetUniformi("u_InputTexture1", 0);
+        //m_composeFramebufferShader->SetUniformi("u_InputTexture2", 1);
+        //
+        //RenderScreenSpaceTriangle();
+    }
+
+    void DeferredRenderer::RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
+    {
+        Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
+        // bind the gbuffer depth to the target for the transparency pass
+        Graphics::API()->NamedFramebufferTexture(m_lightOutputTarget->GetGPUID(), GL_DEPTH_ATTACHMENT, m_gBufferTarget->GetDepthBufferId(), 0);
+
+        Graphics::API()->Enable(GL_BLEND);
+        Graphics::API()->SetBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        Graphics::API()->Enable(GL_DEPTH_TEST);
+        Graphics::API()->SetDepthMask(GL_FALSE);
+        Graphics::API()->SetDepthFunc(GL_LEQUAL);
+        Graphics::API()->SetViewport(0, 0, m_width, m_height);
+
+        Graphics::API()->BindShader(m_blendShader->GetProgramId());
+        auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
+        auto& vaoRes = m_transparentResources[23];
+
+        Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
+        Graphics::BindGPUBuffer(m_ssboTransparentPerDraw.GetGPUBuffer(), 1);
+        Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
+
+        DrawGeometry(vaoRes, stride);
+
+        ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
+
+        Graphics::API()->SetDepthMask(GL_TRUE);
+        Graphics::API()->Disable(GL_BLEND);
+    }
+
+    void DeferredRenderer::RenderTransmissive(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
+    {
+        Graphics::API()->BindShader(m_transmissionShader->GetProgramId());
+
+    }
+
+    void DeferredRenderer::DebugGBuffer(int debugMode)
     {
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
         m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
@@ -256,8 +416,8 @@ namespace JLEngine
                 m_gBufferDebugShader->SetUniformi("gAlbedoAO", 0);
                 break;
 
-            case 4: 
-                m_gBufferTarget->BindDepthTexture(4); 
+            case 4:
+                m_gBufferTarget->BindDepthTexture(4);
                 m_gBufferDebugShader->SetUniformi("gDepth", 4);
                 break;
 
@@ -353,42 +513,7 @@ namespace JLEngine
         m_hdriSky->Render(viewMatrix, projMatrix, 2);
     }
 
-    void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
-    {
-        CameraInfo camInfo;
-        camInfo.viewMatrix = viewMatrix;
-        camInfo.projMatrix = projMatrix;
-        camInfo.cameraPos = glm::vec4(eyePos.x, eyePos.y, eyePos.z, 1.0f);
-
-        // update camera info
-        Graphics::UploadToGPUBuffer(m_cameraUBO.GetGPUBuffer(), camInfo, 0);
-
-        DrawUI();
-
-        auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
-
-        GBufferPass(viewMatrix, projMatrix);
-
-        if (m_debugModes != DebugModes::None)
-        {
-            DebugPass(viewMatrix, projMatrix);
-        }
-        else
-        {
-            LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
-            ImageHelpers::CopyToDefault(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
-
-            //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
-            //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
-            //ImageHelpers::BlurInPlaceCompute(rtPingPong, m_simpleBlurCompute);
-            //ImageHelpers::CopyToDefault(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
-            //m_rtPool.ReleaseRenderTarget(rtPingPong);
-        }
-
-        GL_CHECK_ERROR();
-    }
-
-    void DeferredRenderer::AddVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao)
+    void DeferredRenderer::AddVAO(VAOType vaoType, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao)
     { 
         auto resource = VAOResource
         {
@@ -396,17 +521,21 @@ namespace JLEngine
             std::make_shared<IndirectDrawBuffer>() 
         };
 
-        if (isStatic) 
+        if (vaoType == VAOType::STATIC)
         {
             m_staticResources[key] = resource;
         }
-        else 
+        else if (vaoType == VAOType::DYNAMIC)
         {
             m_dynamicResources[key] = resource;
         }
+        else if (vaoType == VAOType::JL_TRANSPARENT)
+        {
+            m_transparentResources[key] = resource;
+        }
     }
 
-    void DeferredRenderer::AddVAOs(bool isStatic, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos)
+    void DeferredRenderer::AddVAOs(VAOType vaoType, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos)
     {
         for (auto& [key, vao] : vaos)
         {
@@ -416,84 +545,21 @@ namespace JLEngine
                 std::make_shared<IndirectDrawBuffer>()
             };
 
-            if (isStatic)
+            if (vaoType == VAOType::STATIC)
+            {
                 m_staticResources[key] = resource;
-            else
+            }
+            else if (vaoType == VAOType::DYNAMIC)
+            {
                 m_dynamicResources[key] = resource;
+            }
+            else if (vaoType == VAOType::JL_TRANSPARENT)
+            {
+                m_transparentResources[key] = resource;
+            }
         }
     }
-
-    void DeferredRenderer::GenerateGPUBuffers(Node* sceneRoot)
-    {
-        if (!sceneRoot) return;
-
-        for (auto& [vertexAttrib, vaoresource] : m_staticResources)
-        {
-            Graphics::CreateVertexArray(vaoresource.vao.get());
-        }
-
-        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
-        {
-            Graphics::CreateVertexArray(vaoresource.vao.get());
-        }
-        auto matManager = m_resourceLoader->GetMaterialManager();
-        auto texManager = m_resourceLoader->GetTextureManager();
-        std::vector<MaterialGPU> matBuffer;
-        std::unordered_map<uint32_t, size_t> materialIDMap;
-
-        GenerateMaterialAndTextureBuffers(*matManager, *texManager, matBuffer, materialIDMap);
-
-        m_ssboMaterials.Set(std::move(matBuffer));
-        Graphics::CreateGPUBuffer<MaterialGPU>(m_ssboMaterials.GetGPUBuffer(), m_ssboMaterials.GetDataImmutable());
-
-        int count = 0;
-        std::function<void(Node*)> traverseScene = [&](Node* node)
-        {
-            if (!node) return;
-
-            if (node->GetTag() == NodeTag::Mesh)
-            {
-                auto& submeshes = node->mesh->GetSubmeshes();
-                for (auto& submesh : submeshes)
-                {
-                    PerDrawData pdd;
-                    pdd.materialID = (int)materialIDMap[submesh.materialHandle];
-                    pdd.modelMatrix = node->GetGlobalTransform();
-                    //pdd.castShadows = matManager->Get(submesh.materialHandle)->castShadows ? 1 : 0;
-                    if (node->mesh->IsStatic())
-                    {   
-                        m_ssboStaticPerDraw.AddData(pdd);
-                        m_staticResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);                        
-                    }
-                    else
-                    {
-                        m_ssboDynamicPerDraw.AddData(pdd);
-                        m_dynamicResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
-                    }
-                }
-            }
-
-            for (const auto& child : node->children)
-            {
-                traverseScene(child.get());
-            }
-        };
-        traverseScene(sceneRoot);
-
-        for (auto& [vertexAttrib, vaoresource] : m_staticResources)
-        {
-            Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
-        }
-
-        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
-        {
-            Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
-        }
-        
-        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
-        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
-    }
-
+    
     void DeferredRenderer::CycleDebugMode()
     {
         static DebugModes modes[4] = 
@@ -550,60 +616,6 @@ namespace JLEngine
         m_graphics->MultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
     }
 
-    void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
-    {
-        m_graphics->BindFrameBuffer(m_lightOutputTarget->GetGPUID()); // Render to the default framebuffer
-        m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        m_graphics->BindShader(m_lightingTestShader->GetProgramId());
-        m_graphics->SetViewport(0, 0, m_width, m_height);
-
-        GLuint textures[] = 
-        {
-            m_gBufferTarget->GetTexId(0),         // gAlbedoAO
-            m_gBufferTarget->GetTexId(1),         // gNormals
-            m_gBufferTarget->GetTexId(2),         // gMetallicRoughness
-            m_gBufferTarget->GetTexId(3),         // gEmissive
-            m_gBufferTarget->GetDepthBufferId(),     // gDepth
-            m_dlShadowMap->GetShadowMapID(),         // gDLShadowMap
-            m_hdriSky->GetSkyGPUID(),                // gSkyTexture
-            m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
-            m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
-            m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
-        };
-
-        Graphics::API()->BindTextures(0, 10, textures);
-
-        const char* textureUniforms[] = {
-            "gAlbedoAO", "gNormals", "gMetallicRoughness", "gEmissive", "gDepth",
-            "gDLShadowMap", "gSkyTexture", "gIrradianceMap", "gPrefilteredMap", "gBRDFLUT"
-        };
-
-        for (int i = 0; i < 10; ++i)
-        {
-            m_lightingTestShader->SetUniformi(textureUniforms[i], i);
-        }
-
-        m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
-        m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
-        m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
-        m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
-        m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
-        m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
-
-        auto frustum = m_graphics->GetViewFrustum();
-        m_lightingTestShader->SetUniformf("u_Near", frustum->GetNear());
-        m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
-
-        m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
-        m_lightingTestShader->SetUniformi("u_PCFKernelSize", m_dlShadowMap->GetPCFKernelSize());
-
-        m_lightingTestShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
-        m_lightingTestShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
-
-        RenderScreenSpaceTriangle();
-    }
-
     void DeferredRenderer::DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
         std::string debugString;
@@ -635,6 +647,91 @@ namespace JLEngine
         m_graphics->BindVertexArray(m_triangleVAO.GetGPUID());
         m_graphics->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
         m_graphics->BindVertexArray(0);
+    }
+
+    void DeferredRenderer::GenerateGPUBuffers()
+    {
+        if (!m_sceneRoot) return;
+        GL_CHECK_ERROR();
+        for (auto& [vertexAttrib, vaoresource] : m_staticResources)
+        {
+            Graphics::CreateVertexArray(vaoresource.vao.get());
+        }
+        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
+        {
+            Graphics::CreateVertexArray(vaoresource.vao.get());
+        }
+        for (auto& [vertexAttrib, vaoresource] : m_transparentResources)
+        {
+            Graphics::CreateVertexArray(vaoresource.vao.get());
+        }
+        auto matManager = m_resourceLoader->GetMaterialManager();
+        auto texManager = m_resourceLoader->GetTextureManager();
+        std::vector<MaterialGPU> matBuffer;
+
+        m_materialIDMap.clear();
+        GenerateMaterialAndTextureBuffers(*matManager, *texManager, matBuffer, m_materialIDMap);
+
+        m_ssboMaterials.Set(std::move(matBuffer));
+        Graphics::CreateGPUBuffer<MaterialGPU>(m_ssboMaterials.GetGPUBuffer(), m_ssboMaterials.GetDataImmutable());
+        GL_CHECK_ERROR();
+        int count = 0;
+        std::function<void(Node*)> traverseScene = [&](Node* node)
+            {
+                if (!node) return;
+
+                if (node->GetTag() == NodeTag::Mesh)
+                {
+                    auto& submeshes = node->mesh->GetSubmeshes();
+                    for (auto& submesh : submeshes)
+                    {
+                        PerDrawData pdd;
+                        pdd.materialID = (int)m_materialIDMap[submesh.materialHandle];
+                        pdd.modelMatrix = node->GetGlobalTransform();
+                        auto mat = m_resourceLoader->GetMaterialManager()->Get(submesh.materialHandle);
+                        if (mat->useTransparency)
+                        {
+                            m_ssboTransparentPerDraw.AddData(pdd);
+                            m_transparentResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
+                        }
+                        else if (node->mesh->IsStatic())
+                        {
+                            m_ssboStaticPerDraw.AddData(pdd);
+                            m_staticResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
+                        }
+                        else
+                        {
+                            m_ssboDynamicPerDraw.AddData(pdd);
+                            m_dynamicResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
+                        }
+                    }
+                }
+                for (const auto& child : node->children)
+                {
+                    traverseScene(child.get());
+                }
+            };
+        traverseScene(m_sceneRoot.get());
+        GL_CHECK_ERROR();
+        for (auto& [vertexAttrib, vaoresource] : m_staticResources)
+        {
+            Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
+        }
+        GL_CHECK_ERROR();
+        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
+        {
+            Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
+        }
+        GL_CHECK_ERROR();
+        for (auto& [vertexAttrib, vaoresource] : m_transparentResources)
+        {
+            Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
+        }
+        GL_CHECK_ERROR();
+        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
+        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
+        Graphics::CreateGPUBuffer<PerDrawData>(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable());
+        GL_CHECK_ERROR();
     }
 
     glm::mat4 DeferredRenderer::GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float nearPlane, float farPlane)
@@ -702,6 +799,63 @@ namespace JLEngine
             materialBuffer.push_back(matGPU);
             materialIDMap[id] = materialIndex++;
         }
+    }
+
+    void DeferredRenderer::UpdateSceneGraph(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        // check here if scene actually needs to be updated
+        // or at least which parts need to be updated
+        // for now we can just update every frame
+
+        m_transparentObjects.clear();
+        std::function<void(Node*)> collectTransparent = [&](JLEngine::Node* root)
+        {
+            auto matMgr = m_resourceLoader->GetMaterialManager();
+
+            for (auto& submesh : root->mesh->GetSubmeshes())
+            {
+                auto mat = matMgr->Get(submesh.materialHandle);
+                if (mat->useTransparency)
+                {
+                    m_transparentObjects.push_back(std::make_pair(root, submesh));
+                }
+            }
+
+            for (const auto& child : root->children)
+            {
+                collectTransparent(child.get());
+            }
+        };
+
+        collectTransparent(m_sceneRoot.get());
+
+        std::sort(m_transparentObjects.begin(), m_transparentObjects.end(),
+            [&](const auto& a, const auto& b) 
+            {
+                return glm::distance(eyePos, a.first->translation) > glm::distance(eyePos, b.first->translation);
+            });
+
+        auto matMgr = m_resourceLoader->GetMaterialManager();
+        for (auto& item : m_transparentResources)
+        {
+            auto& vaoRes = item.second;
+            auto& drawBuffer = vaoRes.drawBuffer;
+            drawBuffer->ClearCommands();
+
+            for (auto& transObj : m_transparentObjects)
+            {
+                PerDrawData pdd;
+                pdd.materialID = (int)m_materialIDMap[transObj.second.materialHandle];
+                pdd.modelMatrix = transObj.first->GetGlobalTransform();
+                auto mat = matMgr->Get(transObj.second.materialHandle);
+
+                m_ssboTransparentPerDraw.AddData(pdd);
+                m_transparentResources[transObj.second.attribKey].drawBuffer->AddDrawCommand(transObj.second.command);
+            }
+            Graphics::UploadToGPUBuffer(drawBuffer->GetGPUBuffer(), drawBuffer->GetDataImmutable(), 0);
+        }
+
+        Graphics::UploadToGPUBuffer(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable(), 0);
     }
 
     void DeferredRenderer::Resize(int width, int height) 

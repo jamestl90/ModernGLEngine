@@ -24,7 +24,7 @@ void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
     float aspect = (float)graphics.GetWindow()->GetWidth() / (float)graphics.GetWindow()->GetHeight();
     glm::mat4 view = flyCamera->GetViewMatrix();
     auto frustum = graphics.GetViewFrustum();
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, frustum->GetNear(), frustum->GetFar());
+    glm::mat4 projection = glm::perspective(glm::radians(40.0f), aspect, frustum->GetNear(), frustum->GetFar());
 
     glm::vec3 lightDirection = glm::normalize(m_defRenderer->GetDirectionalLight().direction);
     glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -177,21 +177,19 @@ int MainApp(std::string assetFolder)
     graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
     engine.InitIMGUI();
 
-    sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
-
-    auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    mat->castShadows = false;
-    mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
-    planeNode->translation -= glm::vec3(0, 2.5f, 0);
+    //auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
+    //auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    //mat->castShadows = false;
+    //mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    //planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
+    //planeNode->translation -= glm::vec3(0, 2.5f, 0);
     //
-    auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
-    metallicSpheres->translation += glm::vec3(0, 2.5, -5);
-    
-    auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
-    engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
+    //auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    //metallicSpheres->translation += glm::vec3(0, 2.5, -5);
+    //
+    //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
+    //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
+    //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
     //
     //auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
     //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
@@ -203,29 +201,35 @@ int MainApp(std::string assetFolder)
     //
     //cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
 
-    auto bed = engine.GetResourceLoader()->LoadGLB(assetFolder + "bed_single_01.glb");
-    bed->translation = glm::vec3(5.0f, -2.0f, 5.0f);
-    auto bedMat = JLEngine::ResourceLoader::GetMat(bed.get());
-    bedMat->roughnessFactor = 1.0f;
+    //auto bed = engine.GetResourceLoader()->LoadGLB(assetFolder + "bed_single_01.glb");
+    //bed->translation = glm::vec3(5.0f, -2.0f, 5.0f);
+    //auto bedMat = JLEngine::ResourceLoader::GetMat(bed.get());
+    //bedMat->roughnessFactor = 1.0f;
+
+    auto house = engine.GetResourceLoader()->LoadGLB(assetFolder + "archviz_2.glb");
 
     //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
     //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
 
+    m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),
+        SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
+    m_defRenderer->Initialize();
+    auto sceneRoot = m_defRenderer->SceneRoot();
+
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    sceneRoot->AddChild(planeNode);
-    sceneRoot->AddChild(metallicSpheres);
-    sceneRoot->AddChild(bed);
-    sceneRoot->AddChild(helmet);
+    sceneRoot->AddChild(house);
+    //sceneRoot->AddChild(planeNode);
+    //sceneRoot->AddChild(metallicSpheres);
+    //sceneRoot->AddChild(bed);
+    //sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);
     //sceneRoot->AddChild(fish);
     //sceneRoot->AddChild(cardinalDirections);
 
-    m_defRenderer = new JLEngine::DeferredRenderer(graphics, engine.GetResourceLoader(),
-        SCREEN_WIDTH, SCREEN_HEIGHT, assetFolder);
-    m_defRenderer->Initialize();
-    m_defRenderer->AddVAOs(true, engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs());
-    m_defRenderer->GenerateGPUBuffers(sceneRoot.get());
+    m_defRenderer->AddVAOs(JLEngine::VAOType::STATIC, engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs());
+    m_defRenderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, engine.GetResourceLoader()->GetGLBLoader()->GetTransparentVAOs());
+    m_defRenderer->GenerateGPUBuffers();
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 

@@ -203,7 +203,7 @@ namespace JLEngine
 		void BindFrameBuffer(uint32_t id);
 		void BindDrawBuffer(uint32_t id);
 		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
-		void BindFrameBufferToTexture(uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level = 0);
+		void NamedFramebufferTexture(uint32_t target, uint32_t attachment, uint32_t texture, uint32_t level);
 		bool FramebufferComplete(uint32_t fboID);
 		// RBO
 		void CreateRenderBuffer(uint32_t count, uint32_t& id);
@@ -228,6 +228,7 @@ namespace JLEngine
 		// deprecated
 		void BindTexture(uint32_t target, uint32_t id);
 		void SetActiveTexture(uint32_t texunit);
+		void BindFrameBufferToTexture(uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level = 0);
 
 		// Render calls
 		void BeginPrimitiveDraw();

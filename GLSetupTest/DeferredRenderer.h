@@ -33,6 +33,13 @@ namespace JLEngine
         std::shared_ptr<IndirectDrawBuffer> drawBuffer; 
     };
 
+    enum class VAOType
+    {
+        STATIC,
+        DYNAMIC,
+        JL_TRANSPARENT // added prefix due to conflict with a #define in another file
+    };
+
     class Material;
     class DirectionalLightShadowMap;
     class HDRISky;
@@ -53,10 +60,14 @@ namespace JLEngine
         bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
-        void AddVAO(bool isStatic, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);        
-        void AddVAOs(bool isStatic, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos);
+        void UpdateSceneGraph(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
-        void GenerateGPUBuffers(Node* sceneRoot);
+        void AddVAO(VAOType vaoType, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);
+        void AddVAOs(VAOType vaoType, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos);
+
+        void GenerateGPUBuffers();
+
+        Node* SceneRoot() { return m_sceneRoot.get(); }
 
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
@@ -67,6 +78,9 @@ namespace JLEngine
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
+        void TransparencyPass(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
+        void RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
+        void RenderTransmissive(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
         void DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
@@ -98,13 +112,20 @@ namespace JLEngine
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
         RenderTarget* m_lightOutputTarget;
+        RenderTarget* m_transparentTarget;
 
+        // raster shaders
         ShaderProgram* m_gBufferShader;
         ShaderProgram* m_lightingTestShader;         
         ShaderProgram* m_gBufferDebugShader;
         ShaderProgram* m_shadowDebugShader;
         ShaderProgram* m_passthroughShader;
         ShaderProgram* m_downsampleShader;
+        ShaderProgram* m_blendShader;
+        ShaderProgram* m_transmissionShader;
+        ShaderProgram* m_composeFramebufferShader;
+
+        // compute shaders
         ShaderProgram* m_simpleBlurCompute;
 
         VertexArrayObject m_triangleVAO;
@@ -112,10 +133,17 @@ namespace JLEngine
         UniformBuffer m_cameraUBO;
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
+        ShaderStorageBuffer<PerDrawData> m_ssboTransparentPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
 
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
         std::unordered_map<VertexAttribKey, VAOResource> m_dynamicResources;
+        std::unordered_map<VertexAttribKey, VAOResource> m_transparentResources;
+
+        std::vector<std::pair<Node*, SubMesh>> m_transparentObjects;
+        std::unordered_map<uint32_t, size_t> m_materialIDMap;
+
+        std::shared_ptr<Node> m_sceneRoot;
 
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;

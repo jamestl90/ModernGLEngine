@@ -753,6 +753,11 @@ namespace JLEngine
 		glDeleteFramebuffers(count, fbo);
 	}
 
+	void GraphicsAPI::NamedFramebufferTexture(uint32_t target, uint32_t attachment, uint32_t texture, uint32_t level)
+	{
+		glNamedFramebufferTexture(target, attachment, texture, level);
+	}
+
 	void GraphicsAPI::GeneratePrimitives()
 	{
 		float coneVerts[13 * 3] = 

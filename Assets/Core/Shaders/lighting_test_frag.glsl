@@ -202,7 +202,7 @@ void main()
     vec3 viewDir = normalize(u_CameraPos - worldPos);
 
     // no depth? Render skybox
-    if (depth == 1.0)
+    if (depth > 0.999)
     {
         FragColor = texture(gSkyTexture, -viewDir);
         return;

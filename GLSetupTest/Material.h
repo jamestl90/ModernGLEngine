@@ -33,7 +33,13 @@ namespace JLEngine
         float roughnessFactor;                // 4 bytes
         float alphaCutoff;                    // 4 bytes
         uint32_t alphaMode;                   // 4 bytes
-        uint32_t receiveShadows;              // 4 bytes         
+        uint32_t receiveShadows;              // 4 bytes      
+        float transmissionFactor;             // 4 bytes: Strength of transmission (0.0 - 1.0)
+        float refractionIndex;                // 4 bytes: Index of refraction (e.g., 1.5 for glass)
+        float thickness;                      // 4 bytes: Thickness for volumetric effects (optional)
+        float padding1;                       // 4 bytes: Padding to maintain 16-byte alignment
+        glm::vec3 attenuationColor;           // 12 bytes: RGB color for attenuation
+        float attenuationDistance;            // 4 bytes: Distance for light attenuation
     };
 
     class Material : public Resource
@@ -65,6 +71,16 @@ namespace JLEngine
 
         bool castShadows = true;        // does not get rendered in depth pre-pass 
         bool receiveShadows = true;     // does not receive shadows in lighting pass
+
+        bool useTransparency = false;
+        float transmissionFactor;             
+        float refractionIndex;                
+        float thickness;
+        glm::vec3 attenuationColor;           
+        float attenuationDistance;            
+
+        glm::vec2 offset = glm::vec2(0.0f);
+        glm::vec2 scale = glm::vec2(1.0f);
 
     private:
         // Helper methods to handle material properties can be added here

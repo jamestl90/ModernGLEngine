@@ -55,7 +55,7 @@ namespace JLEngine
         Graphics::API()->SyncCompute();
     }
 
-    void ImageHelpers::CopyToDefault(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog)
+    void ImageHelpers::CopyToScreen(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog)
     {
         if (m_vaoID == 0)
             m_vaoID = Graphics::API()->CreateVertexArray();
