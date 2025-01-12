@@ -44,10 +44,10 @@ void gameLogicUpdate(double deltaTime)
     ImGui::Begin("HDRI Sky Settings");
 
     // Define allowed texture sizes for each parameter
-    std::vector<int> fullTextureSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-    std::vector<int> irradianceSizes(fullTextureSizes.begin(), fullTextureSizes.begin() + 4); // 16 to 128
-    std::vector<int> prefilteredMapSizes(fullTextureSizes.begin() + 1, fullTextureSizes.begin() + 6); // 32 to 512
-    std::vector<int> prefilteredSamples(fullTextureSizes.begin() + 3, fullTextureSizes.end()); // 128 to 8192
+    const std::vector<int> fullTextureSizes = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
+    const std::vector<int> irradianceSizes(fullTextureSizes.begin(), fullTextureSizes.begin() + 4); // 16 to 128
+    const std::vector<int> prefilteredMapSizes(fullTextureSizes.begin() + 1, fullTextureSizes.begin() + 6); // 32 to 512
+    const std::vector<int> prefilteredSamples(fullTextureSizes.begin() + 3, fullTextureSizes.end()); // 128 to 8192
 
     // Helper function to find the closest index for a value
     auto findClosestIndex = [](const std::vector<int>& values, int value) {
@@ -184,8 +184,8 @@ int MainApp(std::string assetFolder)
     //planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
     //planeNode->translation -= glm::vec3(0, 2.5f, 0);
     //
-    //auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
-    //metallicSpheres->translation += glm::vec3(0, 2.5, -5);
+    auto metallicSpheres = engine.GetResourceLoader()->LoadGLB(assetFolder + "/MetalRoughSpheres.glb");
+    metallicSpheres->translation += glm::vec3(0, 2.5, -5);
     //
     //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
     //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
@@ -206,7 +206,7 @@ int MainApp(std::string assetFolder)
     //auto bedMat = JLEngine::ResourceLoader::GetMat(bed.get());
     //bedMat->roughnessFactor = 1.0f;
 
-    auto house = engine.GetResourceLoader()->LoadGLB(assetFolder + "archviz_2.glb");
+    //auto house = engine.GetResourceLoader()->LoadGLB(assetFolder + "archviz_2.glb");
 
     //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
     //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
@@ -218,9 +218,9 @@ int MainApp(std::string assetFolder)
 
     //sceneRoot->AddChild(bistroScene);
     //sceneRoot->AddChild(virtualCity);
-    sceneRoot->AddChild(house);
+    //sceneRoot->AddChild(house);
     //sceneRoot->AddChild(planeNode);
-    //sceneRoot->AddChild(metallicSpheres);
+    sceneRoot->AddChild(metallicSpheres);
     //sceneRoot->AddChild(bed);
     //sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);

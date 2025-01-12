@@ -118,8 +118,8 @@ namespace JLEngine
 		 // Shader
 		 std::vector<std::tuple<std::string, int>> GetActiveUniforms(uint32_t programId);
 		 void PrintActiveUniforms(uint32_t programId);
-		 bool ShaderCompileErrorCheck(uint32_t id);
-		 bool ShaderProgramLinkErrorCheck(uint32_t programid);
+		 bool ShaderCompileErrorCheck(uint32_t id, const std::string& shaderFileName);
+		 bool ShaderProgramLinkErrorCheck(uint32_t programid, const std::string& shaderFileName);
 
 		 // Template-based uniform setter
 		 template <typename T>

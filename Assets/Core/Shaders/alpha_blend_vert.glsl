@@ -20,12 +20,15 @@ layout(std140, binding = 2) uniform CameraInfo
 {
     mat4 viewMatrix;
     mat4 projMatrix;
-    vec3 cameraPosition;
+    vec4 cameraPosition;
+    vec4 timeInfo;
 };
 
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 out vec2 v_ScreenCoord;
+out vec3 v_CameraPos;
+out vec4 v_WorldPos;
 flat out uint v_MaterialIndex;
 
 void main() 
@@ -37,12 +40,12 @@ void main()
     mat3 normalMatrix = mat3(transpose(inverse(modelMatrix)));
 
     v_Normal = normalize(normalMatrix * a_Normal);
-
+    v_CameraPos = cameraPosition.xyz;
     v_TexCoord = a_TexCoord;
 
     // clip-space position
-    vec4 worldPosition = modelMatrix * vec4(a_Position, 1.0);
-    gl_Position = projMatrix * viewMatrix * worldPosition;
+    v_WorldPos = modelMatrix * vec4(a_Position, 1.0);
+    gl_Position = projMatrix * viewMatrix * v_WorldPos;
 
     v_ScreenCoord = gl_Position.xy / gl_Position.w * 0.5 + 0.5;
 }

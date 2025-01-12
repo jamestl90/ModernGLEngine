@@ -20,7 +20,8 @@ layout(std140, binding = 2) uniform CameraInfo
 {
     mat4 viewMatrix;
     mat4 projMatrix;
-    vec3 cameraPosition;
+    vec4 cameraPosition;
+    vec4 timeInfo;
 };
 
 out vec3 v_Normal;

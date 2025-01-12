@@ -282,7 +282,7 @@ namespace JLEngine
 			glShaderSource(shaderId, 1, &cStr, NULL);
 			glCompileShader(shaderId);
 
-			Graphics::API()->ShaderCompileErrorCheck(shaderId);
+			Graphics::API()->ShaderCompileErrorCheck(shaderId, s.GetName());
 		}
 
 		GLuint programID = glCreateProgram();
@@ -295,7 +295,7 @@ namespace JLEngine
 
 		glLinkProgram(programID);
 
-		if (!API()->ShaderProgramLinkErrorCheck(programID))
+		if (!API()->ShaderProgramLinkErrorCheck(programID, program->GetName()))
 		{
 			DisposeShader(program);
 		}

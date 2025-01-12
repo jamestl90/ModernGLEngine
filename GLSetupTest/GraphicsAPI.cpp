@@ -114,15 +114,15 @@ namespace JLEngine
 		glCompileShader(vertId);
 		glShaderSource(fragId, 1, &cStrFrag, NULL);
 		glCompileShader(fragId);
-		ShaderCompileErrorCheck(vertId);
-		ShaderCompileErrorCheck(fragId);
+		ShaderCompileErrorCheck(vertId, "");
+		ShaderCompileErrorCheck(fragId, "");
 
 		m_defaultShader = glCreateProgram();
 
 		glAttachShader(m_defaultShader, vertId);
 		glAttachShader(m_defaultShader, fragId);
 		glLinkProgram(m_defaultShader);
-		ShaderProgramLinkErrorCheck(m_defaultShader);
+		ShaderProgramLinkErrorCheck(m_defaultShader, "");
 
 		GeneratePrimitives();
 	}
@@ -167,7 +167,7 @@ namespace JLEngine
 		return m_usingMSAA;
 	}
 
-	bool GraphicsAPI::ShaderCompileErrorCheck(uint32_t id)
+	bool GraphicsAPI::ShaderCompileErrorCheck(uint32_t id, const std::string& shaderFileName)
 	{
 		GLint compileStatus;
 		glGetShaderiv(id, GL_COMPILE_STATUS, &compileStatus);
@@ -178,14 +178,14 @@ namespace JLEngine
 			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &maxLength);
 			GLchar* infoLog = new char[maxLength];
 			glGetShaderInfoLog(id, maxLength, &maxLength, infoLog);
-			std::cout << "ShaderInfoLog: " << infoLog << std::endl;
+			std::cout << shaderFileName << " - Error:" << infoLog << std::endl;
 			delete[] infoLog;
 			return false;
 		}
 		return true;
 	}
 
-	bool GraphicsAPI::ShaderProgramLinkErrorCheck(uint32_t programId)
+	bool GraphicsAPI::ShaderProgramLinkErrorCheck(uint32_t programId, const std::string& shaderFileName)
 	{
 		GLint linkStatus;
 		glGetProgramiv(programId, GL_LINK_STATUS, &linkStatus);
@@ -199,7 +199,7 @@ namespace JLEngine
 			{
 				GLchar* infoLog = new GLchar[maxLength];
 				glGetProgramInfoLog(programId, maxLength, &maxLength, infoLog);
-				std::cout << "ShaderInfoLog: " << infoLog << std::endl;
+				std::cout << shaderFileName << " - Error:" << infoLog << std::endl;
 				delete[] infoLog;
 			}
 			else

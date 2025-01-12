@@ -9,7 +9,8 @@ namespace JLEngine
 	{
 		glm::mat4 viewMatrix;
 		glm::mat4 projMatrix;
-		glm::vec4 cameraPos;
+		glm::vec4 cameraPos; // w component unused
+		glm::vec4 timeInfo; // t/50, t/20, t/5, t
 	};
 }
 

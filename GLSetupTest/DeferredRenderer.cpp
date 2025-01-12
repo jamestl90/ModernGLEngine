@@ -46,7 +46,8 @@ namespace JLEngine
         m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
-        m_cameraUBO.GetGPUBuffer().SetSize(sizeof(CameraInfo));
+        auto sizeOfCamInfo = sizeof(CameraInfo);
+        m_cameraUBO.GetGPUBuffer().SetSize(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_cameraUBO.GetGPUBuffer());
 
         m_sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
@@ -71,7 +72,6 @@ namespace JLEngine
         m_passthroughShader = m_resourceLoader->CreateShaderFromFile("PassthroughShader", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
-        m_transmissionShader = m_resourceLoader->CreateShaderFromFile("TransmissionShader", "gbuffer_vert.glsl", "transmission_frag.glsl", shaderAssetPath).get();
         m_composeFramebufferShader = m_resourceLoader->CreateShaderFromFile("ComposeFramebuffer", "screenspacetriangle.glsl", "compose_fb_frag.glsl", shaderAssetPath).get();
         // compute shader
         m_simpleBlurCompute = m_resourceLoader->CreateComputeFromFile("SimpleBlur", "gaussianblur.glsl", shaderAssetPath + "Compute/").get();
@@ -218,6 +218,8 @@ namespace JLEngine
         camInfo.viewMatrix = viewMatrix;
         camInfo.projMatrix = projMatrix;
         camInfo.cameraPos = glm::vec4(eyePos.x, eyePos.y, eyePos.z, 1.0f);
+        double time = static_cast<float>(glfwGetTime());
+        camInfo.timeInfo = glm::vec4(time * 0.02f, time * 0.05f, time * 0.2f, time);
 
         // update camera info
         Graphics::UploadToGPUBuffer(m_cameraUBO.GetGPUBuffer(), camInfo, 0);
@@ -240,15 +242,20 @@ namespace JLEngine
         else
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
-            //ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
 
+            if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
+            {
+                ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
+            }
+            else
+            {
+                TransparencyPass(eyePos, viewMatrix, projMatrix);
+            }
             //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
             //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
             //ImageHelpers::BlurInPlaceCompute(rtPingPong, m_simpleBlurCompute);
             //ImageHelpers::CopyToDefault(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
             //m_rtPool.ReleaseRenderTarget(rtPingPong);
-
-            TransparencyPass(eyePos, viewMatrix, projMatrix);
         }
 
         GL_CHECK_ERROR();
@@ -343,8 +350,21 @@ namespace JLEngine
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
 
         Graphics::API()->BindShader(m_blendShader->GetProgramId());
+
+        m_blendShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
+        m_blendShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
+
+        GLuint textures[] =
+        {
+            m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
+            m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
+            m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
+        };
+
+        Graphics::API()->BindTextures(0, 2, textures);
+
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
-        auto& vaoRes = m_transparentResources[23];
+        auto& vaoRes = m_transparentResources.begin()->second;
 
         Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
         Graphics::BindGPUBuffer(m_ssboTransparentPerDraw.GetGPUBuffer(), 1);
@@ -352,6 +372,7 @@ namespace JLEngine
 
         DrawGeometry(vaoRes, stride);
 
+        // copy the output to the default framebuffer
         ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
 
         Graphics::API()->SetDepthMask(GL_TRUE);
