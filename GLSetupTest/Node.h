@@ -165,6 +165,7 @@ namespace JLEngine
         glm::vec3 scale;
 
         bool receiveShadows = true;
+        bool isDirty = true;
     private:
     };
 

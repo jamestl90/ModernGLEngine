@@ -49,8 +49,8 @@ namespace JLEngine
         auto sizeOfCamInfo = sizeof(CameraInfo);
         m_cameraUBO.GetGPUBuffer().SetSize(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_cameraUBO.GetGPUBuffer());
-
-        m_sceneRoot = std::make_shared<JLEngine::Node>("SceneRoot", JLEngine::NodeTag::SceneRoot);
+        GL_CHECK_ERROR();
+        m_sceneManager = SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader);
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -64,7 +64,7 @@ namespace JLEngine
         rtParams.internalFormat = GL_RGBA8;
         m_lightOutputTarget = m_resourceLoader->CreateRenderTarget("LightOutputTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
         m_transparentTarget = m_resourceLoader->CreateRenderTarget("TransparentTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
-
+        GL_CHECK_ERROR();
         m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "screenspacetriangle.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferDebugShader = m_resourceLoader->CreateShaderFromFile("DebugGBuffer", "screenspacetriangle.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
@@ -672,7 +672,7 @@ namespace JLEngine
 
     void DeferredRenderer::GenerateGPUBuffers()
     {
-        if (!m_sceneRoot) return;
+        if (!m_sceneManager.GetRoot()) return;
         GL_CHECK_ERROR();
         for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
@@ -695,60 +695,81 @@ namespace JLEngine
 
         m_ssboMaterials.Set(std::move(matBuffer));
         Graphics::CreateGPUBuffer<MaterialGPU>(m_ssboMaterials.GetGPUBuffer(), m_ssboMaterials.GetDataImmutable());
-        GL_CHECK_ERROR();
-        int count = 0;
-        std::function<void(Node*)> traverseScene = [&](Node* node)
-            {
-                if (!node) return;
 
-                if (node->GetTag() == NodeTag::Mesh)
-                {
-                    auto& submeshes = node->mesh->GetSubmeshes();
-                    for (auto& submesh : submeshes)
-                    {
-                        PerDrawData pdd;
-                        pdd.materialID = (int)m_materialIDMap[submesh.materialHandle];
-                        pdd.modelMatrix = node->GetGlobalTransform();
-                        auto mat = m_resourceLoader->GetMaterialManager()->Get(submesh.materialHandle);
-                        if (mat->useTransparency)
-                        {
-                            m_ssboTransparentPerDraw.AddData(pdd);
-                            m_transparentResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
-                        }
-                        else if (node->mesh->IsStatic())
-                        {
-                            m_ssboStaticPerDraw.AddData(pdd);
-                            m_staticResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
-                        }
-                        else
-                        {
-                            m_ssboDynamicPerDraw.AddData(pdd);
-                            m_dynamicResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
-                        }
-                    }
-                }
-                for (const auto& child : node->children)
-                {
-                    traverseScene(child.get());
-                }
-            };
-        traverseScene(m_sceneRoot.get());
-        GL_CHECK_ERROR();
+        m_sceneManager.ForceUpdate();
+        auto& nonInstancedStatic = m_sceneManager.GetNonInstancedStatic();
+        auto& nonInstancedDynamic = m_sceneManager.GetNonInstancedDynamic();
+        auto& transparentItems = m_sceneManager.GetTransparent();
+        auto& instancedItems = m_sceneManager.GetInstanced();
+
+        for (auto& item : nonInstancedStatic)
+        {
+            PerDrawData pdd;
+            pdd.materialID = (int)m_materialIDMap[item.first.materialHandle];
+            pdd.modelMatrix = item.second->GetGlobalTransform();
+
+            m_ssboStaticPerDraw.AddData(pdd);
+            m_staticResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
+        }
+
+        int baseInstance = 0;
+        for (auto& item : instancedItems)
+        {
+            auto& transforms = item.second.instanceTransforms;
+
+            int numTransforms = (int)transforms->size();
+            item.second.command.instanceCount = numTransforms;
+            item.second.command.baseInstance = baseInstance;
+
+            m_staticResources[item.second.attribKey].drawBuffer->AddDrawCommand(item.second.command);
+
+            for (auto i = 0; i < transforms->size(); i++)
+            {
+                PerDrawData pdd;
+                pdd.materialID = (int)m_materialIDMap[item.second.materialHandle];
+                transforms->at(i)->UpdateHierarchy();
+                pdd.modelMatrix = transforms->at(i)->GetGlobalTransform();
+                m_ssboStaticPerDraw.AddData(pdd);
+            }
+
+            baseInstance += numTransforms;
+        }
+
+        for (auto& item : nonInstancedDynamic)
+        {
+            PerDrawData pdd;
+            pdd.materialID = (int)m_materialIDMap[item.first.materialHandle];
+            pdd.modelMatrix = item.second->GetGlobalTransform();
+
+            m_ssboDynamicPerDraw.AddData(pdd);
+            m_dynamicResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
+        }
+
+        for (auto& item : transparentItems)
+        {
+            PerDrawData pdd;
+            pdd.materialID = (int)m_materialIDMap[item.first.materialHandle];
+            pdd.modelMatrix = item.second->GetGlobalTransform();
+
+            m_ssboTransparentPerDraw.AddData(pdd);
+            m_transparentResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
+        }
+
         for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
-        GL_CHECK_ERROR();
+
         for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
-        GL_CHECK_ERROR();
+
         for (auto& [vertexAttrib, vaoresource] : m_transparentResources)
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
-        GL_CHECK_ERROR();
+
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable());
@@ -820,63 +841,6 @@ namespace JLEngine
             materialBuffer.push_back(matGPU);
             materialIDMap[id] = materialIndex++;
         }
-    }
-
-    void DeferredRenderer::UpdateSceneGraph(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
-    {
-        // check here if scene actually needs to be updated
-        // or at least which parts need to be updated
-        // for now we can just update every frame
-
-        m_transparentObjects.clear();
-        std::function<void(Node*)> collectTransparent = [&](JLEngine::Node* root)
-        {
-            auto matMgr = m_resourceLoader->GetMaterialManager();
-
-            for (auto& submesh : root->mesh->GetSubmeshes())
-            {
-                auto mat = matMgr->Get(submesh.materialHandle);
-                if (mat->useTransparency)
-                {
-                    m_transparentObjects.push_back(std::make_pair(root, submesh));
-                }
-            }
-
-            for (const auto& child : root->children)
-            {
-                collectTransparent(child.get());
-            }
-        };
-
-        collectTransparent(m_sceneRoot.get());
-
-        std::sort(m_transparentObjects.begin(), m_transparentObjects.end(),
-            [&](const auto& a, const auto& b) 
-            {
-                return glm::distance(eyePos, a.first->translation) > glm::distance(eyePos, b.first->translation);
-            });
-
-        auto matMgr = m_resourceLoader->GetMaterialManager();
-        for (auto& item : m_transparentResources)
-        {
-            auto& vaoRes = item.second;
-            auto& drawBuffer = vaoRes.drawBuffer;
-            drawBuffer->ClearCommands();
-
-            for (auto& transObj : m_transparentObjects)
-            {
-                PerDrawData pdd;
-                pdd.materialID = (int)m_materialIDMap[transObj.second.materialHandle];
-                pdd.modelMatrix = transObj.first->GetGlobalTransform();
-                auto mat = matMgr->Get(transObj.second.materialHandle);
-
-                m_ssboTransparentPerDraw.AddData(pdd);
-                m_transparentResources[transObj.second.attribKey].drawBuffer->AddDrawCommand(transObj.second.command);
-            }
-            Graphics::UploadToGPUBuffer(drawBuffer->GetGPUBuffer(), drawBuffer->GetDataImmutable(), 0);
-        }
-
-        Graphics::UploadToGPUBuffer(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable(), 0);
     }
 
     void DeferredRenderer::Resize(int width, int height) 

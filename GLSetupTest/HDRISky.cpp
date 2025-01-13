@@ -62,8 +62,8 @@ namespace JLEngine
         m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, true, initParams.compressionThreshold, initParams.maxValue);
         m_irradianceMap = baker.GenerateIrradianceCubemap(m_hdriSky, initParams.irradianceMapSize);
         m_prefilteredMap = baker.GeneratePrefilteredEnvMap(m_hdriSky, initParams.prefilteredMapSize, initParams.prefilteredSamples);
-        m_brdfLUTMap = baker.GenerateBRDFLUT(512, 1024);        
-        GL_CHECK_ERROR();
+        m_brdfLUTMap = baker.GenerateBRDFLUT(512, 1024);
+
         m_hdriSkyImageData.hdrData.clear();
     }
 

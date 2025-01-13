@@ -32,7 +32,7 @@ flat out uint v_MaterialIndex;
 
 void main() 
 {
-    PerDrawData data = perDrawData[gl_DrawID];
+    PerDrawData data = perDrawData[gl_DrawID + gl_InstanceID];
     mat4 modelMatrix = data.modelMatrix;
     v_MaterialIndex = data.materialIndex;
 

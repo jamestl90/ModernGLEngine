@@ -207,6 +207,8 @@ int MainApp(std::string assetFolder)
     //bedMat->roughnessFactor = 1.0f;
 
     //auto house = engine.GetResourceLoader()->LoadGLB(assetFolder + "archviz_2.glb");
+    auto boxesInstanced = engine.GetResourceLoader()->LoadGLB(assetFolder + "boxesinstanced.glb");
+    boxesInstanced->translation += glm::vec3(0, 2.5, 5);
 
     //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
     //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
@@ -220,13 +222,14 @@ int MainApp(std::string assetFolder)
     //sceneRoot->AddChild(virtualCity);
     //sceneRoot->AddChild(house);
     //sceneRoot->AddChild(planeNode);
+    sceneRoot->AddChild(boxesInstanced);
+
     sceneRoot->AddChild(metallicSpheres);
     //sceneRoot->AddChild(bed);
     //sceneRoot->AddChild(helmet);
     //sceneRoot->AddChild(potofcoals);
     //sceneRoot->AddChild(fish);
     //sceneRoot->AddChild(cardinalDirections);
-
     m_defRenderer->AddVAOs(JLEngine::VAOType::STATIC, engine.GetResourceLoader()->GetGLBLoader()->GetStaticVAOs());
     m_defRenderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, engine.GetResourceLoader()->GetGLBLoader()->GetTransparentVAOs());
     m_defRenderer->GenerateGPUBuffers();

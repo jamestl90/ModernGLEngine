@@ -11,13 +11,18 @@
 
 namespace JLEngine
 {
+	class Node;
+
 	struct SubMesh
 	{
 		AABB aabb;
+		std::shared_ptr<std::vector<Node*>> instanceTransforms;
 		uint32_t attribKey;
 		uint32_t materialHandle;
 		DrawIndirectCommand command;
 	};
+
+	std::string MakeKey(const std::string& meshName, const SubMesh& subMesh);
 
 	class Mesh : public Resource
 	{
@@ -27,6 +32,7 @@ namespace JLEngine
 
 		void AddSubmesh(const SubMesh& submesh) { m_subMeshes.push_back(submesh); }
 		std::vector<SubMesh>& GetSubmeshes() { return m_subMeshes; }
+		SubMesh& GetSubmesh(int idx) { return m_subMeshes[idx]; }
 
 		bool IsStatic() const { return m_isStatic; }
 		void SetStatic(bool flag) { m_isStatic = flag; }
@@ -34,7 +40,7 @@ namespace JLEngine
 	private:	
 
 		bool m_isStatic = true;
-		std::vector<SubMesh> m_subMeshes;		
+		std::vector<SubMesh> m_subMeshes;	
 	};
 }
 

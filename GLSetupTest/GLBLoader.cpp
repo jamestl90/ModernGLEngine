@@ -83,6 +83,9 @@ namespace JLEngine
 	{
 		auto node = std::make_shared<Node>(gltfNode.name.empty() ? "UnnamedNode" : gltfNode.name);
 
+		// Parse and apply transformations
+		ParseTransform(node, gltfNode);
+
 		// Handle mesh
 		if (gltfNode.mesh >= 0)
 		{
@@ -90,9 +93,33 @@ namespace JLEngine
 
 			// Track which nodes reference this mesh
 			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
-			referencingNodes.push_back(node);
 
-			node->mesh = ParseMesh(model, gltfNode.mesh);
+			// Check if it's an instance (i.e., if the mesh has been referenced before)
+			if (!referencingNodes.empty())
+			{
+				auto& masterNode = referencingNodes.at(0);  
+				auto& masterMesh = masterNode->mesh;
+
+				for (size_t submeshIndex = 0; submeshIndex < masterMesh->GetSubmeshes().size(); ++submeshIndex)
+				{
+					auto& submesh = masterMesh->GetSubmesh((int)submeshIndex);
+					if (submesh.instanceTransforms == nullptr)
+					{
+						// add the first one
+						submesh.command.instanceCount = 1;
+						submesh.instanceTransforms = std::make_shared<std::vector<Node*>>();
+						submesh.instanceTransforms->push_back(referencingNodes[0].get());
+					}
+					submesh.command.instanceCount++;
+					submesh.instanceTransforms->push_back(node.get());
+				}
+				node->mesh = masterMesh;
+			}
+			else
+			{
+				node->mesh = ParseMesh(model, gltfNode.mesh);
+			}
+			referencingNodes.push_back(node);
 		}
 		else if (gltfNode.camera >= 0)
 		{
@@ -107,8 +134,6 @@ namespace JLEngine
 			node->SetTag(NodeTag::Default);
 		}
 
-		// Parse and apply transformations
-		ParseTransform(node, gltfNode);
 
 		int stopTest = 5;
 		int stopIndex = 0;

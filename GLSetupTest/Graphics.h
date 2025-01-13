@@ -7,6 +7,7 @@
 #include "GraphicsAPI.h"
 
 #include <stdexcept>
+#include <memory>
 
 namespace JLEngine
 {
@@ -19,6 +20,12 @@ namespace JLEngine
 	class IndexBuffer;
 	class VertexBuffer;
 	class IndirectDrawBuffer;
+
+	struct VAOResource
+	{
+		std::shared_ptr<VertexArrayObject> vao;
+		std::shared_ptr<IndirectDrawBuffer> drawBuffer;
+	};
 
 	class Graphics
 	{

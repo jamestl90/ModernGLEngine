@@ -16,6 +16,7 @@
 #include "CameraInfo.h"
 #include "UniformBuffer.h"
 #include "TexturePool.h"
+#include "SceneManager.h"
 
 namespace JLEngine
 {
@@ -25,12 +26,6 @@ namespace JLEngine
         DirectionalLightShadows,
         HDRISkyTextures,
         None
-    };
-
-    struct VAOResource 
-    {
-        std::shared_ptr<VertexArrayObject> vao;       
-        std::shared_ptr<IndirectDrawBuffer> drawBuffer; 
     };
 
     enum class VAOType
@@ -60,14 +55,12 @@ namespace JLEngine
         bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
-        void UpdateSceneGraph(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-
         void AddVAO(VAOType vaoType, VertexAttribKey key, std::shared_ptr<VertexArrayObject>& vao);
         void AddVAOs(VAOType vaoType, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos);
 
         void GenerateGPUBuffers();
 
-        Node* SceneRoot() { return m_sceneRoot.get(); }
+        std::shared_ptr<Node>& SceneRoot() { return m_sceneManager.GetRoot(); }
 
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
@@ -132,6 +125,7 @@ namespace JLEngine
 
         UniformBuffer m_cameraUBO;
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
+        ShaderStorageBuffer<PerDrawData> m_ssboInstancedPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboTransparentPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
@@ -140,10 +134,9 @@ namespace JLEngine
         std::unordered_map<VertexAttribKey, VAOResource> m_dynamicResources;
         std::unordered_map<VertexAttribKey, VAOResource> m_transparentResources;
 
-        std::vector<std::pair<Node*, SubMesh>> m_transparentObjects;
         std::unordered_map<uint32_t, size_t> m_materialIDMap;
 
-        std::shared_ptr<Node> m_sceneRoot;
+        SceneManager m_sceneManager;
 
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;

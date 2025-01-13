@@ -32,7 +32,7 @@ namespace JLEngine
 
         auto fullPath = m_assetPath + "Core/Shaders/Baking/";
         EnsureHDRtoCubemapShadersLoaded(fullPath);
-        GL_CHECK_ERROR();
+
         GraphicsAPI* graphics = m_assetLoader->GetGraphics();
         VertexArrayObject vao;
         Geometry::CreateBox(vao);
@@ -159,7 +159,7 @@ namespace JLEngine
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
-        GL_CHECK_ERROR();
+
         return envCubemap;
     }
 
@@ -250,7 +250,7 @@ namespace JLEngine
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
-        GL_CHECK_ERROR();
+
         return irradianceMap;
     }
 
@@ -349,7 +349,7 @@ namespace JLEngine
 
         glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         glUseProgram(0); 
-        GL_CHECK_ERROR();
+
         return prefilteredEnvMap;
     }
 

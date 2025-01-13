@@ -371,6 +371,9 @@
     <ClInclude Include="ImageHelpers.h">
       <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="SceneManager.h">
+      <Filter>Header Files\Graphics\Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
