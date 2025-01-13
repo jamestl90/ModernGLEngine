@@ -16,7 +16,10 @@ namespace JLEngine
         : m_graphics(graphics), m_resourceLoader(resourceLoader), m_shadowDebugShader(nullptr),
         m_width(width), m_height(height), m_gBufferDebugShader(nullptr), 
         m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), 
-        m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) {}
+        m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) 
+    {
+        m_sceneManager = SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader);
+    }
 
     DeferredRenderer::~DeferredRenderer() 
     {
@@ -50,7 +53,7 @@ namespace JLEngine
         m_cameraUBO.GetGPUBuffer().SetSize(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_cameraUBO.GetGPUBuffer());
         GL_CHECK_ERROR();
-        m_sceneManager = SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader);
+
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -258,6 +261,8 @@ namespace JLEngine
             //m_rtPool.ReleaseRenderTarget(rtPingPong);
         }
 
+        m_lastEyePos = eyePos;
+
         GL_CHECK_ERROR();
     }
 
@@ -298,7 +303,7 @@ namespace JLEngine
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
-        m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); // Warm light
+        m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); 
         m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
@@ -320,20 +325,6 @@ namespace JLEngine
     {
         RenderBlended(eyePos, viewMat, projMatrix);
         //RenderTransmissive(eyePos, viewMat, projMatrix);
-
-        //Graphics::API()->SetDepthMask(GL_TRUE); // Re-enable depth writes
-        //Graphics::API()->Disable(GL_BLEND);
-        //
-        //Graphics::API()->BindFrameBuffer(0);
-        //Graphics::API()->SetViewport(0, 0, m_width, m_height);
-        //Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //Graphics::API()->BindShader(m_composeFramebufferShader->GetProgramId());
-        //Graphics::API()->BindTextureUnit(0, m_transparentTarget->GetTexId(0));
-        //Graphics::API()->BindTextureUnit(1, m_lightOutputTarget->GetTexId(0));
-        //m_composeFramebufferShader->SetUniformi("u_InputTexture1", 0);
-        //m_composeFramebufferShader->SetUniformi("u_InputTexture2", 1);
-        //
-        //RenderScreenSpaceTriangle();
     }
 
     void DeferredRenderer::RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
@@ -369,6 +360,9 @@ namespace JLEngine
         Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
         Graphics::BindGPUBuffer(m_ssboTransparentPerDraw.GetGPUBuffer(), 1);
         Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
+
+        if (m_lastEyePos != eyePos) // dont need to sort until we move
+            m_sceneManager.SortTransparentBackToFront(eyePos);
 
         DrawGeometry(vaoRes, stride);
 

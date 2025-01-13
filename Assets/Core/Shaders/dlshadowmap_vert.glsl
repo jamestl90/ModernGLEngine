@@ -17,7 +17,7 @@ uniform mat4 u_LightSpaceMatrix;
 
 void main() 
 {
-    PerDrawData data = perDrawData[gl_DrawID];
+    PerDrawData data = perDrawData[gl_DrawID + gl_InstanceID];
     mat4 modelMatrix = data.modelMatrix;
 
     gl_Position = u_LightSpaceMatrix * modelMatrix * vec4(a_Position, 1.0);

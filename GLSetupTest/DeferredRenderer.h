@@ -100,6 +100,7 @@ namespace JLEngine
 
         float m_specularIndirectFactor = 1.0f;
         float m_diffuseIndirectFactor = 1.0f;
+        glm::vec3 m_lastEyePos;
 
         TexturePool m_texPool;
         RenderTargetPool m_rtPool;

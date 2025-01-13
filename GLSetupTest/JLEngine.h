@@ -12,18 +12,25 @@
 
 namespace JLEngine
 {
+    class DeferredRenderer;
+
     class JLEngineCore
     {
     public:
-        JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate);
+        JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder);
         ~JLEngineCore();
         void run(std::function<void(double deltaTime)> logicUpdate,
             std::function<void(GraphicsAPI& graphics, double interpolationFactor)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
-        GraphicsAPI* GetGraphicsAPI()          const;
-        Input* GetInput()                   const;
-        ResourceLoader* GetResourceLoader() const;
+        std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName);
+        std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos);
+        void FinalizeLoading();
+
+        GraphicsAPI* GetGraphicsAPI()           const;
+        Input* GetInput()                       const;
+        ResourceLoader* GetResourceLoader()     const;
+        DeferredRenderer* GetRenderer()         const;
 
         void InitIMGUI() { m_imguiManager.Initialize(m_window->GetGLFWwindow()); }
 
@@ -39,6 +46,8 @@ namespace JLEngine
         std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
         ResourceLoader* m_resourceLoader;
+
+        DeferredRenderer* m_renderer;
 
         // Frame timing variables
         int m_maxFrameRate;

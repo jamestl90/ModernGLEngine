@@ -95,12 +95,30 @@ namespace JLEngine
 			return m_transparentObjects;
 		}
 
-		void SortTransparent(glm::vec3& eyePos)
+		void SortStaticFrontToBack(glm::vec3& eyePos)
+		{
+			std::sort(m_nonInstancedStatic.begin(), m_nonInstancedStatic.end(),
+				[&](const auto& a, const auto& b)
+				{
+					return glm::distance2(eyePos, a.second->translation) < glm::distance2(eyePos, b.second->translation);
+				});
+		}
+
+		void SortDynamicFrontToBack(glm::vec3& eyePos)
+		{
+			std::sort(m_nonInstancedDynamic.begin(), m_nonInstancedDynamic.end(),
+				[&](const auto& a, const auto& b)
+				{
+					return glm::distance2(eyePos, a.second->translation) < glm::distance2(eyePos, b.second->translation);
+				});
+		}
+
+		void SortTransparentBackToFront(const glm::vec3& eyePos)
 		{
 			std::sort(m_transparentObjects.begin(), m_transparentObjects.end(),
 				[&](const auto& a, const auto& b)
 				{
-					return glm::distance(eyePos, a.second->translation) > glm::distance(eyePos, b.second->translation);
+					return glm::distance2(eyePos, a.second->translation) > glm::distance2(eyePos, b.second->translation);
 				});
 		}
 

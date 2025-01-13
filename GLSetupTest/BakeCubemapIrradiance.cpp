@@ -4,7 +4,7 @@
 
 int BakeCubemapIrradiance(std::string assetFolder)
 {
-    JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120);
+    JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120, assetFolder);
     engine.InitIMGUI();
     auto input = engine.GetInput();
     auto window = engine.GetGraphicsAPI()->GetWindow()->GetGLFWwindow();

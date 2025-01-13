@@ -1,13 +1,15 @@
 #include "JLEngine.h"
 #include "GraphicsAPI.h"
 #include "ShaderStorageBuffer.h"
+#include "DeferredRenderer.h"
+
 #include <iostream> 
 #include <thread>
 #include <chrono>
 
 namespace JLEngine
 {
-    JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate) :
+    JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder) :
         m_maxFrameRate(maxFrameRate), m_maxFrameRateInterval(0),
         m_lastFrameTime(0.0), m_deltaTime(0.0), m_accumulatedTime(0.0), m_fixedUpdateRate(fixedUpdates) 
     {
@@ -27,6 +29,8 @@ namespace JLEngine
         setVsync(true);
 
         Graphics::API()->DumpInfo();
+
+        m_renderer = new DeferredRenderer(Graphics::API(), m_resourceLoader, windowWidth, windowHeight, assetFolder);
     }
 
     JLEngineCore::~JLEngineCore()
@@ -136,6 +140,30 @@ namespace JLEngine
         }
     }
 
+    std::shared_ptr<Node> JLEngineCore::LoadAndAttachToRoot(const std::string& fileName)
+    {
+        auto node = m_resourceLoader->LoadGLB(fileName);
+        m_renderer->SceneRoot()->AddChild(node);
+        return node;
+    }
+
+    std::shared_ptr<Node> JLEngineCore::LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos)
+    {
+        auto node = m_resourceLoader->LoadGLB(fileName);
+        node->translation = pos;
+        m_renderer->SceneRoot()->AddChild(node);
+        return node;
+    }
+
+    void JLEngineCore::FinalizeLoading()
+    {
+        m_renderer->Initialize();
+
+        m_renderer->AddVAOs(JLEngine::VAOType::STATIC, m_resourceLoader->GetGLBLoader()->GetStaticVAOs());
+        m_renderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, m_resourceLoader->GetGLBLoader()->GetTransparentVAOs());
+        m_renderer->GenerateGPUBuffers();
+    }
+
     GraphicsAPI* JLEngineCore::GetGraphicsAPI() const
     {
         return Graphics::API();
@@ -147,5 +175,9 @@ namespace JLEngine
     ResourceLoader* JLEngineCore::GetResourceLoader() const
     {
         return m_resourceLoader;
+    }
+    DeferredRenderer* JLEngineCore::GetRenderer() const
+    {
+        return m_renderer;
     }
 }

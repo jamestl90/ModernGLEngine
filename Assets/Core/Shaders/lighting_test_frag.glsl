@@ -26,9 +26,9 @@ uniform float u_DiffuseIndirectFactor;
 uniform float u_Near;
 uniform float u_Far;
 
-uniform vec3 u_LightDirection; // Directional light direction (normalized)
-uniform vec3 u_LightColor;     // Directional light color
-uniform vec3 u_CameraPos;      // Camera position for view direction
+uniform vec3 u_LightDirection;
+uniform vec3 u_LightColor;     
+uniform vec3 u_CameraPos;      
 
 out vec4 FragColor;
 
