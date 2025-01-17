@@ -10,6 +10,7 @@
 #include "GraphicsAPI.h"
 #include "GPUResource.h"
 #include "RenderTarget.h"
+#include "VertexStructures.h"
 
 #include <sstream>
 #include <stdexcept>
@@ -194,9 +195,9 @@ namespace JLEngine
 		vao->SetGPUID(vaoID);
 
 		auto& vbo = vao->GetVBO();
-		CreateGPUBuffer<float>(vbo.GetGPUBuffer(), vbo.GetDataMutable());
+		CreateGPUBuffer(vbo.GetGPUBuffer(), vbo.GetDataMutable()); // Works for any VertexBuffer<T>
 
-		uint32_t stride = CalculateStride(vao);
+		uint32_t stride = CalculateStrideInBytes(vao);
 
 		glVertexArrayVertexBuffer(vao->GetGPUID(), 0, vbo.GetGPUBuffer().GetGPUID(), 0, stride);
 
@@ -208,8 +209,10 @@ namespace JLEngine
 		{
 			if (vertexAttribKey & (1 << i))
 			{
-				GLenum type = GL_FLOAT;
+				GLenum type = GL_FLOAT;    // Default type is float
+				GLboolean normalized = GL_FALSE;
 				GLsizei size = 0;
+				bool isInteger = false;
 
 				switch (static_cast<AttributeType>(1 << i))
 				{
@@ -220,15 +223,19 @@ namespace JLEngine
 					size = 3;
 					break;
 				case AttributeType::TEX_COORD_0:
-					size = 2;
-					break;
 				case AttributeType::TEX_COORD_1:
 					size = 2;
 					break;
 				case AttributeType::COLOUR:
+				case AttributeType::TANGENT:
 					size = 4;
 					break;
-				case AttributeType::TANGENT:
+				case AttributeType::JOINT_0:
+					size = 4;
+					type = GL_UNSIGNED_SHORT;  // JOINT_0 is typically unsigned short
+					isInteger = true;
+					break;
+				case AttributeType::WEIGHT_0:
 					size = 4;
 					break;
 				default:
@@ -237,13 +244,24 @@ namespace JLEngine
 				}
 
 				glEnableVertexArrayAttrib(vaoID, index);
-				glVertexArrayAttribFormat(vaoID, index, size, GL_FLOAT, GL_FALSE, offset);
-				glVertexArrayAttribBinding(vaoID, index, 0);				
 
-				offset += size * sizeof(float);
-				++index; 
+				if (isInteger)
+				{
+					glVertexArrayAttribIFormat(vaoID, index, size, type, offset);
+				}
+				else
+				{
+					glVertexArrayAttribFormat(vaoID, index, size, type, normalized, offset);
+				}
+
+				glVertexArrayAttribBinding(vaoID, index, 0);
+
+				// Update offset based on attribute size
+				offset += size * (isInteger ? sizeof(uint16_t) : sizeof(float));
+				++index;
 			}
 		}
+
 		if (vao->HasIndices())
 		{
 			auto& ibo = vao->GetIBO();
@@ -251,6 +269,7 @@ namespace JLEngine
 			glVertexArrayElementBuffer(vaoID, ibo.GetGPUBuffer().GetGPUID());
 		}
 	}
+
 
 	void Graphics::DisposeVertexArray(VertexArrayObject* vao)
 	{
@@ -447,6 +466,22 @@ namespace JLEngine
 		}
 	}
 
+	void Graphics::Resize(GPUBuffer& buffer, size_t oldSize, size_t newSize)
+	{
+		uint32_t newGPUID;
+		API()->CreateNamedBuffer(newGPUID);
+		API()->NamedBufferStorage(newGPUID, newSize, GL_DYNAMIC_STORAGE_BIT); 
+
+		// Transfer old data to the new buffer (if necessary)
+		if (oldSize > 0)
+		{
+			API()->CopyNamedBufferSubData(buffer.GetGPUID(), newGPUID, 0, 0, std::min(oldSize, newSize));
+		}
+
+		buffer.SetSize(newSize);
+		buffer.SetGPUID(newGPUID);
+	}
+
 	void Graphics::AttachDepth(RenderTarget* target)
 	{
 		auto fbo = target->GetGPUID();
@@ -595,14 +630,14 @@ namespace JLEngine
 	void Graphics::CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo)
 	{
 		GPUBuffer& gpuBuffer = idbo->GetGPUBuffer();
-		GL_CHECK_ERROR();
+
 		if (gpuBuffer.GetGPUID() == 0)
 		{
 			GLuint id = 0;
 			glCreateBuffers(1, &id);
 			gpuBuffer.SetGPUID(id);
 		}
-		GL_CHECK_ERROR();
+
 		const auto& bufferData = idbo->GetDataImmutable();
 		size_t bufferSize = bufferData.size() * sizeof(DrawIndirectCommand);
 
@@ -625,7 +660,7 @@ namespace JLEngine
 				glNamedBufferSubData(gpuBuffer.GetGPUID(), 0, bufferSize, bufferData.data());
 			}
 		}
-		GL_CHECK_ERROR();
+
 		gpuBuffer.ClearDirty();
 	}
 

@@ -56,7 +56,7 @@ namespace JLEngine
 							{
 								m_transparentObjects.push_back(std::make_pair(submesh, node));
 							}
-							else if (node->mesh->IsStatic())
+							else if (submesh.isStatic)
 							{
 								m_nonInstancedStatic.push_back(std::make_pair(submesh, node));
 							}

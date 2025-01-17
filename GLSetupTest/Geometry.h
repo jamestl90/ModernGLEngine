@@ -31,8 +31,20 @@ namespace JLEngine
 		static void GenerateInterleavedVertexData(const std::vector<float>& positions,
 			const std::vector<float>& normals,
 			const std::vector<float>& texCoords,
-			std::vector<float>& vertexData);
-		static void GenerateInterleavedVertexData(std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& texCoords2, std::vector<float>& tangents, std::vector<float>& vertexData);
+			std::vector<std::byte>& vertexData);
+		static void GenerateInterleavedVertexData(std::vector<float>& positions,
+			std::vector<float>& normals,
+			std::vector<float>& texCoords,
+			std::vector<float>& texCoords2,
+			std::vector<float>& tangents,
+			std::vector<std::byte>& vertexData);
+		static void GenerateInterleavedVertexData(std::vector<float>& positions,
+			std::vector<float>& normals,
+			std::vector<float>& texCoords,
+			std::vector<float>& tangents,
+			std::vector<float>& weights,
+			std::vector<uint16_t>& joints,
+			std::vector<std::byte>& vertexData);
 
 		static std::vector<glm::vec3> CalculateSmoothNormals(const std::vector<glm::vec3>& positions, const std::vector<uint32_t>& indices);
 		static std::vector<float> CalculateSmoothNormals(const std::vector<float>& positions, const std::vector<uint32_t>& indices);

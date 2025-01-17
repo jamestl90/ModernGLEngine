@@ -28,7 +28,7 @@ namespace JLEngine
 		void AddAttribute(AttributeType type) {	AddToVertexAttribKey(m_key, type); }
 		bool HasAttribute(AttributeType type) {	return HasVertexAttribKey(m_key, type);	}
 
-		void CalcStride() { m_stride = CalculateStride(this); }
+		void CalcStride() { m_stride = CalculateStrideInBytes(this); }
 		const uint32_t GetStride() const { return m_stride; }
 		
 		bool HasIndices() { return m_ibo.GetDataImmutable().size() > 0; }

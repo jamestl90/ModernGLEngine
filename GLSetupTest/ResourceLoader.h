@@ -19,7 +19,7 @@
 #include "ShaderStorageBuffer.h"
 #include "MeshFactory.h"
 #include "GLBLoader.h"
-
+#include "AnimationFactory.h"
 
 namespace JLEngine
 {
@@ -60,6 +60,7 @@ namespace JLEngine
 		ResourceManager<Mesh>* GetMeshManager()           const { return m_meshManager; }
 		ResourceManager<Material>* GetMaterialManager()       const { return m_materialManager; }
 		ResourceManager<RenderTarget>* GetRenderTargetManager()   const { return m_renderTargetManager; }
+		ResourceManager<Animation>* GetAnimationManager() const { return m_animManager; }
 
 		std::shared_ptr<Node> LoadGLB(const std::string& glbFile);		
 		void SetGlobalGenerationSettings(AssetGenerationSettings& settings) { m_settings = settings; }
@@ -101,6 +102,9 @@ namespace JLEngine
 
 		// Mesh Loading ///////////////////////////////////
 		std::shared_ptr<Mesh> CreateMesh(const std::string& name);
+
+		// Animation Loading //////////////////////////////
+		std::shared_ptr<Animation> CreateAnimation(const std::string& name);
 
 		GLBLoader* GetGLBLoader() { return m_glbLoader; }
 		GraphicsAPI* GetGraphics() { return m_graphics; }
@@ -157,6 +161,7 @@ namespace JLEngine
 		ResourceManager<Material>* m_materialManager;
 		ResourceManager<RenderTarget>* m_renderTargetManager;
 		ResourceManager<Cubemap>* m_cubemapManager;
+		ResourceManager<Animation>* m_animManager;
 
 		static std::unordered_map<std::type_index, std::any> m_managers;
 
@@ -166,6 +171,7 @@ namespace JLEngine
 		MaterialFactory* m_materialFactory;
 		RenderTargetFactory* m_renderTargetfactory;
 		MeshFactory* m_meshFactory;
+		AnimationFactory* m_animFactory;
 
 		ShaderProgram* m_basicUnlit = nullptr;
 		ShaderProgram* m_basicLit = nullptr;

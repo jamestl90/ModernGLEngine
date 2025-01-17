@@ -4,6 +4,7 @@
 #include "Resource.h"
 #include "IndirectDrawBuffer.h"
 #include "CollisionShapes.h"
+#include "AnimData.h"
 
 #include <memory>
 #include <vector>
@@ -16,6 +17,7 @@ namespace JLEngine
 	struct SubMesh
 	{
 		AABB aabb;
+		bool isStatic = true;
 		std::shared_ptr<std::vector<Node*>> instanceTransforms;
 		uint32_t attribKey;
 		uint32_t materialHandle;
@@ -34,12 +36,23 @@ namespace JLEngine
 		std::vector<SubMesh>& GetSubmeshes() { return m_subMeshes; }
 		SubMesh& GetSubmesh(int idx) { return m_subMeshes[idx]; }
 
-		bool IsStatic() const { return m_isStatic; }
-		void SetStatic(bool flag) { m_isStatic = flag; }
+		Skeleton& GetSkeleton() { return m_skeleton; }
+		std::vector<glm::mat4>& GetInverseBindMatrices() { return m_inverseBindMatrices; }
+		void SetInverseBindMatrix(int i, glm::mat4& matrix)
+		{
+			if (m_inverseBindMatrices.capacity() < i)
+			{
+				m_inverseBindMatrices.reserve(i + 1);
+			}
+			m_inverseBindMatrices[i] = matrix;
+		}
+		void SetSkeleton(Skeleton&& skeleton) { m_skeleton = std::move(skeleton); }
+		void AddInverseBindMatrix(glm::mat4& matrix) { m_inverseBindMatrices.push_back(matrix); }
 
 	private:	
 
-		bool m_isStatic = true;
+		Skeleton m_skeleton;
+		std::vector<glm::mat4> m_inverseBindMatrices;
 		std::vector<SubMesh> m_subMeshes;	
 	};
 }

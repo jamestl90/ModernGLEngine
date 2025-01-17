@@ -395,6 +395,11 @@ namespace JLEngine
 		glNamedBufferSubData(id, offset, size, data);
 	}
 
+	void GraphicsAPI::CopyNamedBufferSubData(GLuint readBuffer, GLuint writeBuffer, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size)
+	{
+		glCopyNamedBufferSubData(readBuffer, writeBuffer, readOffset, writeOffset, size);
+	}
+
 	void* GraphicsAPI::MapNamedBuffer(uint32_t id, GLbitfield access)
 	{
 		auto mapped = glMapNamedBuffer(id, access);

@@ -9,6 +9,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <imgui.h>
 #include "ImageHelpers.h"
+#include "AnimHelpers.h"
 
 namespace JLEngine
 {
@@ -53,7 +54,6 @@ namespace JLEngine
         m_cameraUBO.GetGPUBuffer().SetSize(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_cameraUBO.GetGPUBuffer());
         GL_CHECK_ERROR();
-
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -177,8 +177,9 @@ namespace JLEngine
 
     void DeferredRenderer::GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        Graphics::API()->BindFrameBuffer(m_gBufferTarget->GetGPUID());
+        auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
 
+        Graphics::API()->BindFrameBuffer(m_gBufferTarget->GetGPUID());
         Graphics::API()->Disable(GL_BLEND);
         Graphics::API()->Enable(GL_DEPTH_TEST);
         Graphics::API()->Disable(GL_BLEND);
@@ -187,32 +188,67 @@ namespace JLEngine
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
         Graphics::API()->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         Graphics::API()->BindShader(m_gBufferShader->GetProgramId());
 
         Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
         Graphics::BindGPUBuffer(m_ssboStaticPerDraw.GetGPUBuffer(), 1);
         Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
 
-        auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
+        // --- STATIC MESHES ---
         for (const auto& [key, resource] : m_staticResources)
         {
             if (resource.vao->GetGPUID() == 0) continue;
 
             DrawGeometry(resource, stride);
         }
-        
-        //for (const auto& [key, resource] : m_dynamicResources)
-        //{
-        //    if (resource.vao->GetGPUID() == 0) continue;
-        //    if (resource.vao->GetVBO().Size() > 0)
-        //    {
-        //        auto size = static_cast<uint32_t>(resource.drawBuffer->GetDrawCommands().size());
-        //        glBindVertexArray(resource.vao->GetGPUID());
-        //        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, resource.drawBuffer->GetGPUID());
-        //        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
-        //    }
-        //}
+
+        // --- SKINNING SETUP FOR DYNAMIC MESHES ---
+        std::vector<glm::mat4> globalTransforms;
+        std::vector<glm::mat4> jointMatrices;
+        auto& animSubmeshes = m_sceneManager.GetNonInstancedDynamic();
+        for (const auto& item : animSubmeshes)
+        {
+            auto& mesh = item.second->mesh;
+
+            globalTransforms.resize(mesh->GetSkeleton().joints.size());
+
+            for (size_t i = 0; i < mesh->GetSkeleton().joints.size(); ++i)
+            {
+                const auto& joint = mesh->GetSkeleton().joints[i];
+
+                if (joint.parentIndex >= 0)
+                {
+                    const glm::mat4& parentTransform = globalTransforms[joint.parentIndex];
+                    globalTransforms[i] = parentTransform * joint.localTransform;
+                }
+                else
+                {
+                    globalTransforms[i] = joint.localTransform;
+                }
+            }
+
+            AnimHelpers::ComputeGlobalTransforms(mesh->GetSkeleton(), globalTransforms);
+            AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
+
+            Graphics::UploadToGPUBuffer(m_ssboJointMatrices.GetGPUBuffer(), m_ssboJointMatrices.GetDataImmutable());
+
+            Graphics::BindGPUBuffer(m_ssboJointMatrices.GetGPUBuffer(), 3);
+
+            // Optional: Dispatch compute shader if vertex transformation is done on the GPU
+            //if (m_useComputeSkinning)
+            //{
+            //    DispatchSkinningComputeShader(resource);
+            //}
+        }
+
+        // --- DYNAMIC MESHES ---
+        Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 1);
+        for (const auto& [key, resource] : m_dynamicResources)
+        {
+            if (resource.vao->GetGPUID() == 0) continue;
+
+            DrawGeometry(resource, stride);
+        }
     }
 
     void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -729,6 +765,7 @@ namespace JLEngine
             baseInstance += numTransforms;
         }
 
+        int jointCount = 0;
         for (auto& item : nonInstancedDynamic)
         {
             PerDrawData pdd;
@@ -737,6 +774,8 @@ namespace JLEngine
 
             m_ssboDynamicPerDraw.AddData(pdd);
             m_dynamicResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
+
+            jointCount += (int)item.second->mesh->GetSkeleton().joints.size();
         }
 
         for (auto& item : transparentItems)
@@ -764,6 +803,8 @@ namespace JLEngine
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
 
+        m_ssboJointMatrices.GetGPUBuffer().SetSize(jointCount);
+        Graphics::CreateGPUBuffer(m_ssboJointMatrices.GetGPUBuffer());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable());

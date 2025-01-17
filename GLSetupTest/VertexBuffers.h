@@ -51,23 +51,29 @@ namespace JLEngine
 			: m_gpuBuffer(GL_ARRAY_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}
 		VertexBuffer(const std::string& name)
 			: m_gpuBuffer(GL_ARRAY_BUFFER, GL_DYNAMIC_STORAGE_BIT) {}
-		VertexBuffer(vector<float>&& vertices, uint32_t usage = GL_DYNAMIC_STORAGE_BIT)
+		VertexBuffer(vector<std::byte>&& vertices, uint32_t usage = GL_DYNAMIC_STORAGE_BIT)
 			: m_data(std::move(vertices)), m_gpuBuffer(GL_ARRAY_BUFFER, usage) {}
 		~VertexBuffer() {}
 
 		GPUBuffer& GetGPUBuffer() { return m_gpuBuffer; }
-		const std::vector<float>& GetDataImmutable() const { return m_data; }
-		std::vector<float>& GetDataMutable() { return m_data; }
+		const std::vector<std::byte>& GetDataImmutable() const { return m_data; }
+		std::vector<std::byte>& GetDataMutable() { return m_data; }
 
-		void Set(std::vector<float>&& indices) { m_data = indices; }
+		void Set(std::vector<std::byte>&& verts) { m_data = verts; }
+		void Set(std::vector<float>&& verts) 
+		{ 
+			size_t byteSize = verts.size() * sizeof(float);
+			m_data.resize(byteSize);
+			std::memcpy(m_data.data(), verts.data(), byteSize);
+		}
 
 		uint32_t SizeInBytes() const
 		{
-			return sizeof(float) * static_cast<uint32_t>(m_data.size());
+			return sizeof(std::byte) * static_cast<uint32_t>(m_data.size());
 		}
 
 	private:
-		std::vector<float> m_data;
+		std::vector<std::byte> m_data;
 		GPUBuffer m_gpuBuffer;
 	};	
 }

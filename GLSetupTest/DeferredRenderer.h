@@ -130,6 +130,7 @@ namespace JLEngine
         ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboTransparentPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
+        ShaderStorageBuffer<glm::mat4> m_ssboJointMatrices;
 
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
         std::unordered_map<VertexAttribKey, VAOResource> m_dynamicResources;

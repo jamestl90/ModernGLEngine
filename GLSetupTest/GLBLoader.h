@@ -10,6 +10,7 @@
 
 #include "VertexBuffers.h"
 #include "Mesh.h"
+#include "AnimData.h"
 
 namespace JLEngine
 {
@@ -53,10 +54,15 @@ namespace JLEngine
 	protected:
 		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode);
 		std::shared_ptr<Mesh> ParseMesh(const tinygltf::Model& model, int meshIndex);
+		std::shared_ptr<Animation> ParseAnimation(int animIdx, const tinygltf::Model& model, const tinygltf::Animation& gltfAnimation);
+		void ParseSkin(const tinygltf::Model& model, const tinygltf::Skin& skin, Mesh& mesh);
+		std::vector<float> GetKeyframeTimes(const tinygltf::Model& model, int accessorIndex);
+		std::vector<glm::vec4> GetKeyframeValues(const tinygltf::Model& model, int accessorIndex);
 		std::shared_ptr<Material> ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
 		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& texName, int textureIndex);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
 		void loadKHRTextureTransform(const tinygltf::Material& gltfMaterial, std::shared_ptr<Material> material);
+		SubMesh CreateSubMeshAnim(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
 		SubMesh CreateSubMesh(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);
 		void UpdateUVsFromScaleOffset(std::vector<float>& uvs, glm::vec2 scale, glm::vec2 offset);
 		bool LoadIndices(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<unsigned int>& indices);
@@ -65,11 +71,33 @@ namespace JLEngine
 		bool LoadTexCoord2Attribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		bool LoadNormalAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
-		
-		void GenerateMissingAttributes(std::vector<float>& positions, std::vector<float>& normals, const std::vector<float>& texCoords, std::vector<float>& tangents, const std::vector<uint32_t>& indices, VertexAttribKey key);
-		void BatchLoadAttributes(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& texCoords2, std::vector<float>& tangents, std::vector<uint32_t>& indices, uint32_t& indexOffset, VertexAttribKey key);
-		void LoadAttributes(const tinygltf::Model& model, const tinygltf::Primitive* primitives, std::vector<float>& positions, std::vector<float>& normals, std::vector<float>& texCoords, std::vector<float>& tangents, std::vector<uint32_t>& indices, uint32_t& indexOffset);
-
+		void LoadWeightAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& weights);
+		void LoadJointAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<uint16_t>& joints);
+		void GenerateMissingAttributes(std::vector<float>& positions, 
+			std::vector<float>& normals, 
+			const std::vector<float>& texCoords, 
+			std::vector<float>& tangents, 
+			const std::vector<uint32_t>& indices, 
+			VertexAttribKey key);
+		void BatchLoadAttributes(const tinygltf::Model& model, 
+			const std::vector<const tinygltf::Primitive*>& primitives, 
+			std::vector<float>& positions, 
+			std::vector<float>& normals, 
+			std::vector<float>& texCoords, 
+			std::vector<float>& texCoords2, 
+			std::vector<float>& tangents, 
+			std::vector<float>& weights,       
+			std::vector<uint16_t>& joints,
+			std::vector<uint32_t>& indices, 
+			uint32_t& indexOffset, VertexAttribKey key);
+		void LoadAttributes(const tinygltf::Model& model, 
+			const tinygltf::Primitive* primitives, 
+			std::vector<float>& positions, 
+			std::vector<float>& normals, 
+			std::vector<float>& texCoords, 
+			std::vector<float>& tangents, 
+			std::vector<uint32_t>& indices, 
+			uint32_t& indexOffset);
 		glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue);
 		glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue);
 

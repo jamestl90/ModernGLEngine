@@ -17,7 +17,9 @@ namespace JLEngine
 				{"texcoord_0", AttributeType::TEX_COORD_0},
 				{"texcoord_1", AttributeType::TEX_COORD_1},
 				{"color", AttributeType::COLOUR},
-				{"tangent", AttributeType::TANGENT}
+				{"tangent", AttributeType::TANGENT},
+				{"joints_0", AttributeType::JOINT_0},
+				{"weights_0", AttributeType::WEIGHT_0 }
 		};
 
 		auto it = attribMap.find(lowerStr);
@@ -59,9 +61,10 @@ namespace JLEngine
 		return (mask & static_cast<uint32_t>(attribute)) != 0;
 	}
 
-	uint32_t CalculateStride(VertexArrayObject* vao)
+	uint32_t CalculateStrideInBytes(VertexArrayObject* vao)
 	{
 		uint32_t stride = 0;
+		int floatSize = static_cast<int>(sizeof(float));
 
 		for (uint32_t i = 0; i < 32; ++i)
 		{
@@ -70,20 +73,26 @@ namespace JLEngine
 				switch (static_cast<AttributeType>(1 << i))
 				{
 				case AttributeType::POSITION:
-					stride += vao->GetPosCount() * sizeof(float); // 3 floats
+					stride += vao->GetPosCount() * floatSize; // 3 floats
 					break;
 				case AttributeType::NORMAL:
-					stride += 3 * sizeof(float); // 3 floats
+					stride += 3 * floatSize; // 3 floats
 					break;
 				case AttributeType::TEX_COORD_0:
 				case AttributeType::TEX_COORD_1:
-					stride += 2 * sizeof(float); // 2 floats
+					stride += 2 * floatSize; // 2 floats
 					break;
 				case AttributeType::COLOUR:
-					stride += 4 * sizeof(float); // 4 floats
+					stride += 4 * floatSize; // 4 floats
 					break;
 				case AttributeType::TANGENT:
-					stride += 4 * sizeof(float); // 4 floats
+					stride += 4 * floatSize; // 4 floats
+					break;
+				case AttributeType::JOINT_0:
+					stride += 4 * sizeof(uint16_t);
+					break;
+				case AttributeType::WEIGHT_0:
+					stride += 4 * floatSize;
 					break;
 				default:
 					std::cerr << "Unsupported attribute type!" << std::endl;
@@ -94,9 +103,10 @@ namespace JLEngine
 		return stride;
 	}
 
-	uint32_t CalculateStride(VertexAttribKey key, int posCount)
+	uint32_t CalculateStrideInBytes(VertexAttribKey key, int posCount)
 	{
 		uint32_t stride = 0;
+		int floatSize = static_cast<int>(sizeof(float));
 
 		for (uint32_t i = 0; i < 32; ++i)
 		{
@@ -105,20 +115,26 @@ namespace JLEngine
 				switch (static_cast<AttributeType>(1 << i))
 				{
 				case AttributeType::POSITION:
-					stride += posCount * sizeof(float); // 3 floats
+					stride += posCount * floatSize; // 3 floats
 					break;
 				case AttributeType::NORMAL:
-					stride += 3 * sizeof(float); // 3 floats
+					stride += 3 * floatSize; // 3 floats
 					break;
 				case AttributeType::TEX_COORD_0:
 				case AttributeType::TEX_COORD_1:
-					stride += 2 * sizeof(float); // 2 floats
+					stride += 2 * floatSize; // 2 floats
 					break;
 				case AttributeType::COLOUR:
-					stride += 4 * sizeof(float); // 4 floats
+					stride += 4 * floatSize; // 4 floats
 					break;
 				case AttributeType::TANGENT:
-					stride += 4 * sizeof(float); // 4 floats
+					stride += 4 * floatSize; // 4 floats
+					break;				
+				case AttributeType::JOINT_0:
+					stride += 4 * sizeof(uint16_t);
+					break;
+				case AttributeType::WEIGHT_0:
+					stride += 4 * floatSize;
 					break;
 				default:
 					std::cerr << "Unsupported attribute type!" << std::endl;

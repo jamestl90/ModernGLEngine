@@ -173,45 +173,26 @@ int MainApp(std::string assetFolder)
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
-    //auto planeNode = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Plane.glb");
-    //auto mat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    //mat->castShadows = false;
-    //mat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    //planeNode->mesh->GetSubmeshes()[0].materialHandle = mat.get()->GetHandle();
-    //planeNode->translation -= glm::vec3(0, 2.5f, 0);
-
-    //auto helmet = engine.GetResourceLoader()->LoadGLB(assetFolder + "/DamagedHelmet.glb");
-    //auto matId = helmet->mesh->GetSubmeshes()[0].materialHandle;
-    //engine.GetResourceLoader()->GetMaterialManager()->Get(matId)->castShadows = false;
+    engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb");
+    //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
+    //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
+    //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, -2, 5));
     //
-    //auto potofcoals = engine.GetResourceLoader()->LoadGLB(assetFolder + "/PotOfCoals.glb");
-    //potofcoals->scale = glm::vec3(15.0f, 15.0f, 15.0f);
-    //potofcoals->translation = glm::vec3(5.0f, 0.0f, 0.0f);
+    //engine.LoadAndAttachToRoot(assetFolder + "archviz_2.glb");
+    //engine.LoadAndAttachToRoot(assetFolder + "Bistro_Godot2.glb");
+    //engine.LoadAndAttachToRoot(assetFolder + "VirtualCity.glb");
     //
-    //auto fish = engine.GetResourceLoader()->LoadGLB(assetFolder + "/BarramundiFish.glb");
-    //fish->scale = glm::vec3(5.0f, 5.0f, 5.0f);
-    //fish->translation = glm::vec3(-5.0f, 0.0f, 0.0f);
-    //
-    //cardinalDirections = engine.GetResourceLoader()->LoadGLB(assetFolder + "/cardinaldirections.glb");
+    //auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, -2.5f, 0));
+    //auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    //planeMat->castShadows = false;
+    //planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    //plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
+    //engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(0, 0, 10), glm::quat(), glm::vec3(0.2f, 0.2f, 0.2f));
+    //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 2.5, -5));
+    //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(0, 2.5, 5));
 
-    //auto bed = engine.GetResourceLoader()->LoadGLB(assetFolder + "bed_single_01.glb");
-    //bed->translation = glm::vec3(5.0f, -2.0f, 5.0f);
-    //auto bedMat = JLEngine::ResourceLoader::GetMat(bed.get());
-    //bedMat->roughnessFactor = 1.0f;
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, -20));
 
-    //auto house = engine.GetResourceLoader()->LoadGLB(assetFolder + "archviz_2.glb");
-
-    //auto bistroScene = engine.GetResourceLoader()->LoadGLB(assetFolder + "/Bistro_Godot2.glb");
-    //auto virtualCity = engine.GetResourceLoader()->LoadGLB(assetFolder + "/VirtualCity.glb");
-
-    auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, -2.5f, 0));
-    auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    planeMat->castShadows = false;
-    planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
-
-    engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 2.5, -5));
-    engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(0, 2.5, 5));
     engine.FinalizeLoading();
     renderer = engine.GetRenderer();
 

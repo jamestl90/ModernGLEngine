@@ -213,40 +213,38 @@ namespace JLEngine
     void Geometry::GenerateInterleavedVertexData(const std::vector<float>& positions,
         const std::vector<float>& normals,
         const std::vector<float>& texCoords,
-        std::vector<float>& vertexData)
+        std::vector<std::byte>& vertexData)
     {
-        size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
+        size_t vertexCount = positions.size() / 3;
+        if (positions.size() % 3 != 0) {
+            std::cerr << "Error: Positions array size is not a multiple of 3." << std::endl;
+            return;
+        }
 
-        // Resize the interleaved array
-        vertexData.resize(vertexCount * (3 + 3 + 2)); // 3 for position, 3 for normal, 2 for texCoords
+        bool hasNormals = !normals.empty() && normals.size() == vertexCount * 3;
+        bool hasTexCoords = !texCoords.empty() && texCoords.size() == vertexCount * 2;
 
+        size_t vertexSize = sizeof(float) * 3;
+        if (hasNormals) vertexSize += sizeof(float) * 3;
+        if (hasTexCoords) vertexSize += sizeof(float) * 2;
+
+        vertexData.clear();
+        vertexData.resize(vertexCount * vertexSize);
+
+        auto insertFloats = [](std::byte* dest, const float* src, size_t count) {
+            std::memcpy(dest, src, sizeof(float) * count);
+            return dest + sizeof(float) * count;
+            };
+
+        std::byte* dataPtr = vertexData.data();
         for (size_t i = 0; i < vertexCount; ++i) {
-            // Interleave position
-            vertexData[i * 8 + 0] = positions[i * 3 + 0];
-            vertexData[i * 8 + 1] = positions[i * 3 + 1];
-            vertexData[i * 8 + 2] = positions[i * 3 + 2];
+            dataPtr = insertFloats(dataPtr, &positions[i * 3], 3);
 
-            // Interleave normal (if available)
-            if (!normals.empty()) {
-                vertexData[i * 8 + 3] = normals[i * 3 + 0];
-                vertexData[i * 8 + 4] = normals[i * 3 + 1];
-                vertexData[i * 8 + 5] = normals[i * 3 + 2];
-            }
-            else {
-                vertexData[i * 8 + 3] = 0.0f;
-                vertexData[i * 8 + 4] = 0.0f;
-                vertexData[i * 8 + 5] = 1.0f; // Default normal
-            }
+            if (hasNormals)
+                dataPtr = insertFloats(dataPtr, &normals[i * 3], 3);
 
-            // Interleave texture coordinates (if available)
-            if (!texCoords.empty()) {
-                vertexData[i * 8 + 6] = texCoords[i * 2 + 0];
-                vertexData[i * 8 + 7] = texCoords[i * 2 + 1];
-            }
-            else {
-                vertexData[i * 8 + 6] = 0.0f;
-                vertexData[i * 8 + 7] = 0.0f; // Default UV
-            }
+            if (hasTexCoords)
+                dataPtr = insertFloats(dataPtr, &texCoords[i * 2], 2);
         }
     }
 
@@ -255,52 +253,110 @@ namespace JLEngine
         std::vector<float>& texCoords,
         std::vector<float>& texCoords2,
         std::vector<float>& tangents,
-        std::vector<float>& vertexData)
+        std::vector<std::byte>& vertexData)
     {
-        size_t vertexCount = positions.size() / 3; // Assuming vec3 positions
-        if (positions.size() % 3 != 0)
-        {
+        size_t vertexCount = positions.size() / 3; 
+        if (positions.size() % 3 != 0) {
             std::cerr << "Error: Positions array size is not a multiple of 3." << std::endl;
             return;
         }
 
-        // Check availability of attributes
         bool hasNormals = !normals.empty() && normals.size() == vertexCount * 3;
         bool hasTexCoords = !texCoords.empty() && texCoords.size() == vertexCount * 2;
         bool hasTexCoords2 = !texCoords2.empty() && texCoords2.size() == vertexCount * 2;
         bool hasTangents = !tangents.empty() && tangents.size() == vertexCount * 4;
 
-        // Determine vertex size dynamically
-        size_t vertexSize = 3; // Start with positions (vec3)
-        if (hasNormals) vertexSize += 3; // Add normals (vec3)
-        if (hasTexCoords) vertexSize += 2; // Add texcoords (vec2)
-        if (hasTexCoords2) vertexSize += 2; // Add texcoords2 (vec2)
-        if (hasTangents) vertexSize += 4; // Add tangents (vec4)
+        size_t vertexSize = sizeof(float) * 3; 
+        if (hasNormals) vertexSize += sizeof(float) * 3;   
+        if (hasTexCoords) vertexSize += sizeof(float) * 2; 
+        if (hasTexCoords2) vertexSize += sizeof(float) * 2;
+        if (hasTangents) vertexSize += sizeof(float) * 4;  
 
         vertexData.clear();
-        vertexData.reserve(vertexCount * vertexSize);
+        vertexData.resize(vertexCount * vertexSize);
 
-        // Interleave only the available attributes
-        for (size_t i = 0; i < vertexCount; ++i)
-        {
-            // Add position (vec3)
-            vertexData.insert(vertexData.end(), positions.begin() + i * 3, positions.begin() + (i + 1) * 3);
+        auto insertFloats = [](std::byte* dest, const float* src, size_t count) {
+            std::memcpy(dest, src, sizeof(float) * count);
+            return dest + sizeof(float) * count;
+            };
 
-            // Add normal (vec3) if available
+        std::byte* dataPtr = vertexData.data();
+        for (size_t i = 0; i < vertexCount; ++i) {
+            dataPtr = insertFloats(dataPtr, &positions[i * 3], 3);
+
             if (hasNormals)
-                vertexData.insert(vertexData.end(), normals.begin() + i * 3, normals.begin() + (i + 1) * 3);
+                dataPtr = insertFloats(dataPtr, &normals[i * 3], 3);
 
-            // Add texcoord (vec2) if available
             if (hasTexCoords)
-                vertexData.insert(vertexData.end(), texCoords.begin() + i * 2, texCoords.begin() + (i + 1) * 2);
+                dataPtr = insertFloats(dataPtr, &texCoords[i * 2], 2);
 
-            // Add texcoord2 (vec2) if available
             if (hasTexCoords2)
-                vertexData.insert(vertexData.end(), texCoords2.begin() + i * 2, texCoords2.begin() + (i + 1) * 2);
+                dataPtr = insertFloats(dataPtr, &texCoords2[i * 2], 2);
 
-            // Add tangent (vec4) if available
             if (hasTangents)
-                vertexData.insert(vertexData.end(), tangents.begin() + i * 4, tangents.begin() + (i + 1) * 4);
+                dataPtr = insertFloats(dataPtr, &tangents[i * 4], 4);
+        }
+    }
+
+    void Geometry::GenerateInterleavedVertexData(std::vector<float>& positions,
+        std::vector<float>& normals,
+        std::vector<float>& texCoords,
+        std::vector<float>& tangents,
+        std::vector<float>& weights,
+        std::vector<uint16_t>& joints,
+        std::vector<std::byte>& vertexData)
+    {
+        size_t vertexCount = positions.size() / 3; // Number of vertices based on positions
+        if (positions.size() % 3 != 0) {
+            std::cerr << "Error: Positions array size is not a multiple of 3." << std::endl;
+            return;
+        }
+
+        bool hasNormals = !normals.empty() && normals.size() == vertexCount * 3;
+        bool hasTexCoords = !texCoords.empty() && texCoords.size() == vertexCount * 2;
+        bool hasTangents = !tangents.empty() && tangents.size() == vertexCount * 4;
+        bool hasWeights = !weights.empty() && weights.size() == vertexCount * 4;
+        bool hasJoints = !joints.empty() && joints.size() == vertexCount * 4;
+
+        size_t vertexSize = sizeof(float) * 3; // Position is always included
+        if (hasNormals) vertexSize += sizeof(float) * 3;
+        if (hasTexCoords) vertexSize += sizeof(float) * 2;
+        if (hasTangents) vertexSize += sizeof(float) * 4;
+        if (hasWeights) vertexSize += sizeof(float) * 4;
+        if (hasJoints) vertexSize += sizeof(uint16_t) * 4;
+
+        vertexData.clear();
+        vertexData.resize(vertexCount * vertexSize);
+
+        auto insertFloats = [](std::byte* dest, const float* src, size_t count) {
+            std::memcpy(dest, src, sizeof(float) * count);
+            return dest + sizeof(float) * count;
+            };
+
+        auto insertUint16s = [](std::byte* dest, const uint16_t* src, size_t count) {
+            std::memcpy(dest, src, sizeof(uint16_t) * count);
+            return dest + sizeof(uint16_t) * count;
+            };
+
+        std::byte* dataPtr = vertexData.data();
+        for (size_t i = 0; i < vertexCount; ++i) 
+        {
+            dataPtr = insertFloats(dataPtr, &positions[i * 3], 3);
+
+            if (hasNormals)
+                dataPtr = insertFloats(dataPtr, &normals[i * 3], 3);
+
+            if (hasTexCoords)
+                dataPtr = insertFloats(dataPtr, &texCoords[i * 2], 2);
+
+            if (hasTangents)
+                dataPtr = insertFloats(dataPtr, &tangents[i * 4], 4);
+
+            if (hasWeights)
+                dataPtr = insertFloats(dataPtr, &weights[i * 4], 4);
+
+            if (hasJoints)
+                dataPtr = insertUint16s(dataPtr, &joints[i * 4], 4);
         }
     }
 

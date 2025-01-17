@@ -30,6 +30,7 @@ namespace JLEngine
         m_renderTargetManager = new ResourceManager<RenderTarget>();
         m_meshManager = new ResourceManager<Mesh>();
         m_cubemapManager = new ResourceManager<Cubemap>();
+        m_animManager = new ResourceManager<Animation>();
 
         m_managers[typeid(Texture)] = m_textureManager;
         m_managers[typeid(ShaderProgram)] = m_shaderManager;
@@ -37,6 +38,7 @@ namespace JLEngine
         m_managers[typeid(Material)] = m_materialManager;
         m_managers[typeid(RenderTarget)] = m_renderTargetManager;
         m_managers[typeid(Cubemap)] = m_cubemapManager;
+        m_managers[typeid(Animation)] = m_animManager;
 
         m_textureFactory = new TextureFactory(m_textureManager, graphics);
         m_cubemapFactory = new CubemapFactory(m_cubemapManager, graphics);
@@ -44,6 +46,7 @@ namespace JLEngine
         m_materialFactory = new MaterialFactory(m_materialManager);
         m_renderTargetfactory = new RenderTargetFactory(m_renderTargetManager);
         m_meshFactory = new MeshFactory(m_meshManager);
+        m_animFactory = new AnimationFactory(m_animManager);
 
         auto mat = CreateMaterial("DefaultMaterial");
         m_defaultMat = mat.get();
@@ -328,5 +331,10 @@ namespace JLEngine
     std::shared_ptr<Mesh> ResourceLoader::CreateMesh(const std::string& name)
     {
         return m_meshFactory->CreateMesh(name);
+    }
+
+    std::shared_ptr<Animation> ResourceLoader::CreateAnimation(const std::string& name)
+    {
+        return m_animFactory->CreateAnimation(name);
     }
 }

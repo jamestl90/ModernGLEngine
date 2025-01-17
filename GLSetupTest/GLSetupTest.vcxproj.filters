@@ -40,6 +40,9 @@
     <Filter Include="Header Files\Core\Factory">
       <UniqueIdentifier>{1354687e-9688-4a28-be9a-db9d076259b0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Graphics\Rendering\Animation">
+      <UniqueIdentifier>{64b5e066-4d80-46de-85ac-07a195a35179}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -373,6 +376,15 @@
     </ClInclude>
     <ClInclude Include="SceneManager.h">
       <Filter>Header Files\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimData.h">
+      <Filter>Header Files\Graphics\Rendering\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimationFactory.h">
+      <Filter>Header Files\Core\Factory</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimHelpers.h">
+      <Filter>Header Files\Graphics\Rendering\Animation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

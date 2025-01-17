@@ -7,7 +7,10 @@
 #include "GraphicsAPI.h"
 
 #include <stdexcept>
+#include <algorithm>
 #include <memory>
+#undef max
+#include <glm/common.hpp>
 
 namespace JLEngine
 {
@@ -72,6 +75,8 @@ namespace JLEngine
 		static void AttachDepth(RenderTarget* target);
 		static void AttachTextures(RenderTarget* target);
 
+		static void Resize(GPUBuffer& buffer, size_t oldSize, size_t newSize);
+
 		static GraphicsAPI* m_graphicsAPI;
 	};
 
@@ -105,12 +110,20 @@ namespace JLEngine
 	void Graphics::UploadToGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data, uint32_t offset)
 	{
 		size_t dataSize = data.size() * sizeof(T);
+
+		// Ensure the buffer has enough capacity
 		if (offset + dataSize > buffer.GetSize())
 		{
-			throw std::runtime_error("Data exceeds GPU buffer size.");
+			size_t newSize = glm::max(offset + dataSize, buffer.GetSize() * 2);
+
+			uint32_t oldGPUID = buffer.GetGPUID(); 
+			Resize(buffer, buffer.GetSize(), newSize);
+
+			API()->DisposeBuffer(1, &oldGPUID);
 		}
 
-		API()->NamedBufferSubData(buffer.GetGPUID(), offset, buffer.GetSize(), data.data());
+		// Upload data to the buffer
+		API()->NamedBufferSubData(buffer.GetGPUID(), offset, dataSize, data.data());
 		buffer.ClearDirty();
 	}
 }

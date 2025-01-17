@@ -25,6 +25,8 @@ namespace JLEngine
 
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos);
+        std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos, const glm::quat& rotation, const glm::vec3& scale);
+        std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::mat4& transform);
         void FinalizeLoading();
 
         GraphicsAPI* GetGraphicsAPI()           const;

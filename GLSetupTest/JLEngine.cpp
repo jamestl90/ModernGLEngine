@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 
+#include <glm/gtx/matrix_decompose.hpp>
 namespace JLEngine
 {
     JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder) :
@@ -155,12 +156,32 @@ namespace JLEngine
         return node;
     }
 
+    std::shared_ptr<Node> JLEngineCore::LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos, const glm::quat& rotation, const glm::vec3& scale)
+    {
+        auto node = m_resourceLoader->LoadGLB(fileName);
+        node->translation = pos;
+        node->rotation = rotation;
+        node->scale = scale;
+        m_renderer->SceneRoot()->AddChild(node);
+        return node;
+    }
+
+    std::shared_ptr<Node> JLEngineCore::LoadAndAttachToRoot(const std::string& fileName, const glm::mat4& transform)
+    {
+        auto node = m_resourceLoader->LoadGLB(fileName);
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(transform, node->scale, node->rotation, node->translation, skew, perspective);
+        m_renderer->SceneRoot()->AddChild(node);
+        return node;
+    }
+
     void JLEngineCore::FinalizeLoading()
     {
         m_renderer->Initialize();
-
         m_renderer->AddVAOs(JLEngine::VAOType::STATIC, m_resourceLoader->GetGLBLoader()->GetStaticVAOs());
         m_renderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, m_resourceLoader->GetGLBLoader()->GetTransparentVAOs());
+        m_renderer->AddVAOs(JLEngine::VAOType::DYNAMIC, m_resourceLoader->GetGLBLoader()->GetDynamicVAOs());
         m_renderer->GenerateGPUBuffers();
     }
 

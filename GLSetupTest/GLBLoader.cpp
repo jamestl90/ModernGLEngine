@@ -54,6 +54,12 @@ namespace JLEngine
 		auto rootNode = std::make_shared<Node>("RootNode");
 		rootNode->SetTag(NodeTag::Default);
 
+		for (auto i = 0; i < model.animations.size(); i++)
+		{
+			const auto& gltfAnim = model.animations[i];
+			ParseAnimation(i, model, gltfAnim);
+		}
+
 		// Parse all nodes in the scene
 		for (int nodeIndex : scene.nodes)
 		{
@@ -118,6 +124,12 @@ namespace JLEngine
 			else
 			{
 				node->mesh = ParseMesh(model, gltfNode.mesh);
+
+				if (gltfNode.skin >= 0)
+				{
+					const auto& skin = model.skins[gltfNode.skin];
+					ParseSkin(model, skin, *node->mesh);
+				}
 			}
 			referencingNodes.push_back(node);
 		}
@@ -133,7 +145,6 @@ namespace JLEngine
 		{
 			node->SetTag(NodeTag::Default);
 		}
-
 
 		int stopTest = 5;
 		int stopIndex = 0;
@@ -178,7 +189,6 @@ namespace JLEngine
 
 		// Create a new Mesh object
 		auto mesh = m_resourceLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
-		mesh->SetStatic(true);
 
 		std::cout << "Mesh name: " << model.meshes[meshIndex].name << std::endl;
 
@@ -187,9 +197,8 @@ namespace JLEngine
 		for (const auto& primitive : gltfMesh.primitives)
 		{
 			auto vertexAttribKey = GenerateVertexAttribKey(primitive.attributes);
-			if (vertexAttribKey == 7 || vertexAttribKey == 39)
+			if (vertexAttribKey == 7 || vertexAttribKey == 39 || vertexAttribKey == 199)
 			{
-				// auto generate tangents for POS/NORMAL/UV
 				AddToVertexAttribKey(vertexAttribKey, AttributeType::TANGENT);
 			}
 			if (vertexAttribKey == 1)
@@ -204,12 +213,20 @@ namespace JLEngine
 			groups[key].push_back(&primitive);
 		}
 		
-		// Create batches for each grouped set of primitives
 		for (const auto& [key, primitives] : groups)
 		{
-			auto subMesh = CreateSubMesh(model, primitives, key);
-
-			mesh->AddSubmesh(subMesh);
+			// if its got joint attrib we can assume it has skinning vertex data
+			bool skinnedMesh = HasVertexAttribKey(key.attributesKey, AttributeType::JOINT_0);
+			SubMesh submesh;
+			if (skinnedMesh)
+			{
+				submesh = CreateSubMeshAnim(model, primitives, key);
+			}
+			else
+			{
+				submesh = CreateSubMesh(model, primitives, key);
+			}
+			mesh->AddSubmesh(submesh);
 		}
 
 		meshCache[meshIndex] = mesh;
@@ -217,14 +234,154 @@ namespace JLEngine
 		return mesh;
 	}
 
+	std::shared_ptr<Animation> GLBLoader::ParseAnimation(int animIdx, const tinygltf::Model& model, const tinygltf::Animation& gltfAnimation)
+	{
+		std::string animName;
+		std::string nodeName;
+		int targetNode = gltfAnimation.channels[0].target_node;
+		if (targetNode >= 0 && targetNode < model.nodes.size())
+		{
+			nodeName = model.nodes[targetNode].name.empty() ? "UnnamedNode" : model.nodes[targetNode].name;
+		}
+		
+		if (animName.empty())
+			animName = "Anim_" + nodeName + "_idx:" + std::to_string(animIdx);
+		else
+			animName = gltfAnimation.name + "_" + nodeName + "_idx:" + std::to_string(animIdx);
+
+		auto cachedAnim = m_resourceLoader->Get<Animation>(animName);
+		if (cachedAnim != nullptr)
+		{
+			return cachedAnim;
+		}
+
+		auto animation = m_resourceLoader->CreateAnimation(animName);
+
+		// Parse samplers
+		for (const auto& sampler : gltfAnimation.samplers)
+		{
+			AnimationSampler animSampler;
+
+			animSampler.SetInputTimes(GetKeyframeTimes(model, sampler.input));
+			animSampler.SetOutputValues(GetKeyframeValues(model, sampler.output));
+			animSampler.SetInterpolation(sampler.interpolation.empty() ? "LINEAR" : sampler.interpolation);
+
+			animation->AddSampler(animSampler);
+		}
+
+		// Parse channels
+		for (const auto& channel : gltfAnimation.channels)
+		{
+			AnimationChannel animChannel(channel.sampler, channel.target_node, channel.target_path);
+			animation->AddChannel(animChannel);
+		}
+
+		return animation;
+	}
+
+	void GLBLoader::ParseSkin(const tinygltf::Model& model, const tinygltf::Skin& skin, Mesh& mesh)
+	{
+		auto& inverseBindMatrices = mesh.GetInverseBindMatrices();
+
+		// Load inverse bind matrices
+		if (skin.inverseBindMatrices >= 0)
+		{
+			const auto& accessor = model.accessors[skin.inverseBindMatrices];
+			const auto& bufferView = model.bufferViews[accessor.bufferView];
+			const auto& buffer = model.buffers[bufferView.buffer];
+
+			const glm::mat4* data = reinterpret_cast<const glm::mat4*>(
+				&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+			size_t count = accessor.count;
+
+			inverseBindMatrices.resize(count);
+			std::copy(data, data + count, inverseBindMatrices.begin());
+		}
+
+		// Initialize skeleton
+		Skeleton skeleton;
+		skeleton.joints.resize(skin.joints.size());
+
+		for (size_t i = 0; i < skin.joints.size(); ++i)
+		{
+			int jointIndex = skin.joints[i];
+			const auto& jointNode = model.nodes[jointIndex];
+
+			Skeleton::Joint joint;
+			auto& name = model.nodes[jointIndex].name;
+			joint.parentIndex = 1;//FindParentNode(model, jointIndex); // Parent index from GLTF node
+
+			// Compute local transform
+			glm::mat4 localTransform(1.0f); // Identity matrix
+			if (!jointNode.translation.empty())
+			{
+				glm::vec3 translation(
+					jointNode.translation[0],
+					jointNode.translation[1],
+					jointNode.translation[2]);
+				localTransform = glm::translate(localTransform, translation);
+			}
+			if (!jointNode.rotation.empty())
+			{
+				glm::quat rotation(
+					jointNode.rotation[3], // w
+					jointNode.rotation[0], // x
+					jointNode.rotation[1], // y
+					jointNode.rotation[2]  // z
+				);
+				localTransform *= glm::mat4_cast(rotation);
+			}
+			if (!jointNode.scale.empty())
+			{
+				glm::vec3 scale(
+					jointNode.scale[0],
+					jointNode.scale[1],
+					jointNode.scale[2]);
+				localTransform = glm::scale(localTransform, scale);
+			}
+
+			joint.localTransform = localTransform;
+			skeleton.joints[i] = joint;
+		}
+
+		mesh.SetSkeleton(std::move(skeleton));
+	}
+
+	std::vector<float> GLBLoader::GetKeyframeTimes(const tinygltf::Model& model, int accessorIndex)
+	{
+		const auto& accessor = model.accessors[accessorIndex];
+		const auto& bufferView = model.bufferViews[accessor.bufferView];
+		const auto& buffer = model.buffers[bufferView.buffer];
+
+		const float* data = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+		return std::vector<float>(data, data + accessor.count);
+	}
+
+	std::vector<glm::vec4> GLBLoader::GetKeyframeValues(const tinygltf::Model& model, int accessorIndex)
+	{
+		const auto& accessor = model.accessors[accessorIndex];
+		const auto& bufferView = model.bufferViews[accessor.bufferView];
+		const auto& buffer = model.buffers[bufferView.buffer];
+
+		const float* data = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+		std::vector<glm::vec4> values;
+		for (size_t i = 0; i < accessor.count; ++i)
+		{
+			glm::vec4 value(data[i * 4 + 0], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3]);
+			values.push_back(value);
+		}
+		return values;
+	}
+
 	SubMesh GLBLoader::CreateSubMesh(const tinygltf::Model& model, 
 		const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key)
 	{		
-		std::vector<float> positions, normals, texCoords, tangents, texCoords2;
+		std::vector<float> positions, normals, texCoords, tangents, texCoords2, weights;
 		std::vector<uint32_t> indices;
+		std::vector< uint16_t> joints;
 
 		uint32_t indexOffset = 0;
-		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, indices, indexOffset, key.attributesKey);
+		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, weights, joints, indices, indexOffset, key.attributesKey);
 
 		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
 
@@ -247,7 +404,7 @@ namespace JLEngine
 		}
 
 		// Interleave vertex data
-		std::vector<float> interleavedVertexData;
+		std::vector<std::byte> interleavedVertexData;
 		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, texCoords2, tangents, interleavedVertexData);
 
 		auto& vao = material->useTransparency ? m_transparentVAOs[key.attributesKey] : m_staticVAOs[key.attributesKey];
@@ -269,7 +426,7 @@ namespace JLEngine
 
 		auto& vbo = vao->GetVBO();
 		auto& vdata = vbo.GetDataMutable();
-		uint32_t vertexOffset = (uint32_t)vdata.size() / (CalculateStride(key.attributesKey) / sizeof(float));
+		uint32_t vertexOffset = (uint32_t)vdata.size() / (CalculateStrideInBytes(key.attributesKey));
 		vdata.insert(vdata.end(), interleavedVertexData.begin(), interleavedVertexData.end());
 
 		auto& ibo = vao->GetIBO();
@@ -278,6 +435,7 @@ namespace JLEngine
 		idata.insert(idata.end(), indices.begin(), indices.end());
 
 		SubMesh submesh;
+		submesh.isStatic = true;
 		submesh.aabb = CalculateAABB(positions);
 		submesh.attribKey = key.attributesKey;
 		submesh.materialHandle = material->GetHandle();
@@ -641,13 +799,83 @@ namespace JLEngine
 		}
 	}
 
+	SubMesh GLBLoader::CreateSubMeshAnim(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key)
+	{
+		std::vector<float> positions, normals, texCoords, tangents, texCoords2, weights;
+		std::vector<uint32_t> indices;
+		std::vector< uint16_t> joints;
+
+		uint32_t indexOffset = 0;
+		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, weights, joints, indices, indexOffset, key.attributesKey);
+
+		GenerateMissingAttributes(positions, normals, texCoords, tangents, indices, key.attributesKey);
+
+		Material* material;
+		if (!model.materials.empty())
+		{
+			if (key.materialIndex < 0)
+			{
+				material = m_resourceLoader->GetDefaultMaterial();
+			}
+			else
+			{
+				material = ParseMaterial(model, model.materials[key.materialIndex], key.materialIndex).get();
+				UpdateUVsFromScaleOffset(texCoords, material->scale, material->offset);
+			}
+		}
+		else
+		{
+			material = m_resourceLoader->GetDefaultMaterial();
+		}
+
+		// Interleave vertex data
+		std::vector<std::byte> interleavedVertexData;
+		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, weights, joints, interleavedVertexData);
+
+		auto& vao = m_dynamicVAOs[key.attributesKey];
+		if (!vao)
+		{
+			vao = std::make_shared<VertexArrayObject>("vao" + std::to_string(key.attributesKey));
+			m_dynamicVAOs[key.attributesKey] = vao;
+			vao->SetVertexAttribKey(key.attributesKey);
+		}
+
+		auto& vbo = vao->GetVBO();
+		auto& vdata = vbo.GetDataMutable();
+		uint32_t vertexOffset = (uint32_t)vdata.size() / (CalculateStrideInBytes(key.attributesKey));
+		vdata.insert(vdata.end(), interleavedVertexData.begin(), interleavedVertexData.end());
+
+		auto& ibo = vao->GetIBO();
+		auto& idata = ibo.GetDataMutable();
+		uint32_t indexBase = (uint32_t)idata.size();
+		idata.insert(idata.end(), indices.begin(), indices.end());
+
+		SubMesh submesh;
+		submesh.isStatic = false;
+		submesh.aabb = CalculateAABB(positions);
+		submesh.attribKey = key.attributesKey;
+		submesh.materialHandle = material->GetHandle();
+		submesh.command = 
+		{
+			.count = static_cast<uint32_t>(indices.size()),
+			.instanceCount = 1,
+			.firstIndex = indexBase,
+			.baseVertex = vertexOffset,
+			.baseInstance = 0
+		};
+
+		return submesh;
+	}
+
 	void GLBLoader::BatchLoadAttributes(const tinygltf::Model& model,
 		const std::vector<const tinygltf::Primitive*>& primitives,
 		std::vector<float>& positions,
 		std::vector<float>& normals,
 		std::vector<float>& texCoords,
 		std::vector<float>& texCoords2,
-		std::vector<float>& tangents,
+		std::vector<float>& tangents, 
+		std::vector<float>& weights,      
+		std::vector<uint16_t>& joints,
 		std::vector<uint32_t>& indices,
 		uint32_t& indexOffset, 
 		VertexAttribKey key)
@@ -668,6 +896,10 @@ namespace JLEngine
 				LoadTangentAttribute(model, *primitive, tangents);
 			if (HasVertexAttribKey(key, AttributeType::TEX_COORD_1))
 				LoadTexCoord2Attribute(model, *primitive, texCoords2);
+			if (HasVertexAttribKey(key, AttributeType::WEIGHT_0))  // New: Load WEIGHTS_0
+				LoadWeightAttribute(model, *primitive, weights);
+			if (HasVertexAttribKey(key, AttributeType::JOINT_0))   // New: Load JOINTS_0
+				LoadJointAttribute(model, *primitive, joints);
 
 			// Load indices or generate sequential ones
 			if (primitive->indices >= 0)
@@ -826,6 +1058,36 @@ namespace JLEngine
 		else
 		{
 			std::cerr << "Error: POSITION attribute not found in primitive!" << std::endl;
+		}
+	}
+
+	void GLBLoader::LoadWeightAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& weights)
+	{
+		const auto& weightAttr = primitive.attributes.find("WEIGHTS_0");
+		if (weightAttr != primitive.attributes.end())
+		{
+			const tinygltf::Accessor& accessor = model.accessors[weightAttr->second];
+			const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+			const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+
+			const float* data = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+			size_t count = accessor.count * 4; // WEIGHTS_0 is typically a vec4
+			weights.insert(weights.end(), data, data + count);
+		}
+	}
+
+	void GLBLoader::LoadJointAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<uint16_t>& joints)
+	{
+		const auto& jointAttr = primitive.attributes.find("JOINTS_0");
+		if (jointAttr != primitive.attributes.end())
+		{
+			const tinygltf::Accessor& accessor = model.accessors[jointAttr->second];
+			const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+			const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+
+			const uint16_t* data = reinterpret_cast<const uint16_t*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+			size_t count = accessor.count * 4; // JOINTS_0 is typically a vec4 of uint16
+			joints.insert(joints.end(), data, data + count);
 		}
 	}
 
