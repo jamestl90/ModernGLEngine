@@ -39,7 +39,7 @@ namespace JLEngine
         float thickness;                      // 4 bytes: Thickness for volumetric effects (optional)
         float padding1;                       // 4 bytes: Padding to maintain 16-byte alignment
         glm::vec3 attenuationColor;           // 12 bytes: RGB color for attenuation
-        float attenuationDistance;            // 4 bytes: Distance for light attenuation
+        float attenuationDistance;            // 4 bytes: Distance for light attenuation 
     };
 
     class Material : public Resource

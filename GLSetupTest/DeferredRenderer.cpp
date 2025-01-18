@@ -125,7 +125,7 @@ namespace JLEngine
         std::vector<RTParams> attributes(4);
         attributes[0] = { GL_RGBA8 };   // Albedo (RGB) + AO (A)
         attributes[1] = { GL_RGBA16F };        // Normals (RGB) + Cast/Receive Shadows (A)
-        attributes[2] = { GL_RGBA8 };      // Metallic (R) + Roughness (G)
+        attributes[2] = { GL_RGBA8 };      // Metallic (B) + Roughness (G), R and A reserved
         attributes[3] = { GL_RGBA16F };  // Emissive (RGB) + Reserved (A)
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
@@ -240,15 +240,20 @@ namespace JLEngine
         else
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
-            //ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
 
+            if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
+            {
+                ImageHelpers::CopyToScreen(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
+            }
+            else
+            {
+                TransparencyPass(eyePos, viewMatrix, projMatrix);
+            }
             //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
             //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
             //ImageHelpers::BlurInPlaceCompute(rtPingPong, m_simpleBlurCompute);
             //ImageHelpers::CopyToDefault(m_lightOutputTarget, m_width, m_height, m_passthroughShader);
             //m_rtPool.ReleaseRenderTarget(rtPingPong);
-
-            TransparencyPass(eyePos, viewMatrix, projMatrix);
         }
 
         GL_CHECK_ERROR();
@@ -331,6 +336,8 @@ namespace JLEngine
 
     void DeferredRenderer::RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
     {
+        if (m_ssboTransparentPerDraw.GetDataImmutable().empty()) return;
+
         Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
         // bind the gbuffer depth to the target for the transparency pass
         Graphics::API()->NamedFramebufferTexture(m_lightOutputTarget->GetGPUID(), GL_DEPTH_ATTACHMENT, m_gBufferTarget->GetDepthBufferId(), 0);

@@ -61,8 +61,8 @@ vec2 getMetallicRoughness(MaterialGPU material)
     if (hasTex) 
     {
         vec4 texValue = texture(sampler2D(material.metallicRoughnessHandle), v_TexCoord);
-        float metallic = texValue.g * material.metallicFactor;
-        float roughness = texValue.b * material.roughnessFactor;
+        float metallic = texValue.b * material.metallicFactor;
+        float roughness = texValue.g * material.roughnessFactor;
         return vec2(metallic, roughness);
     }
     return vec2(material.metallicFactor, material.roughnessFactor);
