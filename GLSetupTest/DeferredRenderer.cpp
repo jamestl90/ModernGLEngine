@@ -38,7 +38,7 @@ namespace JLEngine
             Graphics::DisposeGPUBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
             //Graphics::DisposeVertexArray(vaoRes.vao.get());
         }
-        for (auto& [attrib, vaoRes] : m_dynamicResources)
+        for (auto& [attrib, vaoRes] : m_skinnedMeshResources)
         {
             Graphics::DisposeGPUBuffer(&vaoRes.drawBuffer->GetGPUBuffer());
             //Graphics::DisposeVertexArray(vaoRes.vao.get());
@@ -126,10 +126,10 @@ namespace JLEngine
     {
         // Configure G-buffer render target
         std::vector<RTParams> attributes(4);
-        attributes[0] = { GL_RGBA8 };   // Albedo (RGB) + AO (A)
-        attributes[1] = { GL_RGBA16F };        // Normals (RGB) + Cast/Receive Shadows (A)
-        attributes[2] = { GL_RGBA8 };      // Metallic (R) + Roughness (G)
-        attributes[3] = { GL_RGBA16F };  // Emissive (RGB) + Reserved (A)
+        attributes[0] = { GL_RGBA8 };           // Albedo (RGB) + AO (A)
+        attributes[1] = { GL_RGBA16F };         // Normals (RGB) + Cast/Receive Shadows (A)
+        attributes[2] = { GL_RGBA8 };           // Metallic (B) + Roughness (G), Height (R), Reserved (A)
+        attributes[3] = { GL_RGBA16F };         // Emissive (RGB) + Reserved (A)
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
             "GBufferTarget", 
@@ -243,7 +243,7 @@ namespace JLEngine
 
         // --- DYNAMIC MESHES ---
         Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 1);
-        for (const auto& [key, resource] : m_dynamicResources)
+        for (const auto& [key, resource] : m_skinnedMeshResources)
         {
             if (resource.vao->GetGPUID() == 0) continue;
 
@@ -365,6 +365,8 @@ namespace JLEngine
 
     void DeferredRenderer::RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
     {
+        if (m_ssboTransparentPerDraw.GetDataImmutable().empty()) return;
+
         Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
         // bind the gbuffer depth to the target for the transparency pass
         Graphics::API()->NamedFramebufferTexture(m_lightOutputTarget->GetGPUID(), GL_DEPTH_ATTACHMENT, m_gBufferTarget->GetDepthBufferId(), 0);
@@ -578,7 +580,7 @@ namespace JLEngine
         }
         else if (vaoType == VAOType::DYNAMIC)
         {
-            m_dynamicResources[key] = resource;
+            m_skinnedMeshResources[key] = resource;
         }
         else if (vaoType == VAOType::JL_TRANSPARENT)
         {
@@ -602,7 +604,7 @@ namespace JLEngine
             }
             else if (vaoType == VAOType::DYNAMIC)
             {
-                m_dynamicResources[key] = resource;
+                m_skinnedMeshResources[key] = resource;
             }
             else if (vaoType == VAOType::JL_TRANSPARENT)
             {
@@ -708,7 +710,7 @@ namespace JLEngine
         {
             Graphics::CreateVertexArray(vaoresource.vao.get());
         }
-        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
+        for (auto& [vertexAttrib, vaoresource] : m_skinnedMeshResources)
         {
             Graphics::CreateVertexArray(vaoresource.vao.get());
         }
@@ -773,7 +775,7 @@ namespace JLEngine
             pdd.modelMatrix = item.second->GetGlobalTransform();
 
             m_ssboDynamicPerDraw.AddData(pdd);
-            m_dynamicResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
+            m_skinnedMeshResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
 
             jointCount += (int)item.second->mesh->GetSkeleton().joints.size();
         }
@@ -793,7 +795,7 @@ namespace JLEngine
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
 
-        for (auto& [vertexAttrib, vaoresource] : m_dynamicResources)
+        for (auto& [vertexAttrib, vaoresource] : m_skinnedMeshResources)
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }

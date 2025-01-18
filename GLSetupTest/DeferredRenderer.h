@@ -133,7 +133,7 @@ namespace JLEngine
         ShaderStorageBuffer<glm::mat4> m_ssboJointMatrices;
 
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
-        std::unordered_map<VertexAttribKey, VAOResource> m_dynamicResources;
+        std::unordered_map<VertexAttribKey, VAOResource> m_skinnedMeshResources;
         std::unordered_map<VertexAttribKey, VAOResource> m_transparentResources;
 
         std::unordered_map<uint32_t, size_t> m_materialIDMap;

@@ -46,7 +46,7 @@ namespace JLEngine
 		std::shared_ptr<Node> LoadGLB(const std::string& fileName);
 
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetStaticVAOs() { return m_staticVAOs; }
-		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetDynamicVAOs() { return m_dynamicVAOs; }
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetDynamicVAOs() { return m_skinnedMeshVAOs; }
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetTransparentVAOs() { return m_transparentVAOs; }
 
 		void ClearCaches();
@@ -108,7 +108,7 @@ namespace JLEngine
 		std::unordered_map<int, std::vector<std::shared_ptr<Node>>> meshNodeReferences;
 
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
-		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_dynamicVAOs;
+		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_skinnedMeshVAOs;
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_transparentVAOs;
 
 		ResourceLoader* m_resourceLoader;

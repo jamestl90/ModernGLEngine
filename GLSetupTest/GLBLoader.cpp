@@ -151,7 +151,6 @@ namespace JLEngine
 		// Recursively parse child nodes
 		for (int childIndex : gltfNode.children)
 		{
-
 			if (childIndex < 0 || childIndex >= model.nodes.size())
 			{
 				std::cerr << "Warning: Invalid child index in node " << node->name << std::endl;
@@ -324,10 +323,10 @@ namespace JLEngine
 			if (!jointNode.rotation.empty())
 			{
 				glm::quat rotation(
-					jointNode.rotation[3], // w
-					jointNode.rotation[0], // x
-					jointNode.rotation[1], // y
-					jointNode.rotation[2]  // z
+					static_cast<float>(jointNode.rotation[3]), // w
+					static_cast<float>(jointNode.rotation[0]), // x
+					static_cast<float>(jointNode.rotation[1]), // y
+					static_cast<float>(jointNode.rotation[2])  // z
 				);
 				localTransform *= glm::mat4_cast(rotation);
 			}
@@ -832,11 +831,11 @@ namespace JLEngine
 		std::vector<std::byte> interleavedVertexData;
 		Geometry::GenerateInterleavedVertexData(positions, normals, texCoords, tangents, weights, joints, interleavedVertexData);
 
-		auto& vao = m_dynamicVAOs[key.attributesKey];
+		auto& vao = m_skinnedMeshVAOs[key.attributesKey];
 		if (!vao)
 		{
 			vao = std::make_shared<VertexArrayObject>("vao" + std::to_string(key.attributesKey));
-			m_dynamicVAOs[key.attributesKey] = vao;
+			m_skinnedMeshVAOs[key.attributesKey] = vao;
 			vao->SetVertexAttribKey(key.attributesKey);
 		}
 

@@ -77,7 +77,7 @@ namespace JLEngine
         float refractionIndex;                
         float thickness;
         glm::vec3 attenuationColor;           
-        float attenuationDistance;            
+        float attenuationDistance;
 
         glm::vec2 offset = glm::vec2(0.0f);
         glm::vec2 scale = glm::vec2(1.0f);
