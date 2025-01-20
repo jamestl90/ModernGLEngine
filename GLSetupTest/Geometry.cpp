@@ -352,11 +352,11 @@ namespace JLEngine
             if (hasTangents)
                 dataPtr = insertFloats(dataPtr, &tangents[i * 4], 4);
 
-            if (hasWeights)
-                dataPtr = insertFloats(dataPtr, &weights[i * 4], 4);
-
             if (hasJoints)
                 dataPtr = insertUint16s(dataPtr, &joints[i * 4], 4);
+
+            if (hasWeights)
+                dataPtr = insertFloats(dataPtr, &weights[i * 4], 4);
         }
     }
 

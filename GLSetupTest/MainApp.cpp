@@ -173,7 +173,7 @@ int MainApp(std::string assetFolder)
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
-    engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb");
+    //engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb");
     //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
     //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
     //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, -2, 5));
@@ -191,7 +191,7 @@ int MainApp(std::string assetFolder)
     //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 2.5, -5));
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(0, 2.5, 5));
 
-    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, -20));
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
 
     engine.FinalizeLoading();
     renderer = engine.GetRenderer();

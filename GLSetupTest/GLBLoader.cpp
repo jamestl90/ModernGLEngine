@@ -70,7 +70,7 @@ namespace JLEngine
 			}
 
 			const tinygltf::Node& gltfNode = model.nodes[nodeIndex];
-			auto childNode = ParseNode(model, gltfNode);
+			auto childNode = ParseNode(model, gltfNode, nodeIndex); 
 			childNode->name = gltfNode.name;
 
 			if (scene.nodes.size() == 1)
@@ -85,9 +85,10 @@ namespace JLEngine
 		return rootNode;
 	}
 
-	std::shared_ptr<Node> GLBLoader::ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode)
+	std::shared_ptr<Node> GLBLoader::ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode, int nodeIndex)
 	{
 		auto node = std::make_shared<Node>(gltfNode.name.empty() ? "UnnamedNode" : gltfNode.name);
+		m_nodeList.push_back(node.get());
 
 		// Parse and apply transformations
 		ParseTransform(node, gltfNode);
@@ -146,8 +147,6 @@ namespace JLEngine
 			node->SetTag(NodeTag::Default);
 		}
 
-		int stopTest = 5;
-		int stopIndex = 0;
 		// Recursively parse child nodes
 		for (int childIndex : gltfNode.children)
 		{
@@ -158,12 +157,11 @@ namespace JLEngine
 			}
 
 			const tinygltf::Node& childGltfNode = model.nodes[childIndex];
-			auto childNode = ParseNode(model, childGltfNode);
+			auto childNode = ParseNode(model, childGltfNode, childIndex);
 			if (childNode)
 			{
 				node->AddChild(childNode);
 			}
-			stopIndex++;
 		}
 
 		return node;
@@ -242,7 +240,7 @@ namespace JLEngine
 		{
 			nodeName = model.nodes[targetNode].name.empty() ? "UnnamedNode" : model.nodes[targetNode].name;
 		}
-		
+
 		if (animName.empty())
 			animName = "Anim_" + nodeName + "_idx:" + std::to_string(animIdx);
 		else
@@ -299,7 +297,51 @@ namespace JLEngine
 
 		// Initialize skeleton
 		Skeleton skeleton;
+		skeleton.name = skin.name;
 		skeleton.joints.resize(skin.joints.size());
+
+		// probably a much better way to do this, but it works
+		// jointIndexes are node id's, we map each joint to its parent
+		// we also map the skeleton joint indices to node indices
+		std::unordered_map<int, int> nodeToJointIndexMapping;
+		std::unordered_map<int, int> jointToIndexMapping; 
+		int skeletonRoot = skin.skeleton;
+		bool jointResolved = false;
+		for (auto i = 0; i < skin.joints.size(); i++)
+		{
+			int jointIndex = skin.joints[i];
+			int parentIndex = -1;
+			
+			nodeToJointIndexMapping[jointIndex] = i;
+
+			if (jointIndex == skeletonRoot)
+			{
+				parentIndex = -1;
+				jointToIndexMapping[jointIndex] = parentIndex;
+			}
+			else
+			{
+				for (auto j = 0; j < model.nodes.size(); j++)
+				{
+					auto& children = model.nodes[j].children;
+					for (auto k = 0; k < children.size(); k++)
+					{
+						if (children[k] == jointIndex)
+						{
+							parentIndex = static_cast<int>(j);
+							jointToIndexMapping[jointIndex] = parentIndex;
+							jointResolved = true;
+							break;
+						}
+					}
+					if (jointResolved)
+					{
+						jointResolved = false;
+						break;
+					}
+				}
+			}
+		}
 
 		for (size_t i = 0; i < skin.joints.size(); ++i)
 		{
@@ -307,8 +349,9 @@ namespace JLEngine
 			const auto& jointNode = model.nodes[jointIndex];
 
 			Skeleton::Joint joint;
-			auto& name = model.nodes[jointIndex].name;
-			joint.parentIndex = 1;//FindParentNode(model, jointIndex); // Parent index from GLTF node
+			auto& name = jointNode.name; 
+			int parentIndex = jointToIndexMapping[jointIndex];
+			joint.parentIndex = i == 0 ? -1 : nodeToJointIndexMapping[parentIndex]; // need help here!
 
 			// Compute local transform
 			glm::mat4 localTransform(1.0f); // Identity matrix
@@ -342,6 +385,25 @@ namespace JLEngine
 			joint.localTransform = localTransform;
 			skeleton.joints[i] = joint;
 		}
+
+		//for (size_t i = 0; i < skeleton.joints.size(); ++i)
+		//{
+		//	const auto& joint = skeleton.joints[i];
+		//	const auto& jointNode = model.nodes[skin.joints[i]];
+		//	const auto& name = jointNode.name.empty() ? "Unnamed" : jointNode.name;
+		//
+		//	std::cout << "Joint " << i << ": " << name << std::endl;
+		//	std::cout << "  Parent Index: " << joint.parentIndex << " ("
+		//		<< (joint.parentIndex >= 0 ? model.nodes[skin.joints[joint.parentIndex]].name : "None") << ")"
+		//		<< std::endl;
+		//
+		//	std::cout << "  Local Transform:" << std::endl;
+		//	const glm::mat4& t = joint.localTransform;
+		//	std::cout << "    [" << t[0][0] << ", " << t[0][1] << ", " << t[0][2] << ", " << t[0][3] << "]" << std::endl;
+		//	std::cout << "    [" << t[1][0] << ", " << t[1][1] << ", " << t[1][2] << ", " << t[1][3] << "]" << std::endl;
+		//	std::cout << "    [" << t[2][0] << ", " << t[2][1] << ", " << t[2][2] << ", " << t[2][3] << "]" << std::endl;
+		//	std::cout << "    [" << t[3][0] << ", " << t[3][1] << ", " << t[3][2] << ", " << t[3][3] << "]" << std::endl;
+		//}
 
 		mesh.SetSkeleton(std::move(skeleton));
 	}

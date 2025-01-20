@@ -138,6 +138,11 @@ namespace JLEngine
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	}
 
+	void GraphicsAPI::SyncSSBO()
+	{
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
 	void GraphicsAPI::SyncFramebuffer()
 	{
 		glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);

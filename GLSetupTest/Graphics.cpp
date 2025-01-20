@@ -227,6 +227,9 @@ namespace JLEngine
 					size = 2;
 					break;
 				case AttributeType::COLOUR:
+					size = 4;
+					normalized = GL_TRUE;
+					break;
 				case AttributeType::TANGENT:
 					size = 4;
 					break;
@@ -237,6 +240,7 @@ namespace JLEngine
 					break;
 				case AttributeType::WEIGHT_0:
 					size = 4;
+					normalized = GL_TRUE;
 					break;
 				default:
 					std::cerr << "Unsupported attribute type!" << std::endl;
@@ -288,6 +292,7 @@ namespace JLEngine
 
 	void Graphics::CreateShader(ShaderProgram* program)
 	{
+		GL_CHECK_ERROR();
 		auto& shaders = program->GetShaders();
 		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
@@ -303,10 +308,10 @@ namespace JLEngine
 
 			Graphics::API()->ShaderCompileErrorCheck(shaderId, s.GetName());
 		}
-
+		GL_CHECK_ERROR();
 		GLuint programID = glCreateProgram();
 		program->SetProgramId(programID);
-
+		GL_CHECK_ERROR();
 		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			glAttachShader(programID, shaders.at(i).GetShaderId());
@@ -346,8 +351,10 @@ namespace JLEngine
 
 		for (auto it = shaders.begin(); it != shaders.end(); it++)
 		{
-			glDetachShader(program->GetProgramId(), (*it).GetShaderId());
-			glDeleteShader((*it).GetShaderId());
+			if (glIsShader(it->GetShaderId()))
+			{
+				glDeleteShader(it->GetShaderId());
+			}
 		}
 
 		glDeleteProgram(program->GetProgramId());
@@ -478,7 +485,7 @@ namespace JLEngine
 			API()->CopyNamedBufferSubData(buffer.GetGPUID(), newGPUID, 0, 0, std::min(oldSize, newSize));
 		}
 
-		buffer.SetSize(newSize);
+		buffer.SetSizeInBytes(newSize);
 		buffer.SetGPUID(newGPUID);
 	}
 
@@ -622,7 +629,7 @@ namespace JLEngine
 	{
 		GLuint id;
 		API()->CreateNamedBuffer(id);
-		API()->NamedBufferStorage(id, buffer.GetSize(), buffer.GetUsageFlags(), nullptr);
+		API()->NamedBufferStorage(id, buffer.GetSizeInBytes(), buffer.GetUsageFlags(), nullptr);
 		buffer.SetGPUID(id);
 		buffer.ClearDirty();
 	}
@@ -648,11 +655,11 @@ namespace JLEngine
 		}
 		else
 		{
-			if (gpuBuffer.GetSize() != bufferSize)
+			if (gpuBuffer.GetSizeInBytes() != bufferSize)
 			{
 				// Recreate storage if the size has changed
 				glNamedBufferStorage(gpuBuffer.GetGPUID(), bufferSize, bufferData.data(), gpuBuffer.GetUsageFlags());
-				gpuBuffer.SetSize(bufferSize);
+				gpuBuffer.SetSizeInBytes(bufferSize);
 			}
 			else
 			{

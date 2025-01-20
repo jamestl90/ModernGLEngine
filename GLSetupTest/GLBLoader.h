@@ -52,7 +52,7 @@ namespace JLEngine
 		void ClearCaches();
 
 	protected:
-		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode);
+		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode, int nodeIndex);
 		std::shared_ptr<Mesh> ParseMesh(const tinygltf::Model& model, int meshIndex);
 		std::shared_ptr<Animation> ParseAnimation(int animIdx, const tinygltf::Model& model, const tinygltf::Animation& gltfAnimation);
 		void ParseSkin(const tinygltf::Model& model, const tinygltf::Skin& skin, Mesh& mesh);
@@ -110,6 +110,7 @@ namespace JLEngine
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_skinnedMeshVAOs;
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_transparentVAOs;
+		std::vector<Node*> m_nodeList;
 
 		ResourceLoader* m_resourceLoader;
 	};

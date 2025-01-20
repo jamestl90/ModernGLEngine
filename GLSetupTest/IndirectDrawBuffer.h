@@ -14,12 +14,19 @@ namespace JLEngine
 		uint32_t materialID;			// 4 bytes
 	};
 
+	struct alignas(16) SkinnedMeshPerDrawData
+	{
+		glm::mat4 modelMatrix;			// 64 bytes
+		uint32_t materialID;			// 4 bytes
+		uint32_t baseJointIndex;
+	};
+
 	struct DrawIndirectCommand
 	{
 		uint32_t count;
 		uint32_t instanceCount;
 		uint32_t firstIndex;
-		uint32_t baseVertex;
+		uint32_t baseVertex; 
 		uint32_t baseInstance;
 	};
 

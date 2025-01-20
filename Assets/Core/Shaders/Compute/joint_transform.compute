@@ -1,0 +1,35 @@
+#version 460 core
+
+struct Joint
+{
+    mat4 localTransform; 
+    int parentIndex;    
+};
+
+layout(std430, binding = 0) readonly buffer JointInput 
+{
+    Joint joints[];
+};
+
+layout(std430, binding = 1) buffer JointOutput
+{
+    mat4 globalTransforms[]; 
+};
+
+layout(local_size_x = 32) in;
+
+void main() 
+{
+    uint jointIndex = gl_GlobalInvocationID.x;
+
+    if (jointIndex >= joints.length()) return;
+
+    mat4 localTransform = joints[jointIndex].localTransform;
+    int parentIndex = joints[jointIndex].parentIndex;
+
+    mat4 globalTransform = (parentIndex == -1) 
+                        ? localTransform 
+                        : globalTransforms[parentIndex] * localTransform;
+
+    globalTransforms[jointIndex] = globalTransform;
+}

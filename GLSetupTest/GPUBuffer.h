@@ -19,10 +19,10 @@ namespace JLEngine
 		~GPUBuffer() {}
 
 		uint32_t GetType() const { return m_type; }
-		size_t GetSize() const { return m_bufferSize; }
+		size_t GetSizeInBytes() const { return m_bufferSize; }
 		bool IsDirty() const { return m_isDirty; }
 
-		void SetSize(size_t size) { m_bufferSize = size; }
+		void SetSizeInBytes(size_t size) { m_bufferSize = size; }
 		void MarkDirty() { m_isDirty = true; }
 		void ClearDirty() { m_isDirty = false; }
 

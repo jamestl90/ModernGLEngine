@@ -113,6 +113,7 @@ namespace JLEngine
 		 void Clear(uint32_t flags);
 		 void ClearColour(float x, float y, float z, float w);
 		 void SyncCompute();
+		 void SyncSSBO();
 		 void SyncFramebuffer();
 				
 		 // Shader

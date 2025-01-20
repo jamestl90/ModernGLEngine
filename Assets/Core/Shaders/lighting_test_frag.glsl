@@ -169,7 +169,7 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     vec4 normalSample = texture(gNormals, texCoords);
     vec4 albedoAOSample = texture(gAlbedoAO, texCoords);
     gData.albedo = albedoAOSample.rgb;
-    gData.ao = albedoAOSample.a;
+    gData.ao = max(albedoAOSample.a, 0.0);
     gData.normal = normalize(normalSample.xyz);
     gData.worldPos = ReconstructWorldPosition(texCoords, texture(gDepth, texCoords).r);
     vec2 metallicRoughness = texture(gMetallicRoughness, texCoords).rg;

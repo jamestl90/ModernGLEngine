@@ -32,9 +32,11 @@ namespace JLEngine
                                          const std::vector<glm::mat4>&  inverseBindMatrices,
                                          std::vector<glm::mat4>&        jointMatrices)
         {
+            jointMatrices.resize(globalTransforms.size());
+
             for (size_t i = 0; i < globalTransforms.size(); ++i)
             {
-                jointMatrices.push_back(globalTransforms[i] * inverseBindMatrices[i]);
+                jointMatrices[i] = globalTransforms[i] * inverseBindMatrices[i];
             }
         }
 	};

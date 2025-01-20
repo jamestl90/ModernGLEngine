@@ -154,7 +154,7 @@ namespace JLEngine
             }
             shaders[1].SetSource(fragFile);
 
-            Graphics::CreateShader(program);
+            Graphics::CreateShader(program);            GL_CHECK_ERROR();
         }
 
 	protected:

@@ -118,22 +118,25 @@ namespace JLEngine
         ShaderProgram* m_blendShader;
         ShaderProgram* m_transmissionShader;
         ShaderProgram* m_composeFramebufferShader;
+        ShaderProgram* m_skinningGBufferShader;
 
         // compute shaders
         ShaderProgram* m_simpleBlurCompute;
+        ShaderProgram* m_jointTransformCompute;
 
         VertexArrayObject m_triangleVAO;
 
         UniformBuffer m_cameraUBO;
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboInstancedPerDraw;
-        ShaderStorageBuffer<PerDrawData> m_ssboDynamicPerDraw;
+        ShaderStorageBuffer<SkinnedMeshPerDrawData> m_ssboDynamicPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboTransparentPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
-        ShaderStorageBuffer<glm::mat4> m_ssboJointMatrices;
+        ShaderStorageBuffer<Skeleton::Joint> m_ssboJointMatrices;
+        ShaderStorageBuffer<glm::mat4> m_globalTransforms;
 
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
-        std::unordered_map<VertexAttribKey, VAOResource> m_skinnedMeshResources;
+        std::pair<VertexAttribKey, VAOResource> m_skinnedMeshResources;
         std::unordered_map<VertexAttribKey, VAOResource> m_transparentResources;
 
         std::unordered_map<uint32_t, size_t> m_materialIDMap;

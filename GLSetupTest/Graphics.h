@@ -84,7 +84,7 @@ namespace JLEngine
 	void Graphics::UploadToGPUBuffer(GPUBuffer& buffer, const T& data, uint32_t offset)
 	{
 		size_t dataSize = sizeof(T);
-		if (offset + dataSize > buffer.GetSize())
+		if (offset + dataSize > buffer.GetSizeInBytes())
 		{
 			throw std::runtime_error("Data exceeds GPU buffer size.");
 		}
@@ -102,7 +102,7 @@ namespace JLEngine
 
 		API()->NamedBufferStorage(id, data.size() * sizeof(T), buffer.GetUsageFlags(), data.size() == 0 ? nullptr : data.data());
 		buffer.SetGPUID(id);
-		buffer.SetSize(data.size());
+		buffer.SetSizeInBytes(data.size());
 		buffer.ClearDirty();
 	}
 
@@ -112,12 +112,12 @@ namespace JLEngine
 		size_t dataSize = data.size() * sizeof(T);
 
 		// Ensure the buffer has enough capacity
-		if (offset + dataSize > buffer.GetSize())
+		if (offset + dataSize > buffer.GetSizeInBytes())
 		{
-			size_t newSize = glm::max(offset + dataSize, buffer.GetSize() * 2);
+			size_t newSize = glm::max(offset + dataSize, buffer.GetSizeInBytes() * 2);
 
 			uint32_t oldGPUID = buffer.GetGPUID(); 
-			Resize(buffer, buffer.GetSize(), newSize);
+			Resize(buffer, buffer.GetSizeInBytes(), newSize);
 
 			API()->DisposeBuffer(1, &oldGPUID);
 		}

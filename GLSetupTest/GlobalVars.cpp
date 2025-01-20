@@ -1,4 +1,4 @@
 #include "GlobalVars.h"
 
-int SCREEN_WIDTH = 1080;
-int SCREEN_HEIGHT = 720;
+int SCREEN_WIDTH = 1440;
+int SCREEN_HEIGHT = 810;
