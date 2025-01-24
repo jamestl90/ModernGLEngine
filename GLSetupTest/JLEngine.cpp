@@ -96,6 +96,8 @@ namespace JLEngine
 
             m_imguiManager.BeginFrame();
 
+            auto& animControllers = m_renderer->GetSceneManager().GetAnimationControllers();
+            for (auto& [controller, node] : animControllers) { controller->Update((float)m_deltaTime); }
             logicUpdate(m_deltaTime);
 
             // Fixed Update (runs at the fixed time step)

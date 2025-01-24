@@ -259,9 +259,18 @@ namespace JLEngine
 		{
 			AnimationSampler animSampler;
 
-			animSampler.SetInputTimes(GetKeyframeTimes(model, sampler.input));
-			animSampler.SetOutputValues(GetKeyframeValues(model, sampler.output));
-			animSampler.SetInterpolation(sampler.interpolation.empty() ? "LINEAR" : sampler.interpolation);
+			auto inputTimes = GetKeyframeTimes(model, sampler.input);
+			auto outputValues = GetKeyframeValues(model, sampler.output);
+
+			if (inputTimes.size() != outputValues.size())
+			{
+				std::cerr << "Sampler input/output size mismatch\n";
+			}
+
+			animSampler.SetTimes(std::move(inputTimes));
+			animSampler.SetValues(std::move(outputValues));
+			animSampler.SetInterpolation(sampler.interpolation.empty() ? 
+				InterpolationType::LINEAR : InterpolationFromString(sampler.interpolation));
 
 			animation->AddSampler(animSampler);
 		}
@@ -269,9 +278,16 @@ namespace JLEngine
 		// Parse channels
 		for (const auto& channel : gltfAnimation.channels)
 		{
-			AnimationChannel animChannel(channel.sampler, channel.target_node, channel.target_path);
+			int targetNode = channel.target_node;
+			if (targetNode < 0 || targetNode >= model.nodes.size())
+			{
+				targetNode = -1; // Or skip the channel if it doesn't target a node
+			}
+			AnimationChannel animChannel(channel.sampler, targetNode, TargetPathFromString(channel.target_path));
 			animation->AddChannel(animChannel);
 		}
+
+		animation->CalcDuration();
 
 		return animation;
 	}
@@ -291,122 +307,103 @@ namespace JLEngine
 				&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 			size_t count = accessor.count;
 
+			// Ensure the count matches the number of joints
+			assert(count == skin.joints.size());
+
 			inverseBindMatrices.resize(count);
 			std::copy(data, data + count, inverseBindMatrices.begin());
 		}
 
-		// Initialize skeleton
+		// Create skeleton and initialize joints
 		Skeleton skeleton;
 		skeleton.name = skin.name;
 		skeleton.joints.resize(skin.joints.size());
 
-		// probably a much better way to do this, but it works
-		// jointIndexes are node id's, we map each joint to its parent
-		// we also map the skeleton joint indices to node indices
-		std::unordered_map<int, int> nodeToJointIndexMapping;
-		std::unordered_map<int, int> jointToIndexMapping; 
-		int skeletonRoot = skin.skeleton;
-		bool jointResolved = false;
-		for (auto i = 0; i < skin.joints.size(); i++)
+		// Precompute parent-child relationships
+		std::unordered_map<int, int> nodeToParent;
+		for (size_t i = 0; i < model.nodes.size(); ++i)
 		{
-			int jointIndex = skin.joints[i];
-			int parentIndex = -1;
-			
-			nodeToJointIndexMapping[jointIndex] = i;
-
-			if (jointIndex == skeletonRoot)
+			const auto& node = model.nodes[i];
+			for (int child : node.children)
 			{
-				parentIndex = -1;
-				jointToIndexMapping[jointIndex] = parentIndex;
-			}
-			else
-			{
-				for (auto j = 0; j < model.nodes.size(); j++)
-				{
-					auto& children = model.nodes[j].children;
-					for (auto k = 0; k < children.size(); k++)
-					{
-						if (children[k] == jointIndex)
-						{
-							parentIndex = static_cast<int>(j);
-							jointToIndexMapping[jointIndex] = parentIndex;
-							jointResolved = true;
-							break;
-						}
-					}
-					if (jointResolved)
-					{
-						jointResolved = false;
-						break;
-					}
-				}
+				nodeToParent[child] = static_cast<int>(i);
 			}
 		}
 
+		// Populate skeleton joints
 		for (size_t i = 0; i < skin.joints.size(); ++i)
 		{
 			int jointIndex = skin.joints[i];
 			const auto& jointNode = model.nodes[jointIndex];
 
 			Skeleton::Joint joint;
-			auto& name = jointNode.name; 
-			int parentIndex = jointToIndexMapping[jointIndex];
-			joint.parentIndex = i == 0 ? -1 : nodeToJointIndexMapping[parentIndex]; // need help here!
+
+			// Resolve parent index
+			auto it = nodeToParent.find(jointIndex);
+			if (it != nodeToParent.end())
+			{
+				// Map parent GLTF node index to joint index
+				auto parentIt = std::find(skin.joints.begin(), skin.joints.end(), it->second);
+				joint.parentIndex = (parentIt != skin.joints.end())
+					? static_cast<int>(std::distance(skin.joints.begin(), parentIt))
+					: -1;
+			}
+			else
+			{
+				joint.parentIndex = -1; // No parent (root node)
+			}
 
 			// Compute local transform
-			glm::mat4 localTransform(1.0f); // Identity matrix
-			if (!jointNode.translation.empty())
-			{
-				glm::vec3 translation(
-					jointNode.translation[0],
-					jointNode.translation[1],
-					jointNode.translation[2]);
-				localTransform = glm::translate(localTransform, translation);
-			}
-			if (!jointNode.rotation.empty())
-			{
-				glm::quat rotation(
-					static_cast<float>(jointNode.rotation[3]), // w
+			glm::vec3 translation = jointNode.translation.empty()
+				? glm::vec3(0.0f)
+				: glm::vec3(glm::make_vec3(jointNode.translation.data())); 
+			glm::quat rotation = jointNode.rotation.empty()
+				? glm::quat_identity<float, glm::defaultp>()
+				: glm::quat(static_cast<float>(jointNode.rotation[3]), // w
 					static_cast<float>(jointNode.rotation[0]), // x
 					static_cast<float>(jointNode.rotation[1]), // y
-					static_cast<float>(jointNode.rotation[2])  // z
-				);
-				localTransform *= glm::mat4_cast(rotation);
-			}
-			if (!jointNode.scale.empty())
-			{
-				glm::vec3 scale(
-					jointNode.scale[0],
-					jointNode.scale[1],
-					jointNode.scale[2]);
-				localTransform = glm::scale(localTransform, scale);
-			}
+					static_cast<float>(jointNode.rotation[2])); // z
+			glm::vec3 scale = jointNode.scale.empty()
+				? glm::vec3(1.0f)
+				: glm::vec3(glm::make_vec3(jointNode.scale.data()));
+			glm::mat4 localTransform = glm::translate(glm::mat4(1.0f), translation) *
+				glm::mat4_cast(rotation) *
+				glm::scale(glm::mat4(1.0f), scale);
 
 			joint.localTransform = localTransform;
 			skeleton.joints[i] = joint;
 		}
 
-		//for (size_t i = 0; i < skeleton.joints.size(); ++i)
-		//{
-		//	const auto& joint = skeleton.joints[i];
-		//	const auto& jointNode = model.nodes[skin.joints[i]];
-		//	const auto& name = jointNode.name.empty() ? "Unnamed" : jointNode.name;
-		//
-		//	std::cout << "Joint " << i << ": " << name << std::endl;
-		//	std::cout << "  Parent Index: " << joint.parentIndex << " ("
-		//		<< (joint.parentIndex >= 0 ? model.nodes[skin.joints[joint.parentIndex]].name : "None") << ")"
-		//		<< std::endl;
-		//
-		//	std::cout << "  Local Transform:" << std::endl;
-		//	const glm::mat4& t = joint.localTransform;
-		//	std::cout << "    [" << t[0][0] << ", " << t[0][1] << ", " << t[0][2] << ", " << t[0][3] << "]" << std::endl;
-		//	std::cout << "    [" << t[1][0] << ", " << t[1][1] << ", " << t[1][2] << ", " << t[1][3] << "]" << std::endl;
-		//	std::cout << "    [" << t[2][0] << ", " << t[2][1] << ", " << t[2][2] << ", " << t[2][3] << "]" << std::endl;
-		//	std::cout << "    [" << t[3][0] << ", " << t[3][1] << ", " << t[3][2] << ", " << t[3][3] << "]" << std::endl;
-		//}
+		// Map GLTF node indices to joint indices for animations
+		std::unordered_map<int, int> gltfNodeToJointIndex;
+		for (size_t i = 0; i < skin.joints.size(); ++i)
+		{
+			gltfNodeToJointIndex[skin.joints[i]] = static_cast<int>(i);
+		}
 
-		mesh.SetSkeleton(std::move(skeleton));
+		// Update animation target nodes
+		auto animations = GetAnimationsFromSkeleton(skin.skeleton);
+		for (auto anim : animations)
+		{
+			for (auto& channel : anim->GetChannels())
+			{
+				int gltfNodeIndex = channel.GetTargetNode();
+				auto it = gltfNodeToJointIndex.find(gltfNodeIndex);
+				if (it != gltfNodeToJointIndex.end())
+				{
+					channel.UpdateTargetNode(it->second);
+				}
+				else
+				{
+					channel.UpdateTargetNode(-1); // Invalid joint index
+				}
+			}
+		}
+
+		// Assign the skeleton to the mesh
+		mesh.SetSkeleton(std::make_shared<Skeleton>(skeleton));
 	}
+
 
 	std::vector<float> GLBLoader::GetKeyframeTimes(const tinygltf::Model& model, int accessorIndex)
 	{
@@ -426,11 +423,26 @@ namespace JLEngine
 
 		const float* data = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 		std::vector<glm::vec4> values;
-		for (size_t i = 0; i < accessor.count; ++i)
+
+		if (accessor.type == TINYGLTF_TYPE_VEC3) // Translation/Scale
 		{
-			glm::vec4 value(data[i * 4 + 0], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3]);
-			values.push_back(value);
+			for (size_t i = 0; i < accessor.count; ++i)
+			{
+				values.emplace_back(data[i * 3 + 0], data[i * 3 + 1], data[i * 3 + 2], 0.0f); // Pad with 0.0f for `w`
+			}
 		}
+		else if (accessor.type == TINYGLTF_TYPE_VEC4) // Rotation
+		{
+			for (size_t i = 0; i < accessor.count; ++i)
+			{
+				values.emplace_back(data[i * 4 + 0], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3]);
+			}
+		}
+		else
+		{
+			std::cerr << "Unsupported accessor type for keyframe values\n";
+		}
+
 		return values;
 	}
 
@@ -865,7 +877,7 @@ namespace JLEngine
 		std::vector<float> positions, normals, texCoords, tangents, texCoords2, weights;
 		std::vector<uint32_t> indices;
 		std::vector< uint16_t> joints;
-
+		
 		uint32_t indexOffset = 0;
 		BatchLoadAttributes(model, primitives, positions, normals, texCoords, texCoords2, tangents, weights, joints, indices, indexOffset, key.attributesKey);
 
@@ -1082,6 +1094,24 @@ namespace JLEngine
 			static_cast<float>(value.Get(0).IsNumber() ? value.Get(0).Get<double>() : defaultValue.x),
 			static_cast<float>(value.Get(1).IsNumber() ? value.Get(1).Get<double>() : defaultValue.y),
 			static_cast<float>(value.Get(2).IsNumber() ? value.Get(2).Get<double>() : defaultValue.z));
+	}
+
+	std::vector<Animation*> GLBLoader::GetAnimationsFromSkeleton(int gltfSkeletonRoot)
+	{
+		std::vector<Animation*> animations;
+		auto& resources = m_resourceLoader->GetAnimationManager()->GetResources();
+		for (auto& anim : resources)
+		{
+			for (auto& channel : anim.second->GetChannels())
+			{
+				if (channel.GetTargetNode() == gltfSkeletonRoot)
+				{
+					animations.push_back(anim.second.get());
+					break;
+				}
+			}
+		}
+		return animations;
 	}
 
 	void GLBLoader::LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,

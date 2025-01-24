@@ -29,6 +29,7 @@ namespace JLEngine
 			m_nonInstancedDynamic.clear();
 			m_instanced.clear();
 			m_transparentObjects.clear();
+			m_animControllers.clear();
 
 			std::function<void(Node*)> populateLists = [&](Node* node)
 				{
@@ -62,6 +63,7 @@ namespace JLEngine
 							}
 							else
 							{
+								m_animControllers.push_back(std::make_pair(node->mesh->GetAnimController(), node));
 								m_nonInstancedDynamic.push_back(std::make_pair(submesh, node));
 							}
 						}
@@ -93,6 +95,11 @@ namespace JLEngine
 		std::vector<std::pair<SubMesh, Node*>>& GetTransparent()
 		{
 			return m_transparentObjects;
+		}
+
+		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>>& GetAnimationControllers()
+		{
+			return m_animControllers;
 		}
 
 		void SortStaticFrontToBack(glm::vec3& eyePos)
@@ -155,6 +162,7 @@ namespace JLEngine
 		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedDynamic;
 		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects;
 		std::unordered_map<std::string, SubMesh> m_instanced;
+		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_animControllers;
 
 		ResourceLoader* m_resourceLoader;
 	};

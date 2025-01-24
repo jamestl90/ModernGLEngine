@@ -240,7 +240,6 @@ namespace JLEngine
 					break;
 				case AttributeType::WEIGHT_0:
 					size = 4;
-					normalized = GL_TRUE;
 					break;
 				default:
 					std::cerr << "Unsupported attribute type!" << std::endl;

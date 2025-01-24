@@ -139,7 +139,8 @@ namespace JLEngine
             Graphics::DisposeShader(program);
 
             auto& shaders = program->GetShaders();
-            
+
+            std::cout << "Reload shader: " << program->GetName() << std::endl;
             std::string vertFile;
             if (!ReadTextFile(program->GetFilePath() + shaders[0].GetName(), vertFile))
             {
@@ -154,7 +155,8 @@ namespace JLEngine
             }
             shaders[1].SetSource(fragFile);
 
-            Graphics::CreateShader(program);            GL_CHECK_ERROR();
+            Graphics::CreateShader(program);     
+            GL_CHECK_ERROR();
         }
 
 	protected:

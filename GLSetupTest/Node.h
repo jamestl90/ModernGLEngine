@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <memory> // For smart pointers
+#include <functional>
 #include <glm/glm.hpp> // For transformation matrices and vectors
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -116,6 +117,37 @@ namespace JLEngine
             {
                 child->UpdateTransforms(globalTransform);
             }
+        }
+
+        Node* FindSkeletonNode()
+        {
+            Node* foundSkeleton = nullptr;
+
+            std::function<void(Node*)> findSkeleton = [&](Node* node)
+                {
+                    if (node->mesh != nullptr)
+                    {
+                        for (auto& submesh : node->mesh->GetSubmeshes())
+                        {
+                            if (!submesh.isStatic)
+                            {
+                                foundSkeleton = node;
+                                return;
+                            }
+                        }
+                    }
+                    for (auto& child : node->children)
+                    {
+                        if (foundSkeleton != nullptr)
+                            return;
+
+                        findSkeleton(child.get());
+                    }
+                };
+
+            findSkeleton(this);
+
+            return foundSkeleton; // Return nullptr if no skeleton is found
         }
 
         // You do not want to call this before a node has been attached to the scene root 

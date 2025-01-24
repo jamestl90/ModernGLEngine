@@ -192,6 +192,9 @@ int MainApp(std::string assetFolder)
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(0, 2.5, 5));
 
     auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
+    auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
+    auto skeletonNode = runningGuy->FindSkeletonNode();
+    skeletonNode->mesh->GetAnimController()->SetAnimation(anim.get());
 
     engine.FinalizeLoading();
     renderer = engine.GetRenderer();

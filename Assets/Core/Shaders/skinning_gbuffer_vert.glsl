@@ -40,19 +40,29 @@ flat out uint v_MaterialIndex;
 
 void main() 
 {
-    SkinnedMeshPerDrawData data = perDrawData[gl_DrawID + gl_InstanceID];
+    SkinnedMeshPerDrawData data = perDrawData[gl_DrawID];
     mat4 modelMatrix = data.modelMatrix;
     v_MaterialIndex = data.materialIndex;
 
     v_TexCoord = a_TexCoord;
 
-    mat4 skinningMatrix =
-        a_Weights.x * globalTransforms[data.baseJointIndex + a_Joints.x] +
-        a_Weights.y * globalTransforms[data.baseJointIndex + a_Joints.y] +
-        a_Weights.z * globalTransforms[data.baseJointIndex + a_Joints.z] +
-        a_Weights.w * globalTransforms[data.baseJointIndex + a_Joints.w];
+    float weightSum = a_Weights.x + a_Weights.y + a_Weights.z + a_Weights.w;
+    vec4 normalizedWeights = a_Weights / weightSum;
 
-    vec4 worldPosition = modelMatrix * skinningMatrix * vec4(a_Position, 1.0);
+    // debug my weight values, model should only show if the weights are ~1.0
+    if (weightSum < 0.99 || weightSum > 1.01)
+    {
+        gl_Position = vec4(0.0);
+        return;
+    }
+
+    mat4 skinningMatrix =
+        normalizedWeights.x * globalTransforms[a_Joints.x] +
+        normalizedWeights.y * globalTransforms[a_Joints.y] +
+        normalizedWeights.z * globalTransforms[a_Joints.z] +
+        normalizedWeights.w * globalTransforms[a_Joints.w];
+
+    vec4 worldPosition = skinningMatrix * vec4(a_Position, 1.0);
 
     mat3 modelMatrixNormal = transpose(inverse(mat3(modelMatrix)));
     mat3 skinningMatrixNormal = transpose(inverse(mat3(skinningMatrix)));
@@ -60,6 +70,8 @@ void main()
     v_Tangent = normalize(modelMatrixNormal * (skinningMatrixNormal * a_Tangent));
     v_Bitangent = normalize(cross(v_Normal, v_Tangent)); 
 
+    mat4 mvp = projMatrix * viewMatrix * modelMatrix;
+
     // clip-space position
-    gl_Position = projMatrix * viewMatrix * worldPosition;
+    gl_Position = mvp * worldPosition;
 }

@@ -24,7 +24,6 @@ namespace JLEngine
         // Retrieve a resource by ID
         ResourcePtr Get(uint32_t id)
         {
-            std::scoped_lock lock(m_mutex);
             auto it = m_resourcesById.find(id);
             return (it != m_resourcesById.end()) ? it->second : nullptr;
         }
@@ -32,7 +31,6 @@ namespace JLEngine
         // Retrieve a resource by name
         ResourcePtr Get(const std::string& name)
         {
-            std::scoped_lock lock(m_mutex);
             auto it = m_nameToId.find(name);
             return (it != m_nameToId.end()) ? Get(it->second) : nullptr;
         }

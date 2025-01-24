@@ -61,6 +61,7 @@ namespace JLEngine
         void GenerateGPUBuffers();
 
         std::shared_ptr<Node>& SceneRoot() { return m_sceneManager.GetRoot(); }
+        SceneManager& GetSceneManager() { return m_sceneManager; }
 
         void SetDebugMode(DebugModes mode) { m_debugModes = mode; }
         void CycleDebugMode();
@@ -81,7 +82,6 @@ namespace JLEngine
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void InitScreenSpaceTriangle();
         void RenderScreenSpaceTriangle();
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
         void GenerateMaterialAndTextureBuffers(
@@ -119,6 +119,7 @@ namespace JLEngine
         ShaderProgram* m_transmissionShader;
         ShaderProgram* m_composeFramebufferShader;
         ShaderProgram* m_skinningGBufferShader;
+        ShaderProgram* m_lineShader;
 
         // compute shaders
         ShaderProgram* m_simpleBlurCompute;

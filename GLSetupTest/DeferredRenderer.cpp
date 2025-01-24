@@ -78,6 +78,7 @@ namespace JLEngine
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
         m_composeFramebufferShader = m_resourceLoader->CreateShaderFromFile("ComposeFramebuffer", "screenspacetriangle.glsl", "compose_fb_frag.glsl", shaderAssetPath).get();
+        m_lineShader = m_resourceLoader->CreateShaderFromFile("LineShader", "line_vert.glsl", "line_frag.glsl", shaderAssetPath).get();
         // compute shader
         m_simpleBlurCompute = m_resourceLoader->CreateComputeFromFile("SimpleBlur", "gaussianblur.compute", shaderAssetPath + "Compute/").get();
         m_jointTransformCompute = m_resourceLoader->CreateComputeFromFile("AnimJointTransforms", "joint_transform.compute", shaderAssetPath + "Compute/").get();
@@ -93,36 +94,8 @@ namespace JLEngine
         m_hdriSky->Initialise(m_assetFolder, params);
         
         m_triangleVAO.SetGPUID(Graphics::API()->CreateVertexArray());
+
         GL_CHECK_ERROR();
-    }
-
-    void DeferredRenderer::InitScreenSpaceTriangle() 
-    {
-        //const float triangleVertices[] = 
-        //{
-        //    // Positions        // UVs
-        //    -1.0f, -3.0f,       0.0f, 2.0f,  
-        //     3.0f,  1.0f,       2.0f, 0.0f,  
-        //    -1.0f,  1.0f,       0.0f, 0.0f      
-        //};
-        //std::vector<float> triVerts(std::begin(triangleVertices), std::end(triangleVertices));
-        //
-        //// Initialize the VertexBuffer
-        //JLEngine::VertexBuffer triangleVBO;
-        //triangleVBO.Set(std::move(triVerts));
-        //
-        //// Add attributes to the VertexArrayObject
-        //m_triangleVAO.AddAttribute(JLEngine::AttributeType::POSITION);
-        //m_triangleVAO.SetPosCount(2);
-        //m_triangleVAO.AddAttribute(JLEngine::AttributeType::TEX_COORD_0);
-        //
-        //// Calculate the stride and associate the buffer with the VAO
-        //m_triangleVAO.CalcStride();
-        //m_triangleVAO.SetVertexBuffer(triangleVBO);
-        //
-        //Graphics::CreateVertexArray(&m_triangleVAO);
-
-        m_triangleVAO.SetGPUID(Graphics::API()->CreateVertexArray());
     }
 
     void DeferredRenderer::SetupGBuffer() 
@@ -204,7 +177,7 @@ namespace JLEngine
 
             DrawGeometry(resource, stride);
         }
-
+        
         // --- SKINNING SETUP FOR DYNAMIC MESHES ---
         //int numJoints = (int)m_ssboJointMatrices.GetDataImmutable().size();
         //int workGroupSize = 32; 
@@ -224,9 +197,15 @@ namespace JLEngine
             auto& skinnedMeshData = m_sceneManager.GetNonInstancedDynamic();
             auto& mesh = skinnedMeshData[0].second->mesh;
             auto& skeleton = skinnedMeshData[0].second->mesh->GetSkeleton();
+            auto& controller = mesh->GetAnimController();
+
+            std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
+
+            float currentTime = controller->GetTime();
+            AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms);
 
             std::vector<glm::mat4> globalTransforms;
-            AnimHelpers::ComputeGlobalTransforms(skeleton, globalTransforms);
+            AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
 
             std::vector<glm::mat4> jointMatrices;
             AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
@@ -284,6 +263,8 @@ namespace JLEngine
             {
                 TransparencyPass(eyePos, viewMatrix, projMatrix);
             }
+
+
             //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
             //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
             //ImageHelpers::BlurInPlaceCompute(rtPingPong, m_simpleBlurCompute);
@@ -384,7 +365,7 @@ namespace JLEngine
             m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
         };
 
-        Graphics::API()->BindTextures(0, 2, textures);
+        Graphics::API()->BindTextures(0, 3, textures);
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
         auto& vaoRes = m_transparentResources.begin()->second;
@@ -768,12 +749,12 @@ namespace JLEngine
             m_skinnedMeshResources.second.drawBuffer->AddDrawCommand(item.first.command);
 
             auto& mesh = item.second->mesh;
-            for (auto& joint : mesh->GetSkeleton().joints)
+            for (auto& joint : mesh->GetSkeleton()->joints)
             {
                 m_ssboJointMatrices.AddData(joint);
             }
 
-            jointCount += (int)mesh->GetSkeleton().joints.size();
+            jointCount += (int)mesh->GetSkeleton()->joints.size();
         }
 
         for (auto& item : transparentItems)

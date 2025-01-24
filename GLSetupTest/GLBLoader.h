@@ -101,6 +101,8 @@ namespace JLEngine
 		glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue);
 		glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue);
 
+		std::vector<Animation*> GetAnimationsFromSkeleton(int gltfSkeletonRoot);
+
 	private:
 		std::unordered_map<int, std::shared_ptr<Mesh>> meshCache;
 		std::unordered_map<int, std::shared_ptr<Material>> materialCache;

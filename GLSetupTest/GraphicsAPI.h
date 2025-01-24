@@ -220,6 +220,7 @@ namespace JLEngine
 		void BindBufferBase(GLenum target, uint32_t index, uint32_t bufferID);
 		void BindBufferRange(uint32_t bufferID, GLenum target, uint32_t index, size_t offset, size_t size);
 		void NamedBufferStorage(uint32_t id, size_t size, GLbitfield usageFlags, const void* data = nullptr);
+		void NamedBufferData(uint32_t id, size_t size, const void* data, uint32_t drawFlag);
 		void NamedBufferSubData(uint32_t id, size_t offset, size_t size, const void* data);
 		void CopyNamedBufferSubData(GLuint readBuffer,
 			GLuint writeBuffer,

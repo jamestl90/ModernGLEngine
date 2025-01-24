@@ -234,6 +234,7 @@
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AnimationController.h" />
     <ClInclude Include="AnimationFactory.h" />
     <ClInclude Include="AnimData.h" />
     <ClInclude Include="AnimHelpers.h" />

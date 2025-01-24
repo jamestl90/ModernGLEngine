@@ -386,6 +386,9 @@
     <ClInclude Include="AnimHelpers.h">
       <Filter>Header Files\Graphics\Rendering\Animation</Filter>
     </ClInclude>
+    <ClInclude Include="AnimationController.h">
+      <Filter>Header Files\Graphics\Rendering\Animation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />

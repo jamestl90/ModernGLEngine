@@ -395,6 +395,11 @@ namespace JLEngine
 		glNamedBufferStorage(id, size, data, usageFlags);
 	}
 
+	void GraphicsAPI::NamedBufferData(uint32_t id, size_t size, const void* data, uint32_t drawFlag)
+	{
+		glNamedBufferData(id, size, data, drawFlag);
+	}
+
 	void GraphicsAPI::NamedBufferSubData(uint32_t id, size_t offset, size_t size, const void* data)
 	{
 		glNamedBufferSubData(id, offset, size, data);
