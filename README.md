@@ -1,5 +1,7 @@
 Engine is based on Modern OpenGL 4.6 and utilises it's features such as DSA (Direct State Access), bindless textures (GL_ARB_bindless_texture), SSBOs (Shader Storage Buffer Objects) and Multi-Draw Indirect. 
 
+https://trello.com/b/9M6YkL0b/opengl-engine-jlengine
+
 Rendering Setup:
 
 Supports a basic deferred PBR pipeline with ALBEDO(AO), NORMALS, METALLIC/ROUGHNESS and EMISSIVE being stored in the gbuffer. 
