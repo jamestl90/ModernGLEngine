@@ -25,13 +25,6 @@ namespace JLEngine
     DeferredRenderer::~DeferredRenderer() 
     {
         Graphics::DisposeVertexArray(&m_triangleVAO);
-        
-        Graphics::DisposeShader(m_shadowDebugShader);
-        Graphics::DisposeShader(m_gBufferDebugShader);
-        Graphics::DisposeShader(m_gBufferShader);
-        Graphics::DisposeShader(m_lightingTestShader);
-
-        Graphics::DisposeRenderTarget(m_gBufferTarget);
 
         for (auto& [attrib, vaoRes] : m_staticResources)
         {
@@ -44,6 +37,14 @@ namespace JLEngine
         }
 
         Graphics::DisposeGPUBuffer(&m_skinnedMeshResources.second.drawBuffer->GetGPUBuffer());
+
+        Graphics::DisposeGPUBuffer(&m_ssboStaticPerDraw.GetGPUBuffer());
+        Graphics::DisposeGPUBuffer(&m_ssboInstancedPerDraw.GetGPUBuffer());
+        Graphics::DisposeGPUBuffer(&m_ssboDynamicPerDraw.GetGPUBuffer());
+        Graphics::DisposeGPUBuffer(&m_ssboTransparentPerDraw.GetGPUBuffer());
+        Graphics::DisposeGPUBuffer(&m_ssboMaterials.GetGPUBuffer());
+        Graphics::DisposeGPUBuffer(&m_ssboJointMatrices.GetGPUBuffer());
+        Graphics::DisposeGPUBuffer(&m_ssboGlobalTransforms.GetGPUBuffer());
     }
     
     void DeferredRenderer::Initialize() 
@@ -202,7 +203,8 @@ namespace JLEngine
             std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
 
             float currentTime = controller->GetTime();
-            AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms);
+            auto& keyframeIndices = controller->GetKeyframeIndices();
+            AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
 
             std::vector<glm::mat4> globalTransforms;
             AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
@@ -210,7 +212,7 @@ namespace JLEngine
             std::vector<glm::mat4> jointMatrices;
             AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
 
-            Graphics::UploadToGPUBuffer(m_globalTransforms.GetGPUBuffer(), jointMatrices);
+            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), jointMatrices);
         }
 
         // --- DYNAMIC MESHES ---
@@ -218,7 +220,7 @@ namespace JLEngine
         Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
         Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 1);
         Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
-        Graphics::BindGPUBuffer(m_globalTransforms.GetGPUBuffer(), 3);
+        Graphics::BindGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), 3);
 
         if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
             DrawGeometry(m_skinnedMeshResources.second, stride);
@@ -780,9 +782,9 @@ namespace JLEngine
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
 
-        m_globalTransforms.GetGPUBuffer().SetSizeInBytes(jointCount * sizeof(glm::mat4));
+        m_ssboGlobalTransforms.GetGPUBuffer().SetSizeInBytes(jointCount * sizeof(glm::mat4));
         Graphics::CreateGPUBuffer(m_ssboJointMatrices.GetGPUBuffer(), m_ssboJointMatrices.GetDataImmutable());
-        Graphics::CreateGPUBuffer(m_globalTransforms.GetGPUBuffer());
+        Graphics::CreateGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<SkinnedMeshPerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable());
@@ -865,6 +867,7 @@ namespace JLEngine
         m_height = height;
 
         m_gBufferTarget->ResizeTextures(m_width, m_height);
+        m_lightOutputTarget->ResizeTextures(m_width, m_height);
 
         // Recreate the G-buffer to match the new dimensions
         //m_assetLoader->GetRenderTargetManager()->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer

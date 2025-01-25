@@ -95,8 +95,8 @@ namespace JLEngine
 
 		glTextureParameteri(image, GL_TEXTURE_MAG_FILTER, params.magFilter);
 		glTextureParameteri(image, GL_TEXTURE_MIN_FILTER, minFilter);
-		glTextureParameteri(image, GL_TEXTURE_WRAP_S, params.wrapS);
-		glTextureParameteri(image, GL_TEXTURE_WRAP_T, params.wrapT);
+		glTextureParameteri(image, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTextureParameteri(image, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 		if (params.mipmapEnabled)
 		{

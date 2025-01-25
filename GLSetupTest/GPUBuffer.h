@@ -16,7 +16,7 @@ namespace JLEngine
 			: GPUResource(name), m_type(0), m_usageFlags(0), m_bufferSize(0), m_isDirty(true) {}
 		GPUBuffer(uint32_t type, GLbitfield usageFlags)
 			: GPUResource(""), m_type(type), m_usageFlags(usageFlags), m_bufferSize(0), m_isDirty(true) {}
-		~GPUBuffer() {}
+		~GPUBuffer() { }
 
 		uint32_t GetType() const { return m_type; }
 		size_t GetSizeInBytes() const { return m_bufferSize; }

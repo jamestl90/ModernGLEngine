@@ -134,7 +134,7 @@ namespace JLEngine
         ShaderStorageBuffer<PerDrawData> m_ssboTransparentPerDraw;
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
         ShaderStorageBuffer<Skeleton::Joint> m_ssboJointMatrices;
-        ShaderStorageBuffer<glm::mat4> m_globalTransforms;
+        ShaderStorageBuffer<glm::mat4> m_ssboGlobalTransforms;
 
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
         std::pair<VertexAttribKey, VAOResource> m_skinnedMeshResources;

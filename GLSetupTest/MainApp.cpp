@@ -173,7 +173,7 @@ int MainApp(std::string assetFolder)
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
-    //engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb");
+    engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(0,5,0));
     //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
     //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
     //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, -2, 5));
@@ -182,16 +182,20 @@ int MainApp(std::string assetFolder)
     //engine.LoadAndAttachToRoot(assetFolder + "Bistro_Godot2.glb");
     //engine.LoadAndAttachToRoot(assetFolder + "VirtualCity.glb");
     //
-    //auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, -2.5f, 0));
-    //auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    //planeMat->castShadows = false;
-    //planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    //plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
-    //engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(0, 0, 10), glm::quat(), glm::vec3(0.2f, 0.2f, 0.2f));
-    //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 2.5, -5));
-    //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(0, 2.5, 5));
+    auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
+    auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    planeMat->castShadows = false;
+    JLEngine::TexParams params;
+    params.wrapS = GL_REPEAT;
+    params.wrapT = GL_REPEAT;
+    planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png", params);
+    plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
 
-    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
+    engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(0, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
+    engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
+    engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
+
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, -2.5, 0));
     auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
     auto skeletonNode = runningGuy->FindSkeletonNode();
     skeletonNode->mesh->GetAnimController()->SetAnimation(anim.get());

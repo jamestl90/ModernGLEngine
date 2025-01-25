@@ -41,7 +41,10 @@ namespace JLEngine
             }
         }
 
-        static void EvaluateAnimation(Animation& animation, float currTime, std::vector<glm::mat4>& nodeTransforms)
+        static void EvaluateAnimation(Animation& animation, 
+            float currTime,
+            std::vector<glm::mat4>& nodeTransforms,
+            const std::vector<size_t>& keyframeIndices)
         {
             const auto& channels = animation.GetChannels();
             const auto& samplers = animation.GetSamplers();
@@ -50,27 +53,31 @@ namespace JLEngine
             std::vector<glm::quat> rotations(nodeTransforms.size(), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             std::vector<glm::vec3> scales(nodeTransforms.size(), glm::vec3(1.0f));
 
-            for (const auto& channel : channels)
+            for (size_t channelIndex = 0; channelIndex < channels.size(); ++channelIndex)
             {
+                const auto& channel = channels[channelIndex];
                 const auto& sampler = samplers[channel.GetSamplerIndex()];
                 const auto& outputValues = sampler.GetValues();
-                const auto& times = sampler.GetTimes();
+                const auto& inputTimes = sampler.GetTimes();
 
-                auto it = std::lower_bound(times.begin(), times.end(), currTime);
+                size_t currentIndex = keyframeIndices[channelIndex];
+                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : currentIndex;
 
-                if (currTime >= times.back())
+                float timeStart = inputTimes[currentIndex];
+                float timeEnd = inputTimes[nextIndex];
+                float factor = (timeEnd > timeStart) ? (currTime - timeStart) / (timeEnd - timeStart) : 0.0f;
+
+                // the last keyframe doesnt seem to be hit
+                // i think this is because fmod wraps the time 
+                // when it's > anim duration but the step between 
+                // keyframes is too large to pick up the last keyframe
+                if (nextIndex == currentIndex) // No interpolation needed (last keyframe or static channel)
                 {
-                    ApplyKeyframe(channel, outputValues.back(), translations, rotations, scales);
-                }
-                else if (it == times.begin())
-                {
-                    ApplyKeyframe(channel, outputValues.front(), translations, rotations, scales);
+                    ApplyKeyframe(channel, outputValues[currentIndex], translations, rotations, scales);
                 }
                 else
                 {
-                    size_t i = std::distance(times.begin(), it);
-                    float factor = (currTime - times[i - 1]) / (times[i] - times[i - 1]);
-                    InterpolateKeyframes(channel, outputValues[i], outputValues[i], factor, translations, rotations, scales);
+                    InterpolateKeyframes(channel, outputValues[currentIndex], outputValues[nextIndex], factor, translations, rotations, scales);
                 }
             }
 
@@ -98,11 +105,6 @@ namespace JLEngine
             {
                 glm::quat q1(prevValue.w, prevValue.x, prevValue.y, prevValue.z);
                 glm::quat q2(nextValue.w, nextValue.x, nextValue.y, nextValue.z);
-
-                if (glm::dot(q1, q2) < 0.0f)
-                {
-                    q2 = -q2; 
-                }
 
                 rotations[targetNode] = glm::normalize(glm::slerp(q1, q2, factor));
             }

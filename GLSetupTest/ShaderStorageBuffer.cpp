@@ -1,5 +1,6 @@
 #include "ShaderStorageBuffer.h"
-#include <glad/glad.h> // Assuming GL functions are accessed through glad
+
+#include <glad/glad.h> 
 
 namespace JLEngine 
 {

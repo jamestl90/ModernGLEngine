@@ -69,7 +69,7 @@ namespace JLEngine
 		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath, const TexParams& texParams, int outputChannels = 0);		
 		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath);
 		std::shared_ptr<Texture> CreateTexture(const std::string& name, ImageData& imageData, const TexParams& texParams = TexParams());
-		std::shared_ptr<Texture> CreateTexture(const std::string& name);
+		std::shared_ptr<Texture> CreateTextureEmpty(const std::string& name);
 		void DeleteTexture(const std::string& name);
 
 		std::shared_ptr<Cubemap> CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);

@@ -104,7 +104,9 @@ namespace JLEngine
         return m_textureFactory->CreateFromData(name, imageData, texParams);
     }
 
-    std::shared_ptr<Texture> ResourceLoader::CreateTexture(const std::string& name)
+
+
+    std::shared_ptr<Texture> ResourceLoader::CreateTextureEmpty(const std::string& name)
     {
         return m_textureFactory->CreateEmpty(name);
     }

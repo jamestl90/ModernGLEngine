@@ -19,8 +19,8 @@ namespace JLEngine
         uint32_t minFilter =        GL_LINEAR;
         uint32_t magFilter =        GL_LINEAR;
         uint32_t textureType =      GL_TEXTURE_2D;
-        uint32_t internalFormat =   GL_RGBA;
-        uint32_t format =           GL_RGBA;
+        uint32_t internalFormat =   GL_RGB8;
+        uint32_t format =           GL_RGB;
         uint32_t dataType =         GL_UNSIGNED_BYTE;
     };
 
