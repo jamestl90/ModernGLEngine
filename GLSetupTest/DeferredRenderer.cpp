@@ -193,37 +193,66 @@ namespace JLEngine
         //Graphics::API()->SyncCompute();
         //Graphics::API()->SyncSSBO();
 
+        if (m_skinnedMeshResources.first == 0) return;
         if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
         {
+            std::vector<glm::mat4> finalJointMatrices;
             auto& skinnedMeshData = m_sceneManager.GetNonInstancedDynamic();
-            auto& mesh = skinnedMeshData[0].second->mesh;
-            auto& skeleton = skinnedMeshData[0].second->mesh->GetSkeleton();
-            auto& controller = mesh->GetAnimController();
+            for (auto& smd : skinnedMeshData)
+            {
+                auto& mesh = smd.second->mesh;
+                auto& skeleton = smd.second->mesh->GetSkeleton();
+                auto& controller = mesh->node->animController;
 
-            std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
+                std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
 
-            float currentTime = controller->GetTime();
-            auto& keyframeIndices = controller->GetKeyframeIndices();
-            AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
+                float currentTime = controller->GetTime();
+                auto& keyframeIndices = controller->GetKeyframeIndices();
+                AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
 
-            std::vector<glm::mat4> globalTransforms;
-            AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
+                std::vector<glm::mat4> globalTransforms;
+                AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
 
-            std::vector<glm::mat4> jointMatrices;
-            AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
+                std::vector<glm::mat4> jointMatrices;
+                AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
 
-            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), jointMatrices);
+                finalJointMatrices.insert(finalJointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
+            }
+
+            auto& instancedSkinnedMeshData = m_sceneManager.GetInstancedDynamic();
+            for (auto& ismd : instancedSkinnedMeshData)
+            {
+                auto& mesh = ismd.second.second->mesh;
+                auto& skeleton = mesh->GetSkeleton();
+                auto& controller = mesh->node->animController;
+
+                std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
+
+                float currentTime = controller->GetTime();
+                auto& keyframeIndices = controller->GetKeyframeIndices();
+                AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
+
+                std::vector<glm::mat4> globalTransforms;
+                AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
+
+                std::vector<glm::mat4> jointMatrices;
+                AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
+
+                finalJointMatrices.insert(finalJointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
+            }
+
+            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), finalJointMatrices);
+
+            // --- DYNAMIC MESHES ---
+            Graphics::API()->BindShader(m_skinningGBufferShader->GetProgramId());
+            Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
+            Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 1);
+            Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
+            Graphics::BindGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), 3);
+
+            if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
+                DrawGeometry(m_skinnedMeshResources.second, stride);
         }
-
-        // --- DYNAMIC MESHES ---
-        Graphics::API()->BindShader(m_skinningGBufferShader->GetProgramId());
-        Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
-        Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 1);
-        Graphics::BindGPUBuffer(m_cameraUBO.GetGPUBuffer(), 2);
-        Graphics::BindGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), 3);
-
-        if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
-            DrawGeometry(m_skinnedMeshResources.second, stride);
     }
 
     void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -677,8 +706,8 @@ namespace JLEngine
 
     void DeferredRenderer::GenerateGPUBuffers()
     {
+        // --- CREATE VERTEX ARRAY OBJECTS ---
         if (!m_sceneManager.GetRoot()) return;
-        GL_CHECK_ERROR();
         for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
             Graphics::CreateVertexArray(vaoresource.vao.get());
@@ -691,6 +720,8 @@ namespace JLEngine
         {
             Graphics::CreateVertexArray(vaoresource.vao.get());
         }
+
+        // --- CREATE MATERIAL AND TEXTURE BUFFERS ---
         auto matManager = m_resourceLoader->GetMaterialManager();
         auto texManager = m_resourceLoader->GetTextureManager();
         std::vector<MaterialGPU> matBuffer;
@@ -701,12 +732,15 @@ namespace JLEngine
         m_ssboMaterials.Set(std::move(matBuffer));
         Graphics::CreateGPUBuffer<MaterialGPU>(m_ssboMaterials.GetGPUBuffer(), m_ssboMaterials.GetDataImmutable());
 
+        // --- CONVERT SCENE GRAPH DATA TO RENDER FRIENDLY DATA
         m_sceneManager.ForceUpdate();
         auto& nonInstancedStatic = m_sceneManager.GetNonInstancedStatic();
         auto& nonInstancedDynamic = m_sceneManager.GetNonInstancedDynamic();
         auto& transparentItems = m_sceneManager.GetTransparent();
-        auto& instancedItems = m_sceneManager.GetInstanced();
+        auto& instancedStaticItems = m_sceneManager.GetInstancedStatic();
+        auto& instancedDynamicItems = m_sceneManager.GetInstancedDynamic();
 
+        // --- STATIC MESHES --- 
         for (auto& item : nonInstancedStatic)
         {
             PerDrawData pdd;
@@ -717,8 +751,9 @@ namespace JLEngine
             m_staticResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
         }
 
+        // --- INSTANCED STATIC MESHES --- 
         int baseInstance = 0;
-        for (auto& item : instancedItems)
+        for (auto& item : instancedStaticItems)
         {
             auto& transforms = item.second.instanceTransforms;
 
@@ -739,6 +774,41 @@ namespace JLEngine
             baseInstance += numTransforms;
         }
 
+        // --- INSTANCED SKINNED MESHES --- 
+        baseInstance = 0;
+        int instancedJointCount = 0;
+        for (auto& item : instancedDynamicItems)
+        {
+            auto& submesh = item.second.first;
+            auto node = item.second.second;
+            auto skeleton = node->mesh->GetSkeleton();
+            auto& transforms = submesh.instanceTransforms;
+
+            int numTransforms = (int)transforms->size();
+            submesh.command.instanceCount = numTransforms;
+            submesh.command.baseInstance = baseInstance;
+
+            m_skinnedMeshResources.second.drawBuffer->AddDrawCommand(submesh.command);
+
+            for (auto& joint : skeleton->joints)
+            {
+                m_ssboJointMatrices.AddData(joint);
+            }
+
+            for (auto i = 0; i < transforms->size(); i++)
+            {
+                SkinnedMeshPerDrawData pdd;
+                pdd.baseJointIndex = instancedJointCount; // all instances will share the same joint data
+                pdd.materialID = (int)m_materialIDMap[submesh.materialHandle];
+                transforms->at(i)->UpdateHierarchy();
+                pdd.modelMatrix = transforms->at(i)->GetGlobalTransform();
+                m_ssboDynamicPerDraw.AddData(pdd);
+            }
+            baseInstance += numTransforms;
+            instancedJointCount += (int)skeleton->joints.size();
+        }
+
+        // --- SKINNED MESHES --- 
         int jointCount = 0;
         for (auto& item : nonInstancedDynamic)
         {
@@ -759,6 +829,7 @@ namespace JLEngine
             jointCount += (int)mesh->GetSkeleton()->joints.size();
         }
 
+        // --- TRANSPARENT MESHES --- 
         for (auto& item : transparentItems)
         {
             PerDrawData pdd;
@@ -769,6 +840,7 @@ namespace JLEngine
             m_transparentResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
         }
 
+        // --- CREATE THE GPU DRAW BUFFERS ---
         for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
@@ -781,11 +853,14 @@ namespace JLEngine
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
-
-        m_ssboGlobalTransforms.GetGPUBuffer().SetSizeInBytes(jointCount * sizeof(glm::mat4));
+        GL_CHECK_ERROR();
+        m_ssboGlobalTransforms.GetGPUBuffer().SetSizeInBytes((jointCount + instancedJointCount) * sizeof(glm::mat4));
         Graphics::CreateGPUBuffer(m_ssboJointMatrices.GetGPUBuffer(), m_ssboJointMatrices.GetDataImmutable());
+        GL_CHECK_ERROR();
         Graphics::CreateGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer());
+        GL_CHECK_ERROR();
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
+        GL_CHECK_ERROR();
         Graphics::CreateGPUBuffer<SkinnedMeshPerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable());
         GL_CHECK_ERROR();

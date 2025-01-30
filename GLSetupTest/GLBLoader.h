@@ -59,7 +59,7 @@ namespace JLEngine
 		std::vector<float> GetKeyframeTimes(const tinygltf::Model& model, int accessorIndex);
 		std::vector<glm::vec4> GetKeyframeValues(const tinygltf::Model& model, int accessorIndex);
 		std::shared_ptr<Material> ParseMaterial(const tinygltf::Model& model, const tinygltf::Material& gltfMaterial, int matIdx);
-		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& texName, int textureIndex);
+		std::shared_ptr<Texture> ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& texName, int textureIndex, TexParams overwriteParams);
 		void ParseTransform(std::shared_ptr<Node> node, const tinygltf::Node& gltfNode);
 		void loadKHRTextureTransform(const tinygltf::Material& gltfMaterial, std::shared_ptr<Material> material);
 		SubMesh CreateSubMeshAnim(const tinygltf::Model& model, const std::vector<const tinygltf::Primitive*>& primitives, MaterialVertexAttributeKey key);

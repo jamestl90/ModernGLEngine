@@ -50,21 +50,13 @@ namespace JLEngine
 		void SetSkeleton(std::shared_ptr<Skeleton> skeleton)
 		{ 
 			m_skeleton = skeleton;
-			if (!m_animController)
-				m_animController = std::make_shared<AnimationController>();
-			m_animController->SetSkeleton(m_skeleton);
 		}
 		void AddInverseBindMatrix(glm::mat4& matrix) { m_inverseBindMatrices.push_back(matrix); }
-		std::shared_ptr<AnimationController>& GetAnimController() 
-		{ 
-			if (!m_animController)
-				m_animController = std::make_shared<AnimationController>();
-			return m_animController; 
-		}
+
+		Node* node;
 
 	private:	
 
-		std::shared_ptr<AnimationController> m_animController;
 		std::shared_ptr<Skeleton> m_skeleton;
 		std::vector<glm::mat4> m_inverseBindMatrices;
 		std::vector<SubMesh> m_subMeshes;	

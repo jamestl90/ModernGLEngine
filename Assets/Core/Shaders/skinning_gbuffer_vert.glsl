@@ -40,7 +40,7 @@ flat out uint v_MaterialIndex;
 
 void main() 
 {
-    SkinnedMeshPerDrawData data = perDrawData[gl_DrawID];
+    SkinnedMeshPerDrawData data = perDrawData[gl_DrawID + gl_InstanceID];
     mat4 modelMatrix = data.modelMatrix;
     v_MaterialIndex = data.materialIndex;
 
@@ -57,10 +57,10 @@ void main()
     }
 
     mat4 skinningMatrix =
-        normalizedWeights.x * globalTransforms[a_Joints.x] +
-        normalizedWeights.y * globalTransforms[a_Joints.y] +
-        normalizedWeights.z * globalTransforms[a_Joints.z] +
-        normalizedWeights.w * globalTransforms[a_Joints.w];
+        normalizedWeights.x * globalTransforms[data.baseJointIndex + a_Joints.x] +
+        normalizedWeights.y * globalTransforms[data.baseJointIndex + a_Joints.y] +
+        normalizedWeights.z * globalTransforms[data.baseJointIndex + a_Joints.z] +
+        normalizedWeights.w * globalTransforms[data.baseJointIndex + a_Joints.w];
 
     vec4 worldPosition = skinningMatrix * vec4(a_Position, 1.0);
 

@@ -184,7 +184,8 @@ namespace JLEngine
         m_renderer->AddVAOs(JLEngine::VAOType::STATIC, m_resourceLoader->GetGLBLoader()->GetStaticVAOs());
         m_renderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, m_resourceLoader->GetGLBLoader()->GetTransparentVAOs());
         auto& skinnedMeshVAOs = m_resourceLoader->GetGLBLoader()->GetDynamicVAOs();
-        m_renderer->AddVAO(JLEngine::VAOType::DYNAMIC, skinnedMeshVAOs.begin()->first, skinnedMeshVAOs.begin()->second);
+        if (skinnedMeshVAOs.size() > 0)
+            m_renderer->AddVAO(JLEngine::VAOType::DYNAMIC, skinnedMeshVAOs.begin()->first, skinnedMeshVAOs.begin()->second);
         m_renderer->GenerateGPUBuffers();
     }
 

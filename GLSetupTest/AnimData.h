@@ -111,9 +111,11 @@ namespace JLEngine
         int GetTargetNode() const { return m_targetNode; }
         TargetPath GetTargetPath() const { return m_targetPath; }
 
-        void UpdateTargetNode(int newIndex) { m_targetNode = newIndex; }
+        bool IsUpdated() { return m_updated; }
+        void UpdateTargetNode(int newIndex) { m_targetNode = newIndex; m_updated = true; }
 
     private:
+        bool m_updated = false;
         int m_samplerIndex;          
         int m_targetNode;            
         TargetPath m_targetPath;

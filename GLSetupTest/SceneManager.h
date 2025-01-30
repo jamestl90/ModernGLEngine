@@ -27,7 +27,7 @@ namespace JLEngine
 		{
 			m_nonInstancedStatic.clear();
 			m_nonInstancedDynamic.clear();
-			m_instanced.clear();
+			m_instancedStatic.clear();
 			m_transparentObjects.clear();
 			m_animControllers.clear();
 
@@ -44,13 +44,12 @@ namespace JLEngine
 							auto isInstanced = submesh.instanceTransforms != nullptr;
 							auto mat = matMgr->Get(submesh.materialHandle);
 
-							// going to ignore transparent + instanced submeshes for now
-							if (isInstanced && !mat->useTransparency)
+							if (isInstanced && !mat->useTransparency && submesh.isStatic)
 							{
 								auto key = MakeKey(node->mesh->GetName(), submesh);
-								if (m_instanced.find(key) == m_instanced.end())
+								if (m_instancedStatic.find(key) == m_instancedStatic.end())
 								{
-									m_instanced[key] = submesh;
+									m_instancedStatic[key] = submesh;
 								}
 							}
 							else if (mat->useTransparency)
@@ -61,9 +60,18 @@ namespace JLEngine
 							{
 								m_nonInstancedStatic.push_back(std::make_pair(submesh, node));
 							}
-							else
+							else if (!submesh.isStatic && isInstanced)
 							{
-								m_animControllers.push_back(std::make_pair(node->mesh->GetAnimController(), node));
+								m_animControllers.push_back(std::make_pair(node->animController, node));
+								auto key = MakeKey(node->mesh->GetName(), submesh);
+								if (m_instancedDynamic.find(key) == m_instancedDynamic.end())
+								{
+									m_instancedDynamic[key] = std::make_pair(submesh, node);
+								}
+							}
+							else if (!submesh.isStatic)
+							{
+								m_animControllers.push_back(std::make_pair(node->animController, node));
 								m_nonInstancedDynamic.push_back(std::make_pair(submesh, node));
 							}
 						}
@@ -87,9 +95,14 @@ namespace JLEngine
 			return m_nonInstancedDynamic;
 		}
 
-		std::unordered_map<std::string, SubMesh>& GetInstanced()
+		std::unordered_map<std::string, SubMesh>& GetInstancedStatic()
 		{
-			return m_instanced;
+			return m_instancedStatic;
+		}
+
+		std::unordered_map<std::string, std::pair<SubMesh, Node*>>& GetInstancedDynamic()
+		{
+			return m_instancedDynamic;
 		}
 
 		std::vector<std::pair<SubMesh, Node*>>& GetTransparent()
@@ -161,7 +174,8 @@ namespace JLEngine
 		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedStatic;
 		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedDynamic;
 		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects;
-		std::unordered_map<std::string, SubMesh> m_instanced;
+		std::unordered_map<std::string, SubMesh> m_instancedStatic;
+		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedDynamic;
 		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_animControllers;
 
 		ResourceLoader* m_resourceLoader;

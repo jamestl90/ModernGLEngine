@@ -187,6 +187,7 @@ namespace JLEngine
 
         Light* m_lightData;
         std::shared_ptr<Mesh> mesh;
+        std::shared_ptr<AnimationController> animController;
 
         std::vector<std::shared_ptr<Node>> children;
         std::weak_ptr<Node> parent;

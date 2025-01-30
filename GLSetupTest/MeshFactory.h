@@ -17,8 +17,11 @@ namespace JLEngine
 
 		std::shared_ptr<Mesh> CreateMesh(const std::string& name)
 		{
-			auto mesh = std::make_shared<Mesh>(name);
-			return mesh;
+			return m_meshManager->Load(name, [&]()
+				{
+					auto mesh = std::make_shared<Mesh>(name);
+					return mesh;
+				});
 		}
 
 	protected:

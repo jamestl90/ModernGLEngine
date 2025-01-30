@@ -43,7 +43,8 @@ void main()
     else if (debugMode == 2) 
     {
         // Metallic (R channel of gMetallicRoughness)
-        FragColor = vec4(vec2(texture(gMetallicRoughness, v_TexCoords).rg), 0.0, 1.0);
+        vec4 mr = texture(gMetallicRoughness, v_TexCoords);
+        FragColor = vec4(0.0, mr.g, mr.b, 1.0);
     } 
     else if (debugMode == 3) 
     {

@@ -102,7 +102,7 @@ namespace JLEngine
 
 		API()->NamedBufferStorage(id, data.size() * sizeof(T), buffer.GetUsageFlags(), data.size() == 0 ? nullptr : data.data());
 		buffer.SetGPUID(id);
-		buffer.SetSizeInBytes(data.size());
+		buffer.SetSizeInBytes(data.size() * sizeof(T));
 		buffer.ClearDirty();
 	}
 

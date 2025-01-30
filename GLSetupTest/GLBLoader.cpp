@@ -98,41 +98,55 @@ namespace JLEngine
 		{
 			node->SetTag(NodeTag::Mesh);
 
+			auto& meshName = model.meshes[gltfNode.mesh].name;
+			auto existingMesh = m_resourceLoader->Get<Mesh>(meshName);
+
 			// Track which nodes reference this mesh
-			auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
+			//auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
 
 			// Check if it's an instance (i.e., if the mesh has been referenced before)
-			if (!referencingNodes.empty())
+			if (existingMesh != nullptr)
 			{
-				auto& masterNode = referencingNodes.at(0);  
-				auto& masterMesh = masterNode->mesh;
+				auto& masterNode = existingMesh->node;  
 
-				for (size_t submeshIndex = 0; submeshIndex < masterMesh->GetSubmeshes().size(); ++submeshIndex)
+				for (size_t submeshIndex = 0; submeshIndex < existingMesh->GetSubmeshes().size(); ++submeshIndex)
 				{
-					auto& submesh = masterMesh->GetSubmesh((int)submeshIndex);
+					auto& submesh = existingMesh->GetSubmesh((int)submeshIndex);
 					if (submesh.instanceTransforms == nullptr)
 					{
 						// add the first one
 						submesh.command.instanceCount = 1;
 						submesh.instanceTransforms = std::make_shared<std::vector<Node*>>();
-						submesh.instanceTransforms->push_back(referencingNodes[0].get());
+						submesh.instanceTransforms->push_back(masterNode);
 					}
+					if (gltfNode.skin >= 0)
+					{
+						node->animController = std::make_shared<AnimationController>();
+						node->animController->SetSkeleton(existingMesh->GetSkeleton());
+					}
+
 					submesh.command.instanceCount++;
 					submesh.instanceTransforms->push_back(node.get());
 				}
-				node->mesh = masterMesh;
+				node->mesh = existingMesh;
 			}
 			else
 			{
 				node->mesh = ParseMesh(model, gltfNode.mesh);
+				node->mesh->node = node.get(); // set the node to the "owner" node
 
 				if (gltfNode.skin >= 0)
 				{
 					const auto& skin = model.skins[gltfNode.skin];
 					ParseSkin(model, skin, *node->mesh);
+					
+					if (node->animController == nullptr)
+					{
+						node->animController = std::make_shared<AnimationController>();
+						node->animController->SetSkeleton(node->mesh->GetSkeleton());
+					}
 				}
 			}
-			referencingNodes.push_back(node);
 		}
 		else if (gltfNode.camera >= 0)
 		{
@@ -188,6 +202,11 @@ namespace JLEngine
 		auto mesh = m_resourceLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
 		std::cout << "Mesh name: " << model.meshes[meshIndex].name << std::endl;
+
+		if (mesh->GetName() == "UnnamedMesh")
+		{
+			std::cout << "Warning: Mesh doesn't have a name. Could lead to duplicates" << std::endl;
+		}
 
 		// Group primitives by material and attributes
 		std::unordered_map<MaterialVertexAttributeKey, std::vector<const tinygltf::Primitive*>> groups;
@@ -387,6 +406,8 @@ namespace JLEngine
 		{
 			for (auto& channel : anim->GetChannels())
 			{
+				if (channel.IsUpdated()) continue;
+
 				int gltfNodeIndex = channel.GetTargetNode();
 				auto it = gltfNodeToJointIndex.find(gltfNodeIndex);
 				if (it != gltfNodeToJointIndex.end())
@@ -403,7 +424,6 @@ namespace JLEngine
 		// Assign the skeleton to the mesh
 		mesh.SetSkeleton(std::make_shared<Skeleton>(skeleton));
 	}
-
 
 	std::vector<float> GLBLoader::GetKeyframeTimes(const tinygltf::Model& model, int accessorIndex)
 	{
@@ -570,7 +590,8 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.values.at(BASE_COLOR_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->baseColorTexture = ParseTexture(model, texName, std::string(BASE_COLOR_TEXTURE), textureIndex);
+			TexParams params = Texture::EmptyParams();
+			material->baseColorTexture = ParseTexture(model, texName, std::string(BASE_COLOR_TEXTURE), textureIndex, params);
 
 			loadKHRTextureTransform(gltfMaterial, material);
 		}
@@ -611,7 +632,8 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.values.at(METALLIC_ROUGHNESS_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->metallicRoughnessTexture = ParseTexture(model, texName, std::string(METALLIC_ROUGHNESS_TEXTURE), textureIndex);
+			TexParams params = Texture::EmptyParams();
+			material->metallicRoughnessTexture = ParseTexture(model, texName, std::string(METALLIC_ROUGHNESS_TEXTURE), textureIndex, params);
 		}
 
 		// Parse normal texture
@@ -620,7 +642,8 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.additionalValues.at(NORMAL_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->normalTexture = ParseTexture(model, texName, std::string(NORMAL_TEXTURE), textureIndex);
+			TexParams params = Texture::EmptyParams();
+			material->normalTexture = ParseTexture(model, texName, std::string(NORMAL_TEXTURE), textureIndex, params);
 		}
 
 		// Parse occlusion texture
@@ -629,7 +652,8 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.additionalValues.at(OCCLUSION_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->occlusionTexture = ParseTexture(model, texName, std::string(OCCLUSION_TEXTURE), textureIndex);
+			TexParams params = Texture::EmptyParams();
+			material->occlusionTexture = ParseTexture(model, texName, std::string(OCCLUSION_TEXTURE), textureIndex, params);
 		}
 
 		// Parse emissive texture
@@ -638,7 +662,8 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.additionalValues.at(EMISSIVE_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
-			material->emissiveTexture = ParseTexture(model, texName, std::string(EMISSIVE_TEXTURE), textureIndex);
+			TexParams params = Texture::EmptyParams();
+			material->emissiveTexture = ParseTexture(model, texName, std::string(EMISSIVE_TEXTURE), textureIndex, params);
 		}
 
 		// Parse emissive factor
@@ -751,7 +776,7 @@ namespace JLEngine
 		return material;
 	}
 
-	std::shared_ptr<Texture> GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& name, int textureIndex)
+	std::shared_ptr<Texture> GLBLoader::ParseTexture(const tinygltf::Model& model, std::string& matName, const std::string& name, int textureIndex, TexParams overwriteParams)
 	{
 		// Check if the texture index is valid
 		if (textureIndex < 0 || textureIndex >= model.textures.size())
@@ -781,8 +806,11 @@ namespace JLEngine
 		imgData.channels = channels;
 		imgData.data = glbImageData.image;
 
+		auto params = Texture::DefaultParams(imgData.channels, false);
+		auto newParams = Texture::OverwriteParams(params, overwriteParams);
+
 		// Create a new texture
-		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData, Texture::DefaultParams(imgData.channels, false));
+		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData, newParams);
 
 		// Cache the newly created texture
 		textureCache[textureIndex] = jltexture;

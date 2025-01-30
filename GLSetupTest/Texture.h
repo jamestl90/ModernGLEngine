@@ -77,6 +77,36 @@ namespace JLEngine
             return texParams;
         }
 
+        static TexParams EmptyParams()
+        {
+            TexParams params;
+            params.dataType = 0;
+            params.format = 0;
+            params.internalFormat = 0;
+            params.magFilter = 0;
+            params.minFilter = 0;
+            params.mipmapEnabled = 0;
+            params.textureType = 0;
+            params.wrapR = 0;
+            params.wrapS = 0;
+            params.wrapT = 0;
+            return params;
+        }
+
+        static TexParams OverwriteParams(TexParams target, TexParams overwrite)
+        {
+            if (overwrite.dataType > 0) target.dataType = overwrite.dataType;
+            if (overwrite.format > 0) target.format = overwrite.format;
+            if (overwrite.internalFormat > 0) target.internalFormat = overwrite.internalFormat;
+            if (overwrite.magFilter > 0) target.magFilter = overwrite.magFilter;
+            if (overwrite.minFilter > 0) target.minFilter = overwrite.minFilter;
+            if (overwrite.textureType > 0) target.textureType = overwrite.textureType;
+            if (overwrite.wrapR > 0) target.wrapR = overwrite.wrapR;
+            if (overwrite.wrapS > 0) target.wrapS = overwrite.wrapS;
+            if (overwrite.wrapT > 0) target.wrapT = overwrite.wrapT;
+            return target;
+        }
+
         static TexParams RGBATexParams(bool hdr = false)
         {
             TexParams texParams;
