@@ -106,8 +106,9 @@ namespace JLEngine
 
 			// Check if it's an instance (i.e., if the mesh has been referenced before)
 			if (existingMesh != nullptr)
-			{
+			{				
 				auto& masterNode = existingMesh->node;  
+				bool skinnedMesh = gltfNode.skin >= 0;
 
 				for (size_t submeshIndex = 0; submeshIndex < existingMesh->GetSubmeshes().size(); ++submeshIndex)
 				{
@@ -119,7 +120,7 @@ namespace JLEngine
 						submesh.instanceTransforms = std::make_shared<std::vector<Node*>>();
 						submesh.instanceTransforms->push_back(masterNode);
 					}
-					if (gltfNode.skin >= 0)
+					if (skinnedMesh)
 					{
 						node->animController = std::make_shared<AnimationController>();
 						node->animController->SetSkeleton(existingMesh->GetSkeleton());
@@ -127,8 +128,11 @@ namespace JLEngine
 
 					submesh.command.instanceCount++;
 					submesh.instanceTransforms->push_back(node.get());
+					//std::cout << "Creating instance " << submesh.command.instanceCount << " of " << meshName << std::endl;
 				}
 				node->mesh = existingMesh;
+				if (skinnedMesh) // dont load children of instanced skinned meshes
+					return node;
 			}
 			else
 			{

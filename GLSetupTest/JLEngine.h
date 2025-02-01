@@ -23,10 +23,12 @@ namespace JLEngine
             std::function<void(GraphicsAPI& graphics, double interpolationFactor)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
+        std::shared_ptr<Node> Load(const std::string& fileName);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos, const glm::quat& rotation, const glm::vec3& scale);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::mat4& transform);
+        std::shared_ptr<Node> MakeInstanceOf(std::shared_ptr<Node>& existingNode, glm::vec3& pos, bool attachToRoot);
         void FinalizeLoading();
 
         GraphicsAPI* GetGraphicsAPI()           const;

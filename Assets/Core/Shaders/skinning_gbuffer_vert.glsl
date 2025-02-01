@@ -56,6 +56,7 @@ void main()
         return;
     }
 
+    // use the per draw data baseJointIndex to offset into the joint array
     mat4 skinningMatrix =
         normalizedWeights.x * globalTransforms[data.baseJointIndex + a_Joints.x] +
         normalizedWeights.y * globalTransforms[data.baseJointIndex + a_Joints.y] +

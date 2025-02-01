@@ -119,11 +119,11 @@ namespace JLEngine
             }
         }
 
-        Node* FindSkeletonNode()
+        static std::shared_ptr<Node> FindSkeletonNode(std::shared_ptr<Node>& root)
         {
-            Node* foundSkeleton = nullptr;
+            std::shared_ptr<Node> foundSkeleton = nullptr;
 
-            std::function<void(Node*)> findSkeleton = [&](Node* node)
+            std::function<void(std::shared_ptr<Node>)> findSkeleton = [&](std::shared_ptr<Node> node)
                 {
                     if (node->mesh != nullptr)
                     {
@@ -141,11 +141,11 @@ namespace JLEngine
                         if (foundSkeleton != nullptr)
                             return;
 
-                        findSkeleton(child.get());
+                        findSkeleton(child);
                     }
                 };
 
-            findSkeleton(this);
+            findSkeleton(root);
 
             return foundSkeleton; // Return nullptr if no skeleton is found
         }

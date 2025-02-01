@@ -143,6 +143,12 @@ namespace JLEngine
         }
     }
 
+    std::shared_ptr<Node> JLEngineCore::Load(const std::string& fileName)
+    {
+        auto node = m_resourceLoader->LoadGLB(fileName);
+        return node;
+    }
+
     std::shared_ptr<Node> JLEngineCore::LoadAndAttachToRoot(const std::string& fileName)
     {
         auto node = m_resourceLoader->LoadGLB(fileName);
@@ -177,6 +183,105 @@ namespace JLEngine
         m_renderer->SceneRoot()->AddChild(node);
         return node;
     }
+
+    std::shared_ptr<Node> JLEngineCore::MakeInstanceOf(std::shared_ptr<Node>& existingNode, glm::vec3& pos, bool attachToRoot)
+    {
+        auto& submesh = existingNode->mesh->GetSubmesh(0);
+        auto instanceCount = submesh.instanceTransforms == nullptr ? 2 : submesh.instanceTransforms->size() + 1;
+        auto newNode = std::make_shared<Node>(existingNode->name + std::to_string(instanceCount));
+
+        // Step 1: Clone Mesh and Animation (if applicable)
+        auto mesh = existingNode->mesh;
+        if (mesh != nullptr)
+        {
+            newNode->mesh = mesh;
+            newNode->tag = existingNode->tag;
+
+            if (mesh->GetSkeleton() != nullptr)
+            {
+                newNode->mesh->SetSkeleton(mesh->GetSkeleton());
+                newNode->animController = std::make_shared<AnimationController>();
+                newNode->animController->SetSkeleton(mesh->GetSkeleton());
+            }
+
+            // Handle instancing for skinned meshes
+            auto& submesh = newNode->mesh->GetSubmesh(0);
+            if (instanceCount == 2)
+            {
+                if (submesh.instanceTransforms == nullptr)
+                {
+                    submesh.instanceTransforms = std::make_shared<std::vector<Node*>>();
+                    submesh.command.instanceCount = 1;
+                    submesh.instanceTransforms->push_back(existingNode.get());
+                }
+            }
+            submesh.command.instanceCount++;
+            submesh.instanceTransforms->push_back(newNode.get());
+        }
+
+        // Step 2: Check if the parent is SceneRoot and Skip Hierarchy Reconstruction
+        std::weak_ptr<Node> parentWeak = existingNode->parent;
+        auto parentLocked = parentWeak.lock();
+
+        if (parentLocked && parentLocked->tag == NodeTag::SceneRoot)
+        {
+            // The mesh is in the SceneRoot, no parent hierarchy needed
+            newNode->translation = pos;
+            newNode->rotation = existingNode->rotation;
+            newNode->scale = existingNode->scale;
+
+            if (attachToRoot)
+            {
+                m_renderer->SceneRoot()->AddChild(newNode);
+            }
+
+            return newNode; // Skip hierarchy cloning and return immediately
+        }
+
+        // Step 3: Reconstruct the Parent Hierarchy (Only if Parent is NOT SceneRoot)
+        std::shared_ptr<Node> lastInstance = newNode;
+        std::shared_ptr<Node> rootInstance = nullptr;
+
+        while (auto currentOriginal = parentWeak.lock()) // Lock weak_ptr before using it
+        {
+            auto newParent = std::make_shared<Node>(currentOriginal->name + "_inst");
+
+            // Copy Transform Data
+            newParent->translation = currentOriginal->translation;
+            newParent->rotation = currentOriginal->rotation;
+            newParent->scale = currentOriginal->scale;
+            newParent->tag = currentOriginal->tag;
+
+            // Attach the last created node as its child
+            newParent->AddChild(lastInstance);
+
+            // Move up the hierarchy
+            lastInstance = newParent;
+            rootInstance = newParent;
+            parentWeak = currentOriginal->parent;
+        }
+
+        // Step 4: Apply Position Offset **Only to the Top-Most Parent**
+        if (rootInstance)
+        {
+            rootInstance->translation += pos;
+            rootInstance->localMatrix = glm::translate(glm::mat4(1.0f), rootInstance->translation);
+        }
+        else
+        {
+            newNode->translation += pos;
+            newNode->localMatrix = glm::translate(glm::mat4(1.0f), newNode->translation);
+        }
+
+        // Step 5: Attach to the scene root if requested
+        if (attachToRoot)
+        {
+            m_renderer->SceneRoot()->AddChild(rootInstance ? rootInstance : newNode);
+        }
+
+        return rootInstance ? rootInstance : newNode;
+    }
+
 
     void JLEngineCore::FinalizeLoading()
     {

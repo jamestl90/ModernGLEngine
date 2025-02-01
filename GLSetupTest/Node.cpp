@@ -11,3 +11,4 @@ void JLEngine::PrintNodeHierarchy(const Node* node, int depth)
         PrintNodeHierarchy(child.get(), depth + 2);
     }
 }
+

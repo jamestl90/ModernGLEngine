@@ -89,11 +89,22 @@ namespace JLEngine
 				const auto& sampler = samplers[channels[i].GetSamplerIndex()];
 				const auto& inputTimes = sampler.GetTimes();
 
-				// Advance index if the current time exceeds the next keyframe
-				while (m_channelKeyframeIndices[i] < inputTimes.size() - 1 &&
-					m_currTime > inputTimes[m_channelKeyframeIndices[i] + 1])
+				size_t& currentIndex = m_channelKeyframeIndices[i];
+
+				// Avoid unnecessary checks if we're at the last keyframe
+				if (currentIndex >= inputTimes.size() - 1)
+					continue;
+
+				// Skip ahead in bigger steps to prevent slow increments
+				while (currentIndex < inputTimes.size() - 2 && m_currTime > inputTimes[currentIndex + 2])
 				{
-					++m_channelKeyframeIndices[i];
+					currentIndex += 2;  // Jump ahead two keyframes
+				}
+
+				// Final refinement: small-step linear search (only up to 1 step)
+				if (currentIndex < inputTimes.size() - 1 && m_currTime > inputTimes[currentIndex + 1])
+				{
+					currentIndex++;
 				}
 			}
 		}
