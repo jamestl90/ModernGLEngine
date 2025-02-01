@@ -24,3 +24,4 @@ Dear IMGUI - for debug UI rendering
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections4.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_sky_debug.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_gbuffer_debug.png'/>
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/instancedSkinnedMeshes.png'/>
