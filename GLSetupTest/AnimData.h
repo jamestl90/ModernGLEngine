@@ -148,7 +148,23 @@ namespace JLEngine
         }
         float GetDuration() { return m_duration; }
 
+        void PrecomputeSamplers()
+        {
+            m_precomputedSamplers.clear();
+            m_precomputedSamplers.reserve(m_channels.size());
+            for (const auto& channel : m_channels)
+            {
+                m_precomputedSamplers.push_back(&m_samplers[channel.GetSamplerIndex()]);
+            }
+        }
+
+        const std::vector<const AnimationSampler*>& GetPrecomputedSamplers() const
+        {
+            return m_precomputedSamplers;
+        }
+
     private:
+        std::vector<const AnimationSampler*> m_precomputedSamplers;
         float m_duration = 0.0f;
         std::string m_name;                           // Animation name
         std::vector<AnimationSampler> m_samplers;     // List of samplers

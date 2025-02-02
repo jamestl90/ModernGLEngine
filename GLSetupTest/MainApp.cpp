@@ -147,6 +147,43 @@ void WindowResizeCallback(int width, int height)
     renderer->Resize(width, height);
 }
 
+void DemoInstancing(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
+{
+    auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(0, 5, 0));
+
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
+    auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
+    auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
+    skeletonNode->animController->SetAnimation(anim.get());
+
+    glm::vec3 pos = glm::vec3(0.0f);
+    for (int i = 0; i < 55; i++)
+    {
+        for (int j = 0; j < 55; j++)
+        {
+            if (i == 0.0f && j == 0.0f) continue;
+
+            pos.x = (float)i * 1.5f;
+            pos.z = (float)j * 1.5f;
+            glm::vec3 pos(i * 2.0f, 0, j * 2.0f);
+            glm::vec3 pos2(i * 2.0f, 5, j * 2.0f);
+            auto newNode = engine.MakeInstanceOf(skeletonNode, pos, true);
+            auto newSkeletonNode = JLEngine::Node::FindSkeletonNode(newNode);
+            newSkeletonNode->animController->SetAnimation(anim.get());
+
+            auto newHelmetInstance = engine.MakeInstanceOf(helmet, pos2, true);
+            newHelmetInstance->UpdateHierarchy();
+        }
+    }
+}
+void DemoSkinning(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
+{
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
+    auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
+    auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
+    skeletonNode->animController->SetAnimation(anim.get());
+}
+
 int MainApp(std::string assetFolder)
 {
     m_assetPath = assetFolder;
@@ -173,7 +210,6 @@ int MainApp(std::string assetFolder)
 
     flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
 
-    auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(0,5,0));
     //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
     //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
     //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, -2, 5));
@@ -191,30 +227,8 @@ int MainApp(std::string assetFolder)
     //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
 
-    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
-    auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
-    auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
-    skeletonNode->animController->SetAnimation(anim.get());
-
-    glm::vec3 pos = glm::vec3(0.0f);
-    for (int i = 0; i < 55; i++)
-    {
-        for (int j = 0; j < 55; j++)
-        {
-            if (i == 0.0f && j == 0.0f) continue;
-
-            pos.x = (float)i * 1.5f;
-            pos.z = (float)j * 1.5f;
-            glm::vec3 pos(i * 2.0f, 0, j * 2.0f);
-            glm::vec3 pos2(i * 2.0f, 5, j * 2.0f);
-            auto newNode = engine.MakeInstanceOf(skeletonNode, pos, true);
-            auto newSkeletonNode = JLEngine::Node::FindSkeletonNode(newNode);
-            newSkeletonNode->animController->SetAnimation(anim.get());
-
-            auto newHelmetInstance = engine.MakeInstanceOf(helmet, pos2, true);
-            newHelmetInstance->UpdateHierarchy();
-        }
-    }
+    DemoInstancing(engine, m_assetPath);
+    //DemoSkinning(engine, m_assetPath);
 
     engine.FinalizeLoading();
     renderer = engine.GetRenderer();

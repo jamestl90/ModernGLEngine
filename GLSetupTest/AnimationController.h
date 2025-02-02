@@ -81,27 +81,21 @@ namespace JLEngine
 
 		void UpdateKeyframeIndices()
 		{
-			const auto& channels = m_currAnimation->GetChannels();
-			const auto& samplers = m_currAnimation->GetSamplers();
+			const auto& precomputedSamplers = m_currAnimation->GetPrecomputedSamplers();
 
-			for (size_t i = 0; i < channels.size(); ++i)
+			for (size_t i = 0; i < precomputedSamplers.size(); ++i)
 			{
-				const auto& sampler = samplers[channels[i].GetSamplerIndex()];
-				const auto& inputTimes = sampler.GetTimes();
-
+				const auto& inputTimes = precomputedSamplers[i]->GetTimes();
 				size_t& currentIndex = m_channelKeyframeIndices[i];
 
-				// Avoid unnecessary checks if we're at the last keyframe
 				if (currentIndex >= inputTimes.size() - 1)
 					continue;
 
-				// Skip ahead in bigger steps to prevent slow increments
 				while (currentIndex < inputTimes.size() - 2 && m_currTime > inputTimes[currentIndex + 2])
 				{
 					currentIndex += 2;  // Jump ahead two keyframes
 				}
 
-				// Final refinement: small-step linear search (only up to 1 step)
 				if (currentIndex < inputTimes.size() - 1 && m_currTime > inputTimes[currentIndex + 1])
 				{
 					currentIndex++;

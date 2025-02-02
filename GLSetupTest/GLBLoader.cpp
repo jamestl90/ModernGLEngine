@@ -310,6 +310,7 @@ namespace JLEngine
 			animation->AddChannel(animChannel);
 		}
 
+		animation->PrecomputeSamplers();
 		animation->CalcDuration();
 
 		return animation;
