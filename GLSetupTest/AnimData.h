@@ -88,8 +88,8 @@ namespace JLEngine
             return t;
         }
 
-        void SetTimes(const std::vector<float>&& inputTimes) { m_times = std::move(inputTimes); }
-        void SetValues(const std::vector<glm::vec4>&& outputValues) { m_values = std::move(outputValues); }
+        void SetTimes(std::vector<float>&& inputTimes) { m_times = std::move(inputTimes); }
+        void SetValues(std::vector<glm::vec4>&& outputValues) { m_values = std::move(outputValues); }
         void SetInterpolation(const InterpolationType interpolation) { m_interpolation = interpolation; }
 
     private:

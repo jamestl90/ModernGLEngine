@@ -129,7 +129,9 @@ namespace JLEngine
                     {
                         for (auto& submesh : node->mesh->GetSubmeshes())
                         {
-                            if (!submesh.isStatic)
+                            auto isSkinned = (submesh.flags & SubmeshFlags::SKINNED) != 0;
+
+                            if (isSkinned)
                             {
                                 foundSkeleton = node;
                                 return;
@@ -182,6 +184,8 @@ namespace JLEngine
             return tag;
         }
 
+        int32_t perDrawDataIndex = -1;
+
         glm::mat4 localMatrix;
         bool useMatrix;
 
@@ -199,6 +203,7 @@ namespace JLEngine
 
         bool receiveShadows = true;
         bool isDirty = true;
+        bool IsAnimated = false;
     private:
     };
 

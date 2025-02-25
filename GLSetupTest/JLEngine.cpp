@@ -8,6 +8,7 @@
 #include <chrono>
 
 #include <glm/gtx/matrix_decompose.hpp>
+#include "UIHelperFunctions.h"
 namespace JLEngine
 {
     JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder) :
@@ -84,6 +85,8 @@ namespace JLEngine
         float fps = 0.0f;
         double frameTimeAccumulator = 0.0;
 
+        SceneManager& sceneManager = m_renderer->GetSceneManager();
+
         // The main game loop
         while (!m_window->ShouldClose()) 
         {
@@ -96,8 +99,16 @@ namespace JLEngine
 
             m_imguiManager.BeginFrame();
 
-            auto& animControllers = m_renderer->GetSceneManager().GetAnimationControllers();
-            for (auto& [controller, node] : animControllers) { controller->Update((float)m_deltaTime); }
+            auto& skinnedAnimControllers = sceneManager.GetSkinnedAnimationControllers();
+            auto& rigidAnimControllers = sceneManager.GetRigidAnimationControllers();
+            for (auto& [controller, node] : skinnedAnimControllers) 
+            { 
+                controller->Update((float)m_deltaTime); 
+            }
+            for (auto& [controller, node] : rigidAnimControllers)
+            {
+                controller->Update((float)m_deltaTime);
+            }
             logicUpdate(m_deltaTime);
 
             // Fixed Update (runs at the fixed time step)
@@ -129,6 +140,8 @@ namespace JLEngine
             double interpolationFactor = m_accumulatedTime / m_fixedUpdateInterval;
             render(*Graphics::API(), interpolationFactor);
             m_frameCount++;
+
+            ShowNodeHierarchy(m_renderer->GetSceneManager().GetRoot().get());
 
             ImGui::Begin("Info");
 
@@ -201,7 +214,6 @@ namespace JLEngine
             {
                 newNode->mesh->SetSkeleton(mesh->GetSkeleton());
                 newNode->animController = std::make_shared<AnimationController>();
-                newNode->animController->SetSkeleton(mesh->GetSkeleton());
             }
 
             // Handle instancing for skinned meshes
@@ -285,10 +297,17 @@ namespace JLEngine
 
     void JLEngineCore::FinalizeLoading()
     {
+        auto glbLoader = m_resourceLoader->GetGLBLoader();
+        if (glbLoader == nullptr) return;
+
+        auto& staticVAOs = glbLoader->GetStaticVAOs();
+        auto& transparentVAOs = glbLoader->GetTransparentVAOs();
+        auto& skinnedMeshVAOs = glbLoader->GetDynamicVAOs();
+
         m_renderer->Initialize();
-        m_renderer->AddVAOs(JLEngine::VAOType::STATIC, m_resourceLoader->GetGLBLoader()->GetStaticVAOs());
-        m_renderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, m_resourceLoader->GetGLBLoader()->GetTransparentVAOs());
-        auto& skinnedMeshVAOs = m_resourceLoader->GetGLBLoader()->GetDynamicVAOs();
+        m_renderer->AddVAOs(JLEngine::VAOType::STATIC, staticVAOs);
+        m_renderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, transparentVAOs);
+
         if (skinnedMeshVAOs.size() > 0)
             m_renderer->AddVAO(JLEngine::VAOType::DYNAMIC, skinnedMeshVAOs.begin()->first, skinnedMeshVAOs.begin()->second);
         m_renderer->GenerateGPUBuffers();

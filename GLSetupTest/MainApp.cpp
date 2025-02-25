@@ -147,6 +147,7 @@ void WindowResizeCallback(int width, int height)
     renderer->Resize(width, height);
 }
 
+// demonstrates instancing for both normal meshes and animated (skinned) meshes
 void DemoInstancing(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
 {
     auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(0, 5, 0));
@@ -154,7 +155,7 @@ void DemoInstancing(JLEngine::JLEngineCore& engine, const std::string& assetFold
     auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
     auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
     auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
-    skeletonNode->animController->SetAnimation(anim.get());
+    skeletonNode->animController->SetCurrentAnimation(anim.get());
 
     glm::vec3 pos = glm::vec3(0.0f);
     for (int i = 0; i < 55; i++)
@@ -169,7 +170,7 @@ void DemoInstancing(JLEngine::JLEngineCore& engine, const std::string& assetFold
             glm::vec3 pos2(i * 2.0f, 5, j * 2.0f);
             auto newNode = engine.MakeInstanceOf(skeletonNode, pos, true);
             auto newSkeletonNode = JLEngine::Node::FindSkeletonNode(newNode);
-            newSkeletonNode->animController->SetAnimation(anim.get());
+            newSkeletonNode->animController->SetCurrentAnimation(anim.get());
 
             auto newHelmetInstance = engine.MakeInstanceOf(helmet, pos2, true);
             newHelmetInstance->UpdateHierarchy();
@@ -181,7 +182,7 @@ void DemoSkinning(JLEngine::JLEngineCore& engine, const std::string& assetFolder
     auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
     auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
     auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
-    skeletonNode->animController->SetAnimation(anim.get());
+    skeletonNode->animController->SetCurrentAnimation(anim.get());
 }
 
 int MainApp(std::string assetFolder)
@@ -227,8 +228,11 @@ int MainApp(std::string assetFolder)
     //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
 
-    DemoInstancing(engine, m_assetPath);
-    //DemoSkinning(engine, m_assetPath);
+    auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb");
+    cubewithanim->animController->SetCurrentAnimation("CubeAnimation");
+
+    //DemoInstancing(engine, m_assetPath);
+    DemoSkinning(engine, m_assetPath);
 
     engine.FinalizeLoading();
     renderer = engine.GetRenderer();

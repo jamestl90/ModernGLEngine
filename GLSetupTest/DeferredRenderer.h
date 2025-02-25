@@ -81,6 +81,8 @@ namespace JLEngine
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
+        void UpdateRigidAnimations(ShaderStorageBuffer<PerDrawData>& resource);
+        void UpdateSkinnedAnimations();
         glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderScreenSpaceTriangle();
         glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
@@ -117,9 +119,7 @@ namespace JLEngine
         ShaderProgram* m_downsampleShader;
         ShaderProgram* m_blendShader;
         ShaderProgram* m_transmissionShader;
-        ShaderProgram* m_composeFramebufferShader;
         ShaderProgram* m_skinningGBufferShader;
-        ShaderProgram* m_lineShader;
 
         // compute shaders
         ShaderProgram* m_simpleBlurCompute;
@@ -136,11 +136,13 @@ namespace JLEngine
         ShaderStorageBuffer<Skeleton::Joint> m_ssboJointMatrices;
         ShaderStorageBuffer<glm::mat4> m_ssboGlobalTransforms;
 
+        int m_staticRigidAnimationIndex = -1;
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
         std::pair<VertexAttribKey, VAOResource> m_skinnedMeshResources;
         std::unordered_map<VertexAttribKey, VAOResource> m_transparentResources;
 
         std::unordered_map<uint32_t, size_t> m_materialIDMap;
+        std::vector<glm::mat4> m_jointMatrices;
 
         SceneManager m_sceneManager;
 

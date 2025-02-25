@@ -546,44 +546,45 @@ namespace JLEngine
         return flatNormals;
     }
 
-    std::vector<float> Geometry::CalculateFlatNormals(const std::vector<float>& positions, const std::vector<uint32_t>& indices)
+    std::vector<float> Geometry::CalculateFlatNormals(
+        const std::vector<float>& positions,
+        const std::vector<uint32_t>& indices)
     {
-        if (positions.size() % 3 != 0) 
+        if (positions.size() % 3 != 0)
         {
             throw std::invalid_argument("Positions size must be a multiple of 3 (x, y, z per vertex).");
         }
-        if (indices.size() % 3 != 0) 
+        if (indices.size() % 3 != 0)
         {
             throw std::invalid_argument("Indices size must be a multiple of 3 (triangle indices).");
         }
 
-        // Storage for flat normals
-        std::vector<float> flatNormals;
-        flatNormals.reserve(indices.size() * 3); // Each vertex gets a normal
+        // Normal array: One normal per vertex (same size as positions)
+        std::vector<float> flatNormals(positions.size(), 0.0f); // Initialized to zero
 
         // Iterate through each triangle
-        for (size_t i = 0; i < indices.size(); i += 3) 
+        for (size_t i = 0; i < indices.size(); i += 3)
         {
-            uint32_t i0 = indices[i];
-            uint32_t i1 = indices[i + 1];
-            uint32_t i2 = indices[i + 2];
+            uint32_t i0 = indices[i] * 3;
+            uint32_t i1 = indices[i + 1] * 3;
+            uint32_t i2 = indices[i + 2] * 3;
 
             // Get vertex positions
-            glm::vec3 v0(positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]);
-            glm::vec3 v1(positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]);
-            glm::vec3 v2(positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]);
+            glm::vec3 v0(positions[i0], positions[i0 + 1], positions[i0 + 2]);
+            glm::vec3 v1(positions[i1], positions[i1 + 1], positions[i1 + 2]);
+            glm::vec3 v2(positions[i2], positions[i2 + 1], positions[i2 + 2]);
 
             // Compute face normal
             glm::vec3 edge1 = v1 - v0;
             glm::vec3 edge2 = v2 - v0;
             glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
 
-            // Add the same normal for all three vertices of the triangle
-            for (int j = 0; j < 3; ++j) 
+            // Accumulate normals for each vertex (flat shading)
+            for (int j = 0; j < 3; ++j)
             {
-                flatNormals.push_back(faceNormal.x);
-                flatNormals.push_back(faceNormal.y);
-                flatNormals.push_back(faceNormal.z);
+                flatNormals[i0 + j] = faceNormal[j];
+                flatNormals[i1 + j] = faceNormal[j];
+                flatNormals[i2 + j] = faceNormal[j];
             }
         }
 

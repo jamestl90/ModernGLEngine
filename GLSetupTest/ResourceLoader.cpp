@@ -4,7 +4,6 @@
 #include "GLBLoader.h"
 #include "RenderTarget.h"
 #include "ShaderProgram.h"
-#include "Node.h"
 #include "TextureReader.h"
 #include "Material.h"
 

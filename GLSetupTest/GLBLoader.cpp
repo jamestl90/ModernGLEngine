@@ -13,6 +13,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include "Geometry.h"
 #include <glm/gtx/string_cast.hpp>
+#include <unordered_set>
 
 namespace JLEngine
 {
@@ -30,7 +31,20 @@ namespace JLEngine
 		tinygltf::Model model;
 		std::string err, warn;
 
-		bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, fileName);
+		bool ret = false;
+
+		size_t dotPos = fileName.find_last_of(".");
+		if (dotPos == std::string::npos)
+		{
+			std::cout << "Extension missing" << std::endl;
+			return nullptr;
+		}
+		auto extension = fileName.substr(dotPos + 1);
+
+		if (extension == "glb")
+			ret = loader.LoadBinaryFromFile(&model, &err, &warn, fileName);
+		else if (extension == "gltf")
+			ret = loader.LoadASCIIFromFile(&model, &err, &warn, fileName);
 
 		if (!warn.empty())
 		{
@@ -88,9 +102,10 @@ namespace JLEngine
 	std::shared_ptr<Node> GLBLoader::ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode, int nodeIndex)
 	{
 		auto node = std::make_shared<Node>(gltfNode.name.empty() ? "UnnamedNode" : gltfNode.name);
-		m_nodeList.push_back(node.get());
+		nodeMapping[nodeIndex] = node;
 
-		// Parse and apply transformations
+		bool found = AssociateAnimationWithNode(model, nodeIndex, node.get());
+
 		ParseTransform(node, gltfNode);
 
 		// Handle mesh
@@ -101,10 +116,7 @@ namespace JLEngine
 			auto& meshName = model.meshes[gltfNode.mesh].name;
 			auto existingMesh = m_resourceLoader->Get<Mesh>(meshName);
 
-			// Track which nodes reference this mesh
-			//auto& referencingNodes = meshNodeReferences[gltfNode.mesh];
-
-			// Check if it's an instance (i.e., if the mesh has been referenced before)
+			// Check if it's an instance (i.e. if the mesh has been referenced before)
 			if (existingMesh != nullptr)
 			{				
 				auto& masterNode = existingMesh->node;  
@@ -116,6 +128,7 @@ namespace JLEngine
 					if (submesh.instanceTransforms == nullptr)
 					{
 						// add the first one
+						submesh.flags |= SubmeshFlags::INSTANCED;
 						submesh.command.instanceCount = 1;
 						submesh.instanceTransforms = std::make_shared<std::vector<Node*>>();
 						submesh.instanceTransforms->push_back(masterNode);
@@ -123,9 +136,8 @@ namespace JLEngine
 					if (skinnedMesh)
 					{
 						node->animController = std::make_shared<AnimationController>();
-						node->animController->SetSkeleton(existingMesh->GetSkeleton());
 					}
-
+					
 					submesh.command.instanceCount++;
 					submesh.instanceTransforms->push_back(node.get());
 					//std::cout << "Creating instance " << submesh.command.instanceCount << " of " << meshName << std::endl;
@@ -139,15 +151,17 @@ namespace JLEngine
 				node->mesh = ParseMesh(model, gltfNode.mesh);
 				node->mesh->node = node.get(); // set the node to the "owner" node
 
+				if (found)
+					node->mesh->GetSubmesh(0).flags |= SubmeshFlags::ANIMATED;
 				if (gltfNode.skin >= 0)
 				{
 					const auto& skin = model.skins[gltfNode.skin];
 					ParseSkin(model, skin, *node->mesh);
 					
+					node->mesh->GetSubmesh(0).flags |= SubmeshFlags::SKINNED;
 					if (node->animController == nullptr)
 					{
 						node->animController = std::make_shared<AnimationController>();
-						node->animController->SetSkeleton(node->mesh->GetSkeleton());
 					}
 				}
 			}
@@ -201,7 +215,7 @@ namespace JLEngine
 		}
 
 		const tinygltf::Mesh& gltfMesh = model.meshes[meshIndex];
-
+		
 		// Create a new Mesh object
 		auto mesh = m_resourceLoader->CreateMesh(gltfMesh.name.empty() ? "UnnamedMesh" : gltfMesh.name);
 
@@ -221,7 +235,12 @@ namespace JLEngine
 			{
 				AddToVertexAttribKey(vertexAttribKey, AttributeType::TANGENT);
 			}
+
 			if (vertexAttribKey == 1)
+			{
+				AddToVertexAttribKey(vertexAttribKey, AttributeType::NORMAL);
+			}
+			if (!HasVertexAttribKey(vertexAttribKey, AttributeType::NORMAL))
 			{
 				AddToVertexAttribKey(vertexAttribKey, AttributeType::NORMAL);
 			}
@@ -264,10 +283,10 @@ namespace JLEngine
 			nodeName = model.nodes[targetNode].name.empty() ? "UnnamedNode" : model.nodes[targetNode].name;
 		}
 
-		if (animName.empty())
+		if (gltfAnimation.name.empty())
 			animName = "Anim_" + nodeName + "_idx:" + std::to_string(animIdx);
 		else
-			animName = gltfAnimation.name + "_" + nodeName + "_idx:" + std::to_string(animIdx);
+			animName = gltfAnimation.name;
 
 		auto cachedAnim = m_resourceLoader->Get<Animation>(animName);
 		if (cachedAnim != nullptr)
@@ -360,7 +379,7 @@ namespace JLEngine
 			int jointIndex = skin.joints[i];
 			const auto& jointNode = model.nodes[jointIndex];
 
-			Skeleton::Joint joint;
+			Skeleton::Joint joint{};
 
 			// Resolve parent index
 			auto it = nodeToParent.find(jointIndex);
@@ -406,10 +425,20 @@ namespace JLEngine
 		}
 
 		// Update animation target nodes
-		auto animations = GetAnimationsFromSkeleton(skin.skeleton);
+		//int skeletonIndex = skin.skeleton;
+		//if (skeletonIndex == -1 && !skin.joints.empty())
+		//{
+		//}
+		if (skin.skeleton != -1)
+		{
+			mesh.GetSubmeshes()[0].flags |= SubmeshFlags::USE_SKELETON;
+		}
+
+		auto animations = m_resourceLoader->GetAnimationManager()->GetResources();
+		//auto animations = GetAnimationsFromSkeleton(skeletonIndex);
 		for (auto anim : animations)
 		{
-			for (auto& channel : anim->GetChannels())
+			for (auto& channel : anim.second->GetChannels())
 			{
 				if (channel.IsUpdated()) continue;
 
@@ -427,7 +456,8 @@ namespace JLEngine
 		}
 
 		// Assign the skeleton to the mesh
-		mesh.SetSkeleton(std::make_shared<Skeleton>(skeleton));
+		auto sharedSkeleton = std::make_shared<Skeleton>(skeleton);
+		mesh.SetSkeleton(sharedSkeleton);
 	}
 
 	std::vector<float> GLBLoader::GetKeyframeTimes(const tinygltf::Model& model, int accessorIndex)
@@ -533,7 +563,9 @@ namespace JLEngine
 		idata.insert(idata.end(), indices.begin(), indices.end());
 
 		SubMesh submesh;
-		submesh.isStatic = true;
+		submesh.flags |= SubmeshFlags::STATIC;
+		if (material->useTransparency)
+			submesh.flags |= SubmeshFlags::USES_TRANSPARENCY;
 		submesh.aabb = CalculateAABB(positions);
 		submesh.attribKey = key.attributesKey;
 		submesh.materialHandle = material->GetHandle();
@@ -956,8 +988,8 @@ namespace JLEngine
 		uint32_t indexBase = (uint32_t)idata.size();
 		idata.insert(idata.end(), indices.begin(), indices.end());
 
-		SubMesh submesh;
-		submesh.isStatic = false;
+		SubMesh submesh;		
+		submesh.flags |= SubmeshFlags::ANIMATED;
 		submesh.aabb = CalculateAABB(positions);
 		submesh.attribKey = key.attributesKey;
 		submesh.materialHandle = material->GetHandle();
@@ -1072,7 +1104,7 @@ namespace JLEngine
 
 	void GLBLoader::GenerateMissingAttributes(std::vector<float>& positions,
 		std::vector<float>& normals,
-		const std::vector<float>& texCoords,
+		std::vector<float>& texCoords,
 		std::vector<float>& tangents, 
 		const std::vector<uint32_t>& indices,
 		VertexAttribKey key)
@@ -1080,13 +1112,25 @@ namespace JLEngine
 		// Generate normals if only positions are present
 		if (normals.empty() && texCoords.empty())
 		{
+			std::cout << "Normals are missing" << std::endl;
 			if (HasVertexAttribKey(key, AttributeType::NORMAL))
 			{
 				std::cout << "Generating normals..." << std::endl;
-				normals = Geometry::CalculateFlatNormals(positions);
+				normals = Geometry::CalculateFlatNormals(positions, indices);
 			}
 		}
-
+		if (texCoords.empty())
+		{
+			if (HasVertexAttribKey(key, AttributeType::TEX_COORD_0))
+			{
+				std::cerr << "Texture coordinates are missing" << std::endl;
+				for (auto i = 0; i < positions.size() / 3; i++)
+				{
+					texCoords.push_back(0.0f);
+					texCoords.push_back(0.0f);
+				}
+			}
+		}
 		// Generate tangents if UVs and normals are available but tangents are missing
 		if (tangents.empty() && !texCoords.empty() && !normals.empty())
 		{
@@ -1145,6 +1189,29 @@ namespace JLEngine
 			}
 		}
 		return animations;
+	}
+
+	bool GLBLoader::AssociateAnimationWithNode(const tinygltf::Model& model, int nodeIndex, Node* node)
+	{
+		bool associationFound = false;
+		auto& resources = m_resourceLoader->GetAnimationManager()->GetResources();
+		for (auto& anim : resources)
+		{
+			auto it = anim.second->GetChannels()[0].GetTargetNode();
+			if (nodeIndex == it)
+			{
+				associationFound = true;
+				node->IsAnimated = true;
+				auto& node = nodeMapping[nodeIndex];
+				auto& animController = node->animController;
+
+				if (animController == nullptr)
+					node->animController = std::make_shared<AnimationController>();
+
+				node->animController->AddAnimation(anim.second.get());
+			}
+		}
+		return associationFound;
 	}
 
 	void GLBLoader::LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive,

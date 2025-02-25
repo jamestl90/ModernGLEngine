@@ -13,11 +13,42 @@
 
 namespace JLEngine
 {
-    DeferredRenderer::DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* resourceLoader, int width, int height, const std::string& assetFolder)
-        : m_graphics(graphics), m_resourceLoader(resourceLoader), m_shadowDebugShader(nullptr),
-        m_width(width), m_height(height), m_gBufferDebugShader(nullptr), 
-        m_assetFolder(assetFolder), m_gBufferTarget(nullptr), m_gBufferShader(nullptr), 
-        m_enableDLShadows(true), m_debugModes(DebugModes::None), m_hdriSky(nullptr) 
+    DeferredRenderer::DeferredRenderer(GraphicsAPI* graphics, ResourceLoader* resourceLoader,
+        int width, int height, const std::string& assetFolder)
+        : m_graphics(graphics),
+        m_resourceLoader(resourceLoader),
+        m_width(width),
+        m_height(height),
+        m_assetFolder(assetFolder),
+        m_enableDLShadows(true),
+        m_debugModes(DebugModes::None),
+
+        // Initialize scene manager
+        m_sceneManager(SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader)),
+
+        // Initialize rendering-related resources
+        m_shadowDebugShader(nullptr),
+        m_gBufferDebugShader(nullptr),
+        m_gBufferShader(nullptr),
+        m_blendShader(nullptr),
+        m_downsampleShader(nullptr),
+        m_lightingTestShader(nullptr),
+        m_passthroughShader(nullptr),
+        m_skinningGBufferShader(nullptr),      
+        m_transmissionShader(nullptr),
+        m_simpleBlurCompute(nullptr),
+        m_jointTransformCompute(nullptr),
+
+        // Initialize render targets
+        m_lightOutputTarget(nullptr),
+        m_gBufferTarget(nullptr),
+        m_transparentTarget(nullptr),
+
+        m_hdriSky(nullptr),        
+        m_dlShadowMap(nullptr),
+        m_directionalLight(),
+        m_lastEyePos()
+
     {
         m_sceneManager = SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader);
     }
@@ -78,8 +109,7 @@ namespace JLEngine
         m_passthroughShader = m_resourceLoader->CreateShaderFromFile("PassthroughShader", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
-        m_composeFramebufferShader = m_resourceLoader->CreateShaderFromFile("ComposeFramebuffer", "screenspacetriangle.glsl", "compose_fb_frag.glsl", shaderAssetPath).get();
-        m_lineShader = m_resourceLoader->CreateShaderFromFile("LineShader", "line_vert.glsl", "line_frag.glsl", shaderAssetPath).get();
+       
         // compute shader
         m_simpleBlurCompute = m_resourceLoader->CreateComputeFromFile("SimpleBlur", "gaussianblur.compute", shaderAssetPath + "Compute/").get();
         m_jointTransformCompute = m_resourceLoader->CreateComputeFromFile("AnimJointTransforms", "joint_transform.compute", shaderAssetPath + "Compute/").get();
@@ -115,6 +145,86 @@ namespace JLEngine
             attributes, 
             DepthType::Texture, 
             static_cast<uint32_t>(attributes.size())).get();
+    }
+
+    void DeferredRenderer::UpdateRigidAnimations(ShaderStorageBuffer<PerDrawData>& ssbo)
+    {
+        const size_t nonInstancedStaticCount = m_sceneManager.GetNonInstancedStatic().size();
+        auto& rigidAnimationNodes = m_sceneManager.GetRigidAnimated();
+        auto& dataMutable = m_ssboStaticPerDraw.GetDataMutable();
+
+        for (int i = 0; i < rigidAnimationNodes.size(); i++)
+        {
+            auto& node = rigidAnimationNodes[i].second;
+            auto& controller = node->animController;
+
+            AnimHelpers::EvaluateRigidAnimation(*controller->CurrAnim(), *node, controller->GetTime(), controller->GetKeyframeIndices());
+
+            size_t perDrawDataIndex = i + nonInstancedStaticCount;
+            dataMutable.at(perDrawDataIndex).modelMatrix = node->GetGlobalTransform();
+        }
+
+        GPUBuffer& gpuBuffer = ssbo.GetGPUBuffer();
+        auto& data = ssbo.GetDataMutable(); 
+
+        if (m_staticRigidAnimationIndex >= data.size()) return; 
+
+        size_t perDrawDataSize = sizeof(PerDrawData);
+        size_t offset = m_staticRigidAnimationIndex * perDrawDataSize; 
+        size_t count = data.size() - m_staticRigidAnimationIndex; 
+        size_t size = count * perDrawDataSize; 
+
+        void* dataPtr = data.data() + m_staticRigidAnimationIndex;
+
+        Graphics::API()->NamedBufferSubData(gpuBuffer.GetGPUID(), offset, size, dataPtr);
+    }
+
+    void DeferredRenderer::UpdateSkinnedAnimations()
+    {
+        m_jointMatrices.clear();
+        auto& skinnedMeshData = m_sceneManager.GetNonInstancedDynamic();
+        for (auto& smd : skinnedMeshData)
+        {
+            auto& mesh = smd.second->mesh;
+            auto& skeleton = smd.second->mesh->GetSkeleton();
+            auto& controller = mesh->node->animController;
+            float currentTime = controller->GetTime();
+            auto& keyframeIndices = controller->GetKeyframeIndices();
+
+            std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
+
+            AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
+
+            std::vector<glm::mat4> globalTransforms;
+            AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
+
+            std::vector<glm::mat4> jointMatrices;
+            AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
+
+            m_jointMatrices.insert(m_jointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
+        }
+
+        auto& instancedSkinnedMeshData = m_sceneManager.GetInstancedDynamic();
+        for (auto& ismd : instancedSkinnedMeshData)
+        {
+            auto& mesh = ismd.second.second->mesh;
+            auto& skeleton = mesh->GetSkeleton();
+            auto& controller = mesh->node->animController;
+
+            std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
+
+            float currentTime = controller->GetTime();
+            auto& keyframeIndices = controller->GetKeyframeIndices();
+            AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
+
+            std::vector<glm::mat4> globalTransforms;
+            AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
+
+            std::vector<glm::mat4> jointMatrices;
+            AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
+
+            m_jointMatrices.insert(m_jointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
+        }
     }
 
     glm::mat4 DeferredRenderer::DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -178,7 +288,7 @@ namespace JLEngine
 
             DrawGeometry(resource, stride);
         }
-        
+
         // --- SKINNING SETUP FOR DYNAMIC MESHES ---
         //int numJoints = (int)m_ssboJointMatrices.GetDataImmutable().size();
         //int workGroupSize = 32; 
@@ -196,52 +306,7 @@ namespace JLEngine
         if (m_skinnedMeshResources.first == 0) return;
         if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
         {
-            std::vector<glm::mat4> finalJointMatrices;
-            auto& skinnedMeshData = m_sceneManager.GetNonInstancedDynamic();
-            for (auto& smd : skinnedMeshData)
-            {
-                auto& mesh = smd.second->mesh;
-                auto& skeleton = smd.second->mesh->GetSkeleton();
-                auto& controller = mesh->node->animController;
-
-                std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
-
-                float currentTime = controller->GetTime();
-                auto& keyframeIndices = controller->GetKeyframeIndices();
-                AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
-
-                std::vector<glm::mat4> globalTransforms;
-                AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
-
-                std::vector<glm::mat4> jointMatrices;
-                AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
-
-                finalJointMatrices.insert(finalJointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
-            }
-
-            auto& instancedSkinnedMeshData = m_sceneManager.GetInstancedDynamic();
-            for (auto& ismd : instancedSkinnedMeshData)
-            {
-                auto& mesh = ismd.second.second->mesh;
-                auto& skeleton = mesh->GetSkeleton();
-                auto& controller = mesh->node->animController;
-
-                std::vector<glm::mat4> nodeTransforms(skeleton->joints.size(), glm::mat4(1.0f));
-
-                float currentTime = controller->GetTime();
-                auto& keyframeIndices = controller->GetKeyframeIndices();
-                AnimHelpers::EvaluateAnimation(*controller->CurrAnim(), currentTime, nodeTransforms, keyframeIndices);
-
-                std::vector<glm::mat4> globalTransforms;
-                AnimHelpers::ComputeGlobalTransforms(*skeleton, nodeTransforms, globalTransforms);
-
-                std::vector<glm::mat4> jointMatrices;
-                AnimHelpers::ComputeJointMatrices(globalTransforms, mesh->GetInverseBindMatrices(), jointMatrices);
-
-                finalJointMatrices.insert(finalJointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
-            }
-
-            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), finalJointMatrices);
+            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), m_jointMatrices);
 
             // --- DYNAMIC MESHES ---
             Graphics::API()->BindShader(m_skinningGBufferShader->GetProgramId());
@@ -257,7 +322,7 @@ namespace JLEngine
 
     void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        CameraInfo camInfo;
+        CameraInfo camInfo{};
         camInfo.viewMatrix = viewMatrix;
         camInfo.projMatrix = projMatrix;
         camInfo.cameraPos = glm::vec4(eyePos.x, eyePos.y, eyePos.z, 1.0f);
@@ -273,6 +338,9 @@ namespace JLEngine
         Graphics::API()->BindFrameBuffer(0);
         Graphics::API()->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        UpdateRigidAnimations(m_ssboStaticPerDraw);
+        UpdateSkinnedAnimations();
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
 
@@ -294,7 +362,6 @@ namespace JLEngine
             {
                 TransparencyPass(eyePos, viewMatrix, projMatrix);
             }
-
 
             //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
             //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
@@ -661,7 +728,7 @@ namespace JLEngine
         ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 2.0f);
         ImGui::End();
     }
-
+    
     void DeferredRenderer::DrawGeometry(const VAOResource& vaoResource, uint32_t stride)
     {
         auto& drawBuffer = vaoResource.drawBuffer;
@@ -739,34 +806,56 @@ namespace JLEngine
         auto& transparentItems = m_sceneManager.GetTransparent();
         auto& instancedStaticItems = m_sceneManager.GetInstancedStatic();
         auto& instancedDynamicItems = m_sceneManager.GetInstancedDynamic();
+        auto& rigidAnimationItems = m_sceneManager.GetRigidAnimated();
 
         // --- STATIC MESHES --- 
+        //int perDrawDataIndex = 0;
         for (auto& item : nonInstancedStatic)
         {
-            PerDrawData pdd;
-            pdd.materialID = (int)m_materialIDMap[item.first.materialHandle];
+            PerDrawData pdd{};
+            pdd.materialID = static_cast<uint32_t>(m_materialIDMap[item.first.materialHandle]);
             pdd.modelMatrix = item.second->GetGlobalTransform();
 
+            //item.second->perDrawDataIndex = perDrawDataIndex++;
+            m_ssboStaticPerDraw.AddData(pdd);
+            m_staticResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
+
+            m_staticRigidAnimationIndex++;
+        }
+        // add the rigid animations to the back of the vao
+        // do not reset perDrawDataIndex as they should follow on
+        for (auto& item : rigidAnimationItems)
+        {
+            PerDrawData pdd{};
+            pdd.materialID = static_cast<uint32_t>(m_materialIDMap[item.first.materialHandle]);
+            pdd.modelMatrix = item.second->GetGlobalTransform();
+
+            m_staticRigidAnimationIndex++;
+            //item.second->perDrawDataIndex = perDrawDataIndex++;
             m_ssboStaticPerDraw.AddData(pdd);
             m_staticResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
         }
 
         // --- INSTANCED STATIC MESHES --- 
-        int baseInstance = 0;
+        // perDrawDataIndex = 0;
+        uint32_t baseInstance = 0;
         for (auto& item : instancedStaticItems)
         {
-            auto& transforms = item.second.instanceTransforms;
+            auto& submesh = item.second.first;
+            auto& node = item.second.second;
+            auto& transforms = submesh.instanceTransforms;
 
-            int numTransforms = (int)transforms->size();
-            item.second.command.instanceCount = numTransforms;
-            item.second.command.baseInstance = baseInstance;
+            int numTransforms = static_cast<int>(transforms->size());
+            submesh.command.instanceCount = numTransforms;
+            submesh.command.baseInstance = baseInstance;
 
-            m_staticResources[item.second.attribKey].drawBuffer->AddDrawCommand(item.second.command);
+            m_staticResources[submesh.attribKey].drawBuffer->AddDrawCommand(submesh.command);
 
             for (auto i = 0; i < transforms->size(); i++)
             {
-                PerDrawData pdd;
-                pdd.materialID = (int)m_materialIDMap[item.second.materialHandle];
+                PerDrawData pdd{};
+                pdd.materialID = static_cast<uint32_t>(m_materialIDMap[submesh.materialHandle]);
+                //transforms->at(i)->perDrawDataIndex = perDrawDataIndex++;
                 transforms->at(i)->UpdateHierarchy();
                 pdd.modelMatrix = transforms->at(i)->GetGlobalTransform();
                 m_ssboStaticPerDraw.AddData(pdd);
@@ -776,15 +865,16 @@ namespace JLEngine
 
         // --- INSTANCED SKINNED MESHES --- 
         baseInstance = 0;
-        int instancedJointCount = 0;
+        //perDrawDataIndex = 0;
+        uint32_t instancedJointCount = 0;
         for (auto& item : instancedDynamicItems)
         {
             auto& submesh = item.second.first;
             auto node = item.second.second;
-            auto skeleton = node->mesh->GetSkeleton();
+            auto& skeleton = node->mesh->GetSkeleton();
             auto& transforms = submesh.instanceTransforms;
 
-            int numTransforms = (int)transforms->size();
+            int numTransforms = static_cast<int>(transforms->size());
             submesh.command.instanceCount = numTransforms;
             submesh.command.baseInstance = baseInstance;
 
@@ -797,26 +887,29 @@ namespace JLEngine
 
             for (auto i = 0; i < transforms->size(); i++)
             {
-                SkinnedMeshPerDrawData pdd;
+                SkinnedMeshPerDrawData pdd{};
                 pdd.baseJointIndex = instancedJointCount; // all instances will share the same joint data
-                pdd.materialID = (int)m_materialIDMap[submesh.materialHandle];
+                pdd.materialID = static_cast<uint32_t>(m_materialIDMap[submesh.materialHandle]);
+                //transforms->at(i)->perDrawDataIndex = perDrawDataIndex++;
                 transforms->at(i)->UpdateHierarchy();
                 pdd.modelMatrix = transforms->at(i)->GetGlobalTransform();
                 m_ssboDynamicPerDraw.AddData(pdd);
             }
             baseInstance += numTransforms;
-            instancedJointCount += (int)skeleton->joints.size();
+            instancedJointCount += static_cast<int>(skeleton->joints.size());
         }
 
         // --- SKINNED MESHES --- 
-        int jointCount = 0;
+        uint32_t jointCount = 0;
+        //perDrawDataIndex = 0;
         for (auto& item : nonInstancedDynamic)
         {
-            SkinnedMeshPerDrawData pdd;
-            pdd.materialID = (int)m_materialIDMap[item.first.materialHandle];
+            SkinnedMeshPerDrawData pdd{};
+            pdd.materialID = static_cast<uint32_t>(m_materialIDMap[item.first.materialHandle]);
             pdd.modelMatrix = item.second->GetGlobalTransform();
             pdd.baseJointIndex = jointCount;
 
+            //item.second->perDrawDataIndex = perDrawDataIndex++;
             m_ssboDynamicPerDraw.AddData(pdd);
             m_skinnedMeshResources.second.drawBuffer->AddDrawCommand(item.first.command);
 
@@ -826,20 +919,21 @@ namespace JLEngine
                 m_ssboJointMatrices.AddData(joint);
             }
 
-            jointCount += (int)mesh->GetSkeleton()->joints.size();
+            jointCount += static_cast<int>(mesh->GetSkeleton()->joints.size());
         }
 
         // --- TRANSPARENT MESHES --- 
+        //perDrawDataIndex = 0;
         for (auto& item : transparentItems)
         {
-            PerDrawData pdd;
-            pdd.materialID = (int)m_materialIDMap[item.first.materialHandle];
+            PerDrawData pdd{};
+            pdd.materialID = static_cast<uint32_t>(m_materialIDMap[item.first.materialHandle]);
             pdd.modelMatrix = item.second->GetGlobalTransform();
-
+            //item.second->perDrawDataIndex = perDrawDataIndex++;
             m_ssboTransparentPerDraw.AddData(pdd);
             m_transparentResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
         }
-
+        GL_CHECK_ERROR();
         // --- CREATE THE GPU DRAW BUFFERS ---
         for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
@@ -902,7 +996,7 @@ namespace JLEngine
         
         for (const auto& [id, material] : materialManager.GetResources())
         {
-            MaterialGPU matGPU;
+            MaterialGPU matGPU{};
             matGPU.baseColorFactor = material->baseColorFactor;
             matGPU.emissiveFactor = glm::vec4(material->emissiveFactor, 1.0f);
             matGPU.metallicFactor = material->metallicFactor;

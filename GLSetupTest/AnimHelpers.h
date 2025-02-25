@@ -89,6 +89,47 @@ namespace JLEngine
             }
         }
 
+        static void EvaluateRigidAnimation(Animation& anim, Node& node, float currTime,
+            const std::vector<size_t>& keyframeIndices)
+        {
+            const auto& channels = anim.GetChannels();
+            const auto& samplers = anim.GetSamplers();
+
+            glm::vec3 translation = glm::vec3(0.0f);
+            glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+            glm::vec3 scale = glm::vec3(1.0f);
+
+            for (size_t channelIndex = 0; channelIndex < channels.size(); ++channelIndex)
+            {
+                const auto& channel = channels[channelIndex];
+
+                const auto& sampler = samplers.at(channel.GetSamplerIndex());
+                const auto& inputTimes = sampler.GetTimes();
+                const auto& outputValues = sampler.GetValues();
+
+                size_t currentIndex = keyframeIndices[channelIndex];
+                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : currentIndex;
+                float timeStart = inputTimes[currentIndex];
+                float timeEnd = inputTimes[nextIndex];
+                float factor = (timeEnd > timeStart) ? (currTime - timeStart) / (timeEnd - timeStart) : 0.0f;
+
+                if (nextIndex == currentIndex)
+                {
+                    ApplyKeyframe(channel, outputValues[currentIndex], translation, rotation, scale);
+                }
+                else
+                {
+                    InterpolateKeyframes(channel, outputValues[currentIndex], outputValues[nextIndex], factor, translation, rotation, scale);
+                }
+            }
+            glm::mat4 localTransform = glm::translate(glm::mat4(1.0f), translation) *
+                glm::mat4_cast(rotation) *
+                glm::scale(glm::mat4(1.0f), scale);
+
+            // Update the node's transform directly.
+            node.SetTRS(translation, rotation, scale);
+        }
+
         static void InterpolateKeyframes(const AnimationChannel& channel, const glm::vec4& prevValue, const glm::vec4& nextValue, float factor,
             std::vector<glm::vec3>& translations,
             std::vector<glm::quat>& rotations,
@@ -111,6 +152,55 @@ namespace JLEngine
             else if (targetPath == TargetPath::SCALE)
             {
                 scales[targetNode] = glm::mix(glm::vec3(prevValue), glm::vec3(nextValue), factor);
+            }
+        }
+
+        static void InterpolateKeyframes(const AnimationChannel& channel,
+            const glm::vec4& prevValue,
+            const glm::vec4& nextValue,
+            float factor,
+            glm::vec3& translation,
+            glm::quat& rotation,
+            glm::vec3& scale)
+        {
+            TargetPath targetPath = channel.GetTargetPath();
+
+            if (targetPath == TargetPath::TRANSLATION)
+            {
+                translation = glm::mix(glm::vec3(prevValue), glm::vec3(nextValue), factor);
+            }
+            else if (targetPath == TargetPath::ROTATION)
+            {
+                glm::quat q1(prevValue.w, prevValue.x, prevValue.y, prevValue.z);
+                glm::quat q2(nextValue.w, nextValue.x, nextValue.y, nextValue.z);
+
+                rotation = glm::normalize(glm::slerp(q1, q2, factor));
+            }
+            else if (targetPath == TargetPath::SCALE)
+            {
+                scale = glm::mix(glm::vec3(prevValue), glm::vec3(nextValue), factor);
+            }
+        }
+
+        static void ApplyKeyframe(const AnimationChannel& channel,
+            const glm::vec4& keyframeValue,
+            glm::vec3& translation,
+            glm::quat& rotation,
+            glm::vec3& scale)
+        {
+            TargetPath targetPath = channel.GetTargetPath();
+
+            if (targetPath == TargetPath::TRANSLATION)
+            {
+                translation = glm::vec3(keyframeValue);
+            }
+            else if (targetPath == TargetPath::ROTATION)
+            {
+                rotation = glm::quat(keyframeValue.w, keyframeValue.x, keyframeValue.y, keyframeValue.z);
+            }
+            else if (targetPath == TargetPath::SCALE)
+            {
+                scale = glm::vec3(keyframeValue);
             }
         }
 

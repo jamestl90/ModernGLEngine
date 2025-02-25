@@ -359,6 +359,7 @@
       </SubType>
     </ClInclude>
     <ClInclude Include="Types.h" />
+    <ClInclude Include="UIHelperFunctions.h" />
     <ClInclude Include="UniformBuffer.h">
       <SubType>
       </SubType>

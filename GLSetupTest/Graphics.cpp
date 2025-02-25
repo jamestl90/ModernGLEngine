@@ -626,9 +626,18 @@ namespace JLEngine
 
 	void Graphics::CreateGPUBuffer(GPUBuffer& buffer)
 	{
+		bool immutable = buffer.IsImmutable();
+		if (immutable && buffer.GetSizeInBytes() == 0) return;
+
 		GLuint id;
 		API()->CreateNamedBuffer(id);
-		API()->NamedBufferStorage(id, buffer.GetSizeInBytes(), buffer.GetUsageFlags(), nullptr);
+
+		if (immutable)
+			API()->NamedBufferStorage(id, buffer.GetSizeInBytes(), buffer.GetUsageFlags(), nullptr);
+		else
+			API()->NamedBufferData(id, buffer.GetSizeInBytes(), nullptr, GL_DYNAMIC_DRAW);
+
+		buffer.SetCreated(true);
 		buffer.SetGPUID(id);
 		buffer.ClearDirty();
 	}

@@ -15,10 +15,21 @@ namespace JLEngine
 {
 	class Node;
 
+	enum SubmeshFlags : uint32_t
+	{
+		NONE				= 0,
+		STATIC				= 1 << 0,
+		SKINNED				= 1 << 1,
+		INSTANCED			= 1 << 2,
+		ANIMATED			= 1 << 4,
+		USES_TRANSPARENCY	= 1 << 5,
+		USE_SKELETON		= 1 << 6
+	};
+
 	struct SubMesh
 	{
+		uint32_t flags = SubmeshFlags::NONE;
 		AABB aabb;
-		bool isStatic = true;
 		std::shared_ptr<std::vector<Node*>> instanceTransforms;
 		uint32_t attribKey;
 		uint32_t materialHandle;
@@ -47,9 +58,9 @@ namespace JLEngine
 			}
 			m_inverseBindMatrices[i] = matrix;
 		}
-		void SetSkeleton(std::shared_ptr<Skeleton> skeleton)
+		void SetSkeleton(std::shared_ptr<Skeleton>& skeleton)
 		{ 
-			m_skeleton = skeleton;
+			m_skeleton = std::move(skeleton);
 		}
 		void AddInverseBindMatrix(glm::mat4& matrix) { m_inverseBindMatrices.push_back(matrix); }
 

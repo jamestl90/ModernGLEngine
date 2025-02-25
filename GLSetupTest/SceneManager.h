@@ -29,10 +29,15 @@ namespace JLEngine
 			m_nonInstancedDynamic.clear();
 			m_instancedStatic.clear();
 			m_transparentObjects.clear();
-			m_animControllers.clear();
+			m_skinnedAnimControllers.clear();
+			m_rigidAnimControllers.clear();
 
 			std::function<void(Node*)> populateLists = [&](Node* node)
 				{
+					if (node->IsAnimated && node->GetTag() != NodeTag::Mesh) // animated node, but no mesh
+					{
+						m_rigidAnimControllers.push_back(std::make_pair(node->animController, node));
+					}
 					if (node->GetTag() == NodeTag::Mesh)
 					{
 						auto matMgr = m_resourceLoader->GetMaterialManager();
@@ -40,39 +45,49 @@ namespace JLEngine
 						auto& submeshes = node->mesh->GetSubmeshes();
 						for (auto i = 0; i < submeshes.size(); i++)
 						{
-							auto& submesh = node->mesh->GetSubmesh(i);
+							auto& submesh = node->mesh->GetSubmesh(i); 
 							auto isInstanced = submesh.instanceTransforms != nullptr;
+							auto isStatic = (submesh.flags & SubmeshFlags::STATIC) != 0;
+							auto isSkinned = (submesh.flags & SubmeshFlags::SKINNED) != 0;
+							auto usesTransparency = (submesh.flags & SubmeshFlags::USES_TRANSPARENCY) != 0;
+							auto isAnimated = (submesh.flags & SubmeshFlags::ANIMATED) != 0;
 							auto mat = matMgr->Get(submesh.materialHandle);
 
-							if (isInstanced && !mat->useTransparency && submesh.isStatic)
+							if (isInstanced && !usesTransparency && isStatic)
 							{
 								auto key = MakeKey(node->mesh->GetName(), submesh);
 								if (m_instancedStatic.find(key) == m_instancedStatic.end())
 								{
-									m_instancedStatic[key] = submesh;
+									m_instancedStatic[key] = std::make_pair(submesh, node);
 								}
 							}
-							else if (mat->useTransparency)
+							else if (usesTransparency) // not currently handling transparent/skinned, but will eventually 
 							{
 								m_transparentObjects.push_back(std::make_pair(submesh, node));
 							}
-							else if (submesh.isStatic)
+							else if (isStatic && !isAnimated)
 							{
 								m_nonInstancedStatic.push_back(std::make_pair(submesh, node));
 							}
-							else if (!submesh.isStatic && isInstanced)
+							else if (isInstanced && isSkinned)
 							{
-								m_animControllers.push_back(std::make_pair(node->animController, node));
+								m_skinnedAnimControllers.push_back(std::make_pair(node->animController, node));
 								auto key = MakeKey(node->mesh->GetName(), submesh);
 								if (m_instancedDynamic.find(key) == m_instancedDynamic.end())
 								{
 									m_instancedDynamic[key] = std::make_pair(submesh, node);
 								}
 							}
-							else if (!submesh.isStatic)
+							else if (isSkinned && isAnimated)
 							{
-								m_animControllers.push_back(std::make_pair(node->animController, node));
+								m_skinnedAnimControllers.push_back(std::make_pair(node->animController, node));
 								m_nonInstancedDynamic.push_back(std::make_pair(submesh, node));
+							}
+							else if (isAnimated)
+							{
+								// non skinned animations
+								m_rigidAnimControllers.push_back(std::make_pair(node->animController, node));
+								m_animatedRigidObjects.push_back(std::make_pair(submesh, node));
 							}
 						}
 					}
@@ -95,7 +110,12 @@ namespace JLEngine
 			return m_nonInstancedDynamic;
 		}
 
-		std::unordered_map<std::string, SubMesh>& GetInstancedStatic()
+		std::vector<std::pair<SubMesh, Node*>>& GetRigidAnimated()
+		{
+			return m_animatedRigidObjects;
+		}
+
+		std::unordered_map<std::string, std::pair<SubMesh, Node*>>& GetInstancedStatic()
 		{
 			return m_instancedStatic;
 		}
@@ -110,9 +130,14 @@ namespace JLEngine
 			return m_transparentObjects;
 		}
 
-		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>>& GetAnimationControllers()
+		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>>& GetSkinnedAnimationControllers()
 		{
-			return m_animControllers;
+			return m_skinnedAnimControllers;
+		}
+
+		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>>& GetRigidAnimationControllers()
+		{
+			return m_rigidAnimControllers;
 		}
 
 		void SortStaticFrontToBack(glm::vec3& eyePos)
@@ -171,12 +196,14 @@ namespace JLEngine
 	private:
 
 		std::shared_ptr<Node> m_sceneRoot;
-		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedStatic;
-		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedDynamic;
-		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects;
-		std::unordered_map<std::string, SubMesh> m_instancedStatic;
-		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedDynamic;
-		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_animControllers;
+		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedStatic;  // static meshes
+		std::vector<std::pair<SubMesh, Node*>> m_animatedRigidObjects; // rigid animations
+		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedDynamic; // skinned meshes
+		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects; // transparent meshes
+		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedStatic;	// instanced static meshes
+		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedDynamic; // instanced skinned meshes
+		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_skinnedAnimControllers;
+		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_rigidAnimControllers;
 
 		ResourceLoader* m_resourceLoader;
 	};

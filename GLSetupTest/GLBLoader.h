@@ -48,7 +48,7 @@ namespace JLEngine
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetStaticVAOs() { return m_staticVAOs; }
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetDynamicVAOs() { return m_skinnedMeshVAOs; }
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& GetTransparentVAOs() { return m_transparentVAOs; }
-
+	
 		void ClearCaches();
 
 	protected:
@@ -75,7 +75,7 @@ namespace JLEngine
 		void LoadJointAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<uint16_t>& joints);
 		void GenerateMissingAttributes(std::vector<float>& positions, 
 			std::vector<float>& normals, 
-			const std::vector<float>& texCoords, 
+			std::vector<float>& texCoords, 
 			std::vector<float>& tangents, 
 			const std::vector<uint32_t>& indices, 
 			VertexAttribKey key);
@@ -100,10 +100,12 @@ namespace JLEngine
 			uint32_t& indexOffset);
 		glm::vec4 GetVec4FromValue(const tinygltf::Value& value, const glm::vec4& defaultValue);
 		glm::vec3 GetVec3FromValue(const tinygltf::Value& value, const glm::vec3& defaultValue);
-
 		std::vector<Animation*> GetAnimationsFromSkeleton(int gltfSkeletonRoot);
+		bool AssociateAnimationWithNode(const tinygltf::Model& model, int nodeIndex, Node* node);
 
 	private:
+
+		std::unordered_map<int, std::shared_ptr<Node>> nodeMapping; // maps the gltf nodeIndex to my JLEngine::Node
 		std::unordered_map<int, std::shared_ptr<Mesh>> meshCache;
 		std::unordered_map<int, std::shared_ptr<Material>> materialCache;
 		std::unordered_map<int, std::shared_ptr<Texture>> textureCache;
@@ -112,7 +114,6 @@ namespace JLEngine
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_staticVAOs;
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_skinnedMeshVAOs;
 		std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>> m_transparentVAOs;
-		std::vector<Node*> m_nodeList;
 
 		ResourceLoader* m_resourceLoader;
 	};

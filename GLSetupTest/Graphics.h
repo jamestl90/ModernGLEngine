@@ -96,13 +96,23 @@ namespace JLEngine
 	template <typename T>
 	void Graphics::CreateGPUBuffer(GPUBuffer& buffer, const std::vector<T>& data)
 	{
+		bool immutable = buffer.IsImmutable();
+		if (immutable && data.size() == 0) return;
+
  		GLuint id;
 		API()->CreateNamedBuffer(id);
-		if (data.size() == 0) return;
 
-		API()->NamedBufferStorage(id, data.size() * sizeof(T), buffer.GetUsageFlags(), data.size() == 0 ? nullptr : data.data());
+		size_t bufferSize = data.size() * sizeof(T);
+		const void* bufferData = data.empty() ? nullptr : data.data();
+
+		if (immutable)
+			API()->NamedBufferStorage(id, bufferSize, buffer.GetUsageFlags(), bufferData);
+		else
+			API()->NamedBufferData(id, bufferSize, bufferData, GL_DYNAMIC_DRAW);
+
+		buffer.SetCreated(true);
 		buffer.SetGPUID(id);
-		buffer.SetSizeInBytes(data.size() * sizeof(T));
+		buffer.SetSizeInBytes(bufferSize);
 		buffer.ClearDirty();
 	}
 
