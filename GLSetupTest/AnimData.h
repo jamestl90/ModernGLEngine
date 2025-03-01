@@ -5,6 +5,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <vector>
 #include <string>
@@ -67,26 +68,6 @@ namespace JLEngine
         const std::vector<float>& GetTimes() const { return m_times; }
         const std::vector<glm::vec4>& GetValues() const { return m_values; }
         const InterpolationType GetInterpolation() const { return m_interpolation; }
-
-        float Sample(float time, glm::vec4& val1, glm::vec4& val2)
-        {
-            while (m_currentIndex + 1 < m_times.size() &&
-                time > m_times[m_currentIndex + 1])
-            {
-                m_currentIndex++;
-            }
-
-            if (m_currentIndex + 1 >= m_times.size())
-                m_currentIndex = 0;
-
-            float t = (time - m_times[m_currentIndex]) /
-                (m_times[m_currentIndex + 1] - m_times[m_currentIndex]);
-
-            val1 = m_values[m_currentIndex];
-            val2 = m_values[m_currentIndex + 1];
-
-            return t;
-        }
 
         void SetTimes(std::vector<float>&& inputTimes) { m_times = std::move(inputTimes); }
         void SetValues(std::vector<glm::vec4>&& outputValues) { m_values = std::move(outputValues); }
@@ -161,6 +142,24 @@ namespace JLEngine
         const std::vector<const AnimationSampler*>& GetPrecomputedSamplers() const
         {
             return m_precomputedSamplers;
+        }
+
+        friend std::ostream& operator <<(std::ostream& os, const Animation& obj)
+        {
+            os << "Animation\n" << "NumChannels: " << obj.m_channels.size() <<
+                "\nNum Samplers: " << obj.m_samplers.size() << "\n";
+            for (auto& item : obj.m_samplers)
+            {
+                os << "SamplerInfo: \n" << "Times: " 
+                    << item.GetTimes().size() << "\nValues: " << item.GetValues().size() << std::endl;
+
+                for (int i = 0; i < item.GetTimes().size(); i++)
+                {
+                    os << "Time: " << item.GetTimes()[i] << " Value: " 
+                        << glm::to_string(item.GetValues()[i]) << std::endl;
+                }
+            }
+            return os;
         }
 
     private:

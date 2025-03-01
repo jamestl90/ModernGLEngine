@@ -99,21 +99,21 @@ namespace JLEngine
 
             m_imguiManager.BeginFrame();
 
-            auto& skinnedAnimControllers = sceneManager.GetSkinnedAnimationControllers();
-            auto& rigidAnimControllers = sceneManager.GetRigidAnimationControllers();
-            for (auto& [controller, node] : skinnedAnimControllers) 
-            { 
-                controller->Update((float)m_deltaTime); 
-            }
-            for (auto& [controller, node] : rigidAnimControllers)
-            {
-                controller->Update((float)m_deltaTime);
-            }
             logicUpdate(m_deltaTime);
 
             // Fixed Update (runs at the fixed time step)
             while (m_accumulatedTime >= m_fixedUpdateInterval)
-            {                
+            {
+                auto& skinnedAnimControllers = sceneManager.GetSkinnedAnimationControllers();
+                auto& rigidAnimControllers = sceneManager.GetRigidAnimationControllers();
+                for (auto& [controller, node] : skinnedAnimControllers)
+                {
+                    controller->Update((float)m_deltaTime);
+                }
+                for (auto& [controller, node] : rigidAnimControllers)
+                {
+                    controller->Update((float)m_deltaTime);
+                }
                 fixedUpdate(m_fixedUpdateInterval); 
                 m_accumulatedTime -= m_fixedUpdateInterval; 
                 m_fixedUpdateCount++;

@@ -61,17 +61,19 @@ namespace JLEngine
                 const auto& inputTimes = sampler.GetTimes();
 
                 size_t currentIndex = keyframeIndices[channelIndex];
-                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : currentIndex;
+                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : 0;
 
                 float timeStart = inputTimes[currentIndex];
                 float timeEnd = inputTimes[nextIndex];
+
+                if (nextIndex == 0)
+                {
+                    timeEnd = inputTimes[nextIndex] + animation.GetDuration();
+                }
+
                 float factor = (timeEnd > timeStart) ? (currTime - timeStart) / (timeEnd - timeStart) : 0.0f;
 
-                // the last keyframe doesnt seem to be hit
-                // i think this is because fmod wraps the time 
-                // when it's > anim duration but the step between 
-                // keyframes is too large to pick up the last keyframe
-                if (nextIndex == currentIndex) // No interpolation needed (last keyframe or static channel)
+                if (nextIndex == currentIndex) 
                 {
                     ApplyKeyframe(channel, outputValues[currentIndex], translations, rotations, scales);
                 }
@@ -99,21 +101,33 @@ namespace JLEngine
             glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
             glm::vec3 scale = glm::vec3(1.0f);
 
-            for (size_t channelIndex = 0; channelIndex < channels.size(); ++channelIndex)
+            for (size_t channelIndex = 0; channelIndex < channels.size(); ++channelIndex) // Hardcoded for testing
             {
                 const auto& channel = channels[channelIndex];
-
-                const auto& sampler = samplers.at(channel.GetSamplerIndex());
+                const auto& sampler = samplers[channel.GetSamplerIndex()];
                 const auto& inputTimes = sampler.GetTimes();
                 const auto& outputValues = sampler.GetValues();
 
+                if (inputTimes.empty())
+                    continue;
+
                 size_t currentIndex = keyframeIndices[channelIndex];
-                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : currentIndex;
+                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : 0;
+
                 float timeStart = inputTimes[currentIndex];
                 float timeEnd = inputTimes[nextIndex];
+
+                if (nextIndex == 0)
+                {
+                    timeEnd = inputTimes[nextIndex] + anim.GetDuration(); 
+                }
+
                 float factor = (timeEnd > timeStart) ? (currTime - timeStart) / (timeEnd - timeStart) : 0.0f;
 
-                if (nextIndex == currentIndex)
+                //std::cout << "curr: " << currentIndex << " next: "
+                //    << nextIndex << " time: " << currTime << " fac: " << factor << std::endl;
+
+                if (nextIndex == currentIndex) // No interpolation needed
                 {
                     ApplyKeyframe(channel, outputValues[currentIndex], translation, rotation, scale);
                 }
@@ -122,11 +136,7 @@ namespace JLEngine
                     InterpolateKeyframes(channel, outputValues[currentIndex], outputValues[nextIndex], factor, translation, rotation, scale);
                 }
             }
-            glm::mat4 localTransform = glm::translate(glm::mat4(1.0f), translation) *
-                glm::mat4_cast(rotation) *
-                glm::scale(glm::mat4(1.0f), scale);
 
-            // Update the node's transform directly.
             node.SetTRS(translation, rotation, scale);
         }
 

@@ -1209,6 +1209,8 @@ namespace JLEngine
 					node->animController = std::make_shared<AnimationController>();
 
 				node->animController->AddAnimation(anim.second.get());
+				if (node->animController->CurrAnim() == nullptr)
+					node->animController->SetCurrentAnimation(anim.second.get());
 			}
 		}
 		return associationFound;

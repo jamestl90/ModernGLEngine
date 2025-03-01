@@ -119,6 +119,30 @@ namespace JLEngine
             }
         }
 
+        static std::shared_ptr<Node> FindNode(std::shared_ptr<Node>& root, std::string_view name)
+        {
+            std::shared_ptr<Node> foundNode = nullptr;
+
+            std::function<void(std::shared_ptr<Node>)> findNode = [&](std::shared_ptr<Node> node)
+                {
+                    if (node->name == name)
+                    {
+                        foundNode = node;
+                    }
+                    for (auto& child : node->children)
+                    {
+                        if (foundNode != nullptr)
+                            return;
+
+                        findNode(child);
+                    }
+                };
+
+            findNode(root);
+
+            return foundNode; 
+        }
+
         static std::shared_ptr<Node> FindSkeletonNode(std::shared_ptr<Node>& root)
         {
             std::shared_ptr<Node> foundSkeleton = nullptr;
@@ -200,6 +224,10 @@ namespace JLEngine
         glm::vec3 translation;
         glm::quat rotation;
         glm::vec3 scale;
+
+        glm::vec3 anim_translation;
+        glm::quat anim_rotation;
+        glm::vec3 anim_scale;
 
         bool receiveShadows = true;
         bool isDirty = true;

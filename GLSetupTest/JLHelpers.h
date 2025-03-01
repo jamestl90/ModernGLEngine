@@ -3,6 +3,7 @@
 
 #include <string>
 #include <algorithm>
+#include <vector>
 
 namespace JLEngine
 {
