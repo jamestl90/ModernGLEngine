@@ -81,7 +81,7 @@ namespace JLEngine
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
-        void UpdateRigidAnimations(ShaderStorageBuffer<PerDrawData>& resource);
+        void UpdateRigidAnimations();
         void UpdateSkinnedAnimations();
         glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void RenderScreenSpaceTriangle();

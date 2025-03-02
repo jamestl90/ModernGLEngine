@@ -146,8 +146,8 @@ namespace JLEngine
             DepthType::Texture, 
             static_cast<uint32_t>(attributes.size())).get();
     }
-
-    void DeferredRenderer::UpdateRigidAnimations(ShaderStorageBuffer<PerDrawData>& ssbo)
+ 
+    void DeferredRenderer::UpdateRigidAnimations()
     {
         const size_t nonInstancedStaticCount = m_sceneManager.GetNonInstancedStatic().size();
         auto& rigidAnimationNodes = m_sceneManager.GetRigidAnimated();
@@ -164,17 +164,16 @@ namespace JLEngine
             dataMutable.at(perDrawDataIndex).modelMatrix = node->GetGlobalTransform();
         }
 
-        GPUBuffer& gpuBuffer = ssbo.GetGPUBuffer();
-        auto& data = ssbo.GetDataMutable(); 
+        GPUBuffer& gpuBuffer = m_ssboStaticPerDraw.GetGPUBuffer();
 
-        if (m_staticRigidAnimationIndex >= data.size()) return; 
+        if (nonInstancedStaticCount >= dataMutable.size()) return;
 
         size_t perDrawDataSize = sizeof(PerDrawData);
-        size_t offset = m_staticRigidAnimationIndex * perDrawDataSize; 
-        size_t count = data.size() - m_staticRigidAnimationIndex; 
+        size_t offset = nonInstancedStaticCount * perDrawDataSize;
+        size_t count = dataMutable.size() - nonInstancedStaticCount;
         size_t size = count * perDrawDataSize; 
 
-        void* dataPtr = data.data() + m_staticRigidAnimationIndex;
+        void* dataPtr = dataMutable.data() + nonInstancedStaticCount;
 
         Graphics::API()->NamedBufferSubData(gpuBuffer.GetGPUID(), offset, size, dataPtr);
     }
@@ -339,7 +338,7 @@ namespace JLEngine
         Graphics::API()->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        UpdateRigidAnimations(m_ssboStaticPerDraw);
+        UpdateRigidAnimations();
         UpdateSkinnedAnimations();
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
