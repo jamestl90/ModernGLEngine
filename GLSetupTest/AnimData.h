@@ -90,6 +90,8 @@ namespace JLEngine
 
         int GetSamplerIndex() const { return m_samplerIndex; }
         int GetTargetNode() const { return m_targetNode; }
+        const std::string& GetNodeName() const { return m_nodeName; }
+        void SetNodeName(std::string& name) { m_nodeName = name; }
         TargetPath GetTargetPath() const { return m_targetPath; }
 
         bool IsUpdated() { return m_updated; }
@@ -98,7 +100,8 @@ namespace JLEngine
     private:
         bool m_updated = false;
         int m_samplerIndex;          
-        int m_targetNode;            
+        int m_targetNode;           
+        std::string m_nodeName;
         TargetPath m_targetPath;
     };
 

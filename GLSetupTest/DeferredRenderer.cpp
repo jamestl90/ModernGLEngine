@@ -158,7 +158,7 @@ namespace JLEngine
             auto& node = rigidAnimationNodes[i].second;
             auto& controller = node->animController;
 
-            AnimHelpers::EvaluateRigidAnimation(*controller->CurrAnim(), *node, controller->GetTime(), controller->GetKeyframeIndices());
+            AnimHelpers::EvaluateRigidAnimation(*controller->CurrAnim(), *node, controller->GetTime(), controller->IsLooping(), controller->GetKeyframeIndices());
 
             size_t perDrawDataIndex = i + nonInstancedStaticCount;
             dataMutable.at(perDrawDataIndex).modelMatrix = node->GetGlobalTransform();

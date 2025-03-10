@@ -225,13 +225,13 @@ int MainApp(std::string assetFolder)
     //planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     //plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
     //
-    engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
-    engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
+    //engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
+    //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
 
     //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
 
-    auto helitest = engine.LoadAndAttachToRoot(assetFolder + "helitest.glb", glm::vec3(10, 0, 0));
+    auto helitest = engine.LoadAndAttachToRoot(assetFolder + "rotationtest.glb", glm::vec3(10, 0, 0));
 
     //DemoInstancing(engine, m_assetPath);
     DemoSkinning(engine, m_assetPath);

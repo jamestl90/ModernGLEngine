@@ -58,7 +58,6 @@ namespace JLEngine
         double m_maxFrameRateInterval;
         int m_fixedUpdateRate;
         double m_fixedUpdateInterval;
-        double m_lastFrameTime;
         double m_deltaTime;
         double m_accumulatedTime;
 

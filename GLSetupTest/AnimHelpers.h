@@ -91,50 +91,48 @@ namespace JLEngine
             }
         }
 
-        static void EvaluateRigidAnimation(Animation& anim, Node& node, float currTime,
+        static void EvaluateRigidAnimation(Animation& anim, Node& node, float currTime, bool looping,
             const std::vector<size_t>& keyframeIndices)
         {
             const auto& channels = anim.GetChannels();
             const auto& samplers = anim.GetSamplers();
 
-            glm::vec3 translation = glm::vec3(0.0f);
-            glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-            glm::vec3 scale = glm::vec3(1.0f);
+            if (keyframeIndices.size() < channels.size())
+                return; // Prevent out-of-bounds access
 
-            for (size_t channelIndex = 0; channelIndex < channels.size(); ++channelIndex) // Hardcoded for testing
+            glm::vec3 translation(0.0f);
+            glm::quat rotation = glm::identity<glm::quat>();
+            glm::vec3 scale(1.0f);
+
+            for (size_t channelIndex = 0; channelIndex < channels.size(); ++channelIndex)
             {
                 const auto& channel = channels[channelIndex];
                 const auto& sampler = samplers[channel.GetSamplerIndex()];
                 const auto& inputTimes = sampler.GetTimes();
                 const auto& outputValues = sampler.GetValues();
 
-                if (inputTimes.empty())
+                if (inputTimes.empty() || channelIndex >= keyframeIndices.size())
                     continue;
 
                 size_t currentIndex = keyframeIndices[channelIndex];
-                size_t nextIndex = (currentIndex + 1 < inputTimes.size()) ? currentIndex + 1 : 0;
+                size_t nextIndex = (currentIndex + 1) % inputTimes.size();
+
+                //std::cout << currentIndex << " : " << nextIndex << std::endl;
 
                 float timeStart = inputTimes[currentIndex];
                 float timeEnd = inputTimes[nextIndex];
 
-                if (nextIndex == 0)
+                if (looping && nextIndex == 0)
                 {
-                    timeEnd = inputTimes[nextIndex] + anim.GetDuration(); 
+                    timeEnd += anim.GetDuration();
                 }
 
-                float factor = (timeEnd > timeStart) ? (currTime - timeStart) / (timeEnd - timeStart) : 0.0f;
+                constexpr float epsilon = 1e-6f;
+                float deltaT = timeEnd - timeStart;
+                float factor = (deltaT > epsilon) ? (currTime - timeStart) / deltaT : 0.0f;
 
-                //std::cout << "curr: " << currentIndex << " next: "
-                //    << nextIndex << " time: " << currTime << " fac: " << factor << std::endl;
-
-                if (nextIndex == currentIndex) // No interpolation needed
-                {
-                    ApplyKeyframe(channel, outputValues[currentIndex], translation, rotation, scale);
-                }
-                else
-                {
-                    InterpolateKeyframes(channel, outputValues[currentIndex], outputValues[nextIndex], factor, translation, rotation, scale);
-                }
+                // Interpolate keyframes safely
+                InterpolateKeyframes(channel, outputValues[currentIndex], outputValues[nextIndex], factor, translation, rotation, scale);
             }
 
             node.SetTRS(translation, rotation, scale);

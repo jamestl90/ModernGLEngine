@@ -13,7 +13,7 @@ namespace JLEngine
 {
     JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder) :
         m_maxFrameRate(maxFrameRate), m_maxFrameRateInterval(0),
-        m_lastFrameTime(0.0), m_deltaTime(0.0), m_accumulatedTime(0.0), m_fixedUpdateRate(fixedUpdates) 
+        m_deltaTime(0.0), m_accumulatedTime(0.0), m_fixedUpdateRate(fixedUpdates) 
     {
         // Set up fixed update interval based on target FPS
         m_fixedUpdateInterval = 1.0 / static_cast<double>(m_fixedUpdateRate);
@@ -38,23 +38,6 @@ namespace JLEngine
     JLEngineCore::~JLEngineCore()
     {
 
-    }
-
-    void JLEngineCore::logPerformanceMetrics()
-    {
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - m_debugTimer);
-
-        if (elapsed.count() >= 1) {
-            std::cout << "FPS: " << m_frameCount
-                << ", Fixed Updates: " << m_fixedUpdateCount 
-                << ", Delta Time: " << m_deltaTime << "s\n";
-
-            // Reset counters and timer
-            m_frameCount = 0;
-            m_fixedUpdateCount = 0;
-            m_debugTimer = now;
-        }
     }
 
     void JLEngineCore::setFixedUpdateRate(int fps)
@@ -108,15 +91,20 @@ namespace JLEngine
                 auto& rigidAnimControllers = sceneManager.GetRigidAnimationControllers();
                 for (auto& [controller, node] : skinnedAnimControllers)
                 {
-                    controller->Update((float)m_deltaTime);
+                    controller->Update(static_cast<float>(m_fixedUpdateInterval));
                 }
                 for (auto& [controller, node] : rigidAnimControllers)
                 {
-                    controller->Update((float)m_deltaTime);
+                    controller->Update(m_fixedUpdateInterval);
                 }
                 fixedUpdate(m_fixedUpdateInterval); 
                 m_accumulatedTime -= m_fixedUpdateInterval; 
                 m_fixedUpdateCount++;
+            }
+
+            if (m_deltaTime > 0.02f)
+            {
+                std::cout << " SKIP " << std::endl;
             }
 
             if (frameTimeAccumulator >= 1.0)

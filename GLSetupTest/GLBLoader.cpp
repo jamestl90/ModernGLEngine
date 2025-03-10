@@ -326,6 +326,7 @@ namespace JLEngine
 				targetNode = -1; // Or skip the channel if it doesn't target a node
 			}
 			AnimationChannel animChannel(channel.sampler, targetNode, TargetPathFromString(channel.target_path));
+			animChannel.SetNodeName(nodeName);
 			animation->AddChannel(animChannel);
 		}
 
@@ -1197,8 +1198,9 @@ namespace JLEngine
 		auto& resources = m_resourceLoader->GetAnimationManager()->GetResources();
 		for (auto& anim : resources)
 		{
-			auto it = anim.second->GetChannels()[0].GetTargetNode();
-			if (nodeIndex == it)
+			auto& channel = anim.second->GetChannels()[0];
+			auto name = channel.GetNodeName();
+			if (node->name == name)
 			{
 				associationFound = true;
 				node->IsAnimated = true;
@@ -1525,6 +1527,7 @@ namespace JLEngine
 
 	void GLBLoader::ClearCaches()
 	{
+		nodeMapping.clear();
 		meshCache.clear();
 		materialCache.clear();
 		textureCache.clear();
