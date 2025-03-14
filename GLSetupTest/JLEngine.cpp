@@ -95,16 +95,11 @@ namespace JLEngine
                 }
                 for (auto& [controller, node] : rigidAnimControllers)
                 {
-                    controller->Update(m_fixedUpdateInterval);
+                    controller->Update(static_cast<float>(m_fixedUpdateInterval));
                 }
                 fixedUpdate(m_fixedUpdateInterval); 
                 m_accumulatedTime -= m_fixedUpdateInterval; 
-                m_fixedUpdateCount++;
-            }
-
-            if (m_deltaTime > 0.02f)
-            {
-                std::cout << " SKIP " << std::endl;
+                m_fixedUpdateCount++;   
             }
 
             if (frameTimeAccumulator >= 1.0)

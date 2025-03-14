@@ -231,7 +231,7 @@ int MainApp(std::string assetFolder)
 
     //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
 
-    auto helitest = engine.LoadAndAttachToRoot(assetFolder + "rotationtest.glb", glm::vec3(10, 0, 0));
+    auto helitest = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(10, 0, 0));
 
     //DemoInstancing(engine, m_assetPath);
     DemoSkinning(engine, m_assetPath);
