@@ -12,7 +12,7 @@ namespace JLEngine
 	class DirectionalLightShadowMap
 	{
 	public:
-		DirectionalLightShadowMap(GraphicsAPI* graphics, ShaderProgram* shader);
+		DirectionalLightShadowMap(GraphicsAPI* graphics, ShaderProgram* shader, ShaderProgram* shaderSkinning);
 
 		void Initialise();
 		void ShadowMapPassSetup(const glm::mat4& lightSpaceMatrix);
@@ -22,6 +22,8 @@ namespace JLEngine
 		float& GetSize() { return m_size; }
 		float& GetShadowDistance() { return m_dlShadowDistance; }
 		int& GetPCFKernelSize() { return m_PCFKernelSize; }
+		ShaderProgram* GetShadowMapShader() { return m_shadowMapShader; }
+		ShaderProgram* GetShadowMapSkinningShader() { return m_shadowMapSkinningShader; }
 		
 		void SetModelMatrix(glm::mat4& model);
 		void SetSize(float size) { m_size = size; }
@@ -31,6 +33,7 @@ namespace JLEngine
 	protected:
 
 		ShaderProgram* m_shadowMapShader;
+		ShaderProgram* m_shadowMapSkinningShader;
 		uint32_t m_shadowMap;
 		uint32_t m_shadowFBO;
 		int m_shadowMapSize = 4096;

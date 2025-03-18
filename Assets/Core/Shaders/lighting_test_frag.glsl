@@ -43,13 +43,38 @@ struct GBufferData
     vec3 F0;
     vec3 emissive;
     float receiveShadows;
+    float depth;
 };
 
 // Linearize depth from non-linear clip space
-float LinearizeDepth(float depth, float near, float far) 
+float LinearizeDepth(float depth)
 {
     float z = depth * 2.0 - 1.0; // Convert to NDC space
-    return (2.0 * near * far) / (far + near - z * (far - near));
+    return (2.0 * u_Near * u_Far) / (u_Far + u_Near - z * (u_Far - u_Near));
+}
+
+vec3 ReconstructWorldPosFromDepth(vec2 texCoords, float depth)
+{
+    float z = depth * 2.0 - 1.0; // NDC depth
+
+    vec4 clipSpacePos = vec4(texCoords * 2.0 - 1.0, z, 1.0);
+    vec4 viewSpacePos = u_ProjectionInverse * clipSpacePos;
+    viewSpacePos /= viewSpacePos.w;
+
+    vec4 worldSpacePos = u_ViewInverse * viewSpacePos;
+    return worldSpacePos.xyz;
+}
+
+// From non-linear depth buffer directly to view-space position
+vec3 ReconstructViewPosFromDepth(vec2 texCoords, float depth)
+{
+    float z = depth * 2.0 - 1.0; // Convert depth to NDC [-1,1]
+    
+    vec4 clipSpacePos = vec4(texCoords * 2.0 - 1.0, z, 1.0);
+    vec4 viewSpacePos = u_ProjectionInverse * clipSpacePos;
+    viewSpacePos /= viewSpacePos.w;
+    
+    return viewSpacePos.xyz;
 }
 
 // Shadow calculation function
@@ -133,6 +158,7 @@ vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDir, vec
     return (diffuse + specular) * u_LightColor * max(dot(gData.normal, lightDir), 0.0) * shadow;
 }
 
+
 // Diffuse IBL calculation
 vec3 CalculateDiffuseIBL(vec3 normal, vec3 albedo)
 {
@@ -151,17 +177,6 @@ vec3 CalculateSpecularIBL(vec3 normal, vec3 viewDir, float roughness, vec3 F0)
     return prefilteredColor * (F0 * brdf.x + brdf.y) * u_SpecularIndirectFactor;
 }
 
-// Reconstruct world position from depth
-vec3 ReconstructWorldPosition(vec2 texCoords, float depth) 
-{
-    float ndcDepth = depth * 2.0 - 1.0; // Convert depth to NDC
-    vec4 clipSpacePos = vec4(texCoords * 2.0 - 1.0, ndcDepth, 1.0);
-    vec4 viewSpacePos = u_ProjectionInverse * clipSpacePos;
-    viewSpacePos /= viewSpacePos.w; 
-    vec4 worldSpacePos = u_ViewInverse * viewSpacePos;
-    return worldSpacePos.xyz;
-}
-
 GBufferData ExtractGBufferData(vec2 texCoords)
 {
     GBufferData gData;
@@ -171,7 +186,8 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     gData.albedo = albedoAOSample.rgb;
     gData.ao = max(albedoAOSample.a, 0.0);
     gData.normal = normalize(normalSample.xyz);
-    gData.worldPos = ReconstructWorldPosition(texCoords, texture(gDepth, texCoords).r);
+    gData.depth = texture(gDepth, texCoords).r;
+    gData.worldPos = ReconstructWorldPosFromDepth(texCoords, gData.depth);
     vec4 metallicRoughness = texture(gMetallicRoughness, texCoords);
     gData.metallic = metallicRoughness.b;
     gData.roughness = max(metallicRoughness.g, 0.05);
@@ -194,25 +210,20 @@ vec3 ApplyGammaCorrection(vec3 color)
 
 void main() 
 {
-    // Sample G-buffer
-    float depth = texture(gDepth, v_TexCoords).r;
+    GBufferData gData = ExtractGBufferData(v_TexCoords);
 
-    //float linearDepth = LinearizeDepth(depth, u_Near, u_Far);
-    vec3 worldPos = ReconstructWorldPosition(v_TexCoords, depth);
-    vec3 viewDir = normalize(u_CameraPos - worldPos);
+    //float linearDepth = LinearizeDepth(gData.depth);
+    vec3 viewPos = ReconstructViewPosFromDepth(v_TexCoords, gData.depth);
+    vec3 viewDir = normalize(u_CameraPos - gData.worldPos);
+    vec3 lightDir = normalize(-u_LightDirection);
 
-    // no depth? Render skybox
-    if (depth > 0.999)
+    if (gData.depth > 0.999)
     {
         FragColor = texture(gSkyTexture, -viewDir);
         return;
     }
 
-    GBufferData gData = ExtractGBufferData(v_TexCoords);
-
-    vec3 lightDir = normalize(-u_LightDirection);
-
-    vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(worldPos, 1.0);
+    vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(gData.worldPos, 1.0);
     float shadow = 1.0;
     if (gData.receiveShadows > 0.0)
     {
@@ -222,6 +233,7 @@ void main()
     vec3 lighting = CalculateDirectLighting(gData, shadow, lightDir, viewDir);
     vec3 iblDiffuse = CalculateDiffuseIBL(gData.normal, gData.albedo);
     vec3 iblSpecular = CalculateSpecularIBL(gData.normal, viewDir, gData.roughness, gData.F0);
+
 
     vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
     totalLighting += gData.emissive;

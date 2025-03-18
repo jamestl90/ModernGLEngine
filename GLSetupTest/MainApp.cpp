@@ -214,24 +214,25 @@ int MainApp(std::string assetFolder)
 
     //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
     //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
-    //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, -2, 5));
+    //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, 0, 5));
     //
     //engine.LoadAndAttachToRoot(assetFolder + "archviz_2.glb");
     //engine.LoadAndAttachToRoot(assetFolder + "Bistro_Godot2.glb");
-    //
-    //auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
-    //auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    //planeMat->castShadows = false;
-    //planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    //plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
-    //
+    
+    auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
+    auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    planeMat->castShadows = false;
+    planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
+    
     //engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
     //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
 
     //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
 
-    auto helitest = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(10, 0, 0));
+    //auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(5, 0, 0));
+    auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(0, 0, -3));
 
     //DemoInstancing(engine, m_assetPath);
     DemoSkinning(engine, m_assetPath);

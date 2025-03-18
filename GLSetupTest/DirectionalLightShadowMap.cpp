@@ -8,9 +8,9 @@
 
 namespace JLEngine
 {
-    DirectionalLightShadowMap::DirectionalLightShadowMap(GraphicsAPI* graphics, ShaderProgram* shaderProg)
-        : m_shadowMapShader(shaderProg), m_graphics(graphics), m_shadowFBO(0), m_dlShadowDistance(100.0f),
-        m_PCFKernelSize(3)
+    DirectionalLightShadowMap::DirectionalLightShadowMap(GraphicsAPI* graphics, ShaderProgram* shaderProg, ShaderProgram* shaderSkinning)
+        : m_shadowMapShader(shaderProg), m_shadowMapSkinningShader(shaderSkinning), m_graphics(graphics), 
+        m_shadowFBO(0), m_dlShadowDistance(100.0f), m_PCFKernelSize(3)
     {
         
     }
@@ -43,9 +43,6 @@ namespace JLEngine
         glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
         glClear(GL_DEPTH_BUFFER_BIT);
-
-        m_graphics->BindShader(m_shadowMapShader->GetProgramId());
-        m_shadowMapShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
     }
 
     void DirectionalLightShadowMap::SetModelMatrix(glm::mat4& model)

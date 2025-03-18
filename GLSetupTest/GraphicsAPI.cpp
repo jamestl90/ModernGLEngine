@@ -21,7 +21,7 @@ namespace JLEngine
 	{
 		float fov = 45.0f;
 		float nearDist = 0.1f;
-		float farDist = 200.0f;
+		float farDist = 50.0f;
 
 		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 		m_viewPort = { 0, 0, 0, 0 };

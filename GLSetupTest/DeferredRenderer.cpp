@@ -92,7 +92,8 @@ namespace JLEngine
         auto textureAssetPath = m_assetFolder + "HDRI/";
 
         auto dlShader = m_resourceLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
-        m_dlShadowMap = new DirectionalLightShadowMap(m_graphics, dlShader);
+        auto dlShaderSkinning = m_resourceLoader->CreateShaderFromFile("DLShadowMapSkinning", "dlshadowmap_skinning_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
+        m_dlShadowMap = new DirectionalLightShadowMap(m_graphics, dlShader, dlShaderSkinning);
         m_dlShadowMap->Initialise();
 
         SetupGBuffer();
@@ -203,6 +204,8 @@ namespace JLEngine
             m_jointMatrices.insert(m_jointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
         }
 
+        Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), m_jointMatrices);
+
         auto& instancedSkinnedMeshData = m_sceneManager.GetInstancedDynamic();
         for (auto& ismd : instancedSkinnedMeshData)
         {
@@ -233,10 +236,15 @@ namespace JLEngine
 
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
 
+        auto shadowMapShader = m_dlShadowMap->GetShadowMapShader();
+        Graphics::API()->BindShader(shadowMapShader->GetProgramId());
+        shadowMapShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
+
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
         
         Graphics::BindGPUBuffer(m_ssboStaticPerDraw.GetGPUBuffer(), 0);
 
+        // --- STATIC MESHES ---
         for (const auto& [key, resource] : m_staticResources)
         {
             if (resource.vao->GetGPUID() == 0) continue;
@@ -246,17 +254,20 @@ namespace JLEngine
 
         GL_CHECK_ERROR();
 
-        //for (const auto& [key, resource] : m_dynamicResources)
-        //{
-        //    if (resource.vao->GetGPUID() == 0) continue;
-        //    if (resource.vao->GetVBO().Size() > 0)
-        //    {
-        //        auto size = static_cast<uint32_t>(resource.drawBuffer->GetDrawCommands().size());
-        //        glBindVertexArray(resource.vao->GetGPUID());
-        //        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, resource.drawBuffer->GetGPUID());
-        //        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
-        //    }
-        //}
+        if (m_skinnedMeshResources.first == 0) return lightSpaceMatrix;
+        if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
+        {
+            auto shadowMapSkinningShader = m_dlShadowMap->GetShadowMapSkinningShader();
+            Graphics::API()->BindShader(shadowMapSkinningShader->GetProgramId());
+            shadowMapSkinningShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
+
+            // --- DYNAMIC MESHES ---
+            Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 0);
+            Graphics::BindGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), 1);
+
+            if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
+                DrawGeometry(m_skinnedMeshResources.second, stride);
+        }
 
         return lightSpaceMatrix;
     }
@@ -305,8 +316,6 @@ namespace JLEngine
         if (m_skinnedMeshResources.first == 0) return;
         if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
         {
-            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), m_jointMatrices);
-
             // --- DYNAMIC MESHES ---
             Graphics::API()->BindShader(m_skinningGBufferShader->GetProgramId());
             Graphics::BindGPUBuffer(m_ssboMaterials.GetGPUBuffer(), 0);
@@ -413,6 +422,8 @@ namespace JLEngine
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
         m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); 
         m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
+        m_lightingTestShader->SetUniform("u_View", viewMatrix);
+        m_lightingTestShader->SetUniform("u_Projection", projMatrix);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
 

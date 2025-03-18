@@ -847,6 +847,14 @@ namespace JLEngine
 		auto params = Texture::DefaultParams(imgData.channels, false);
 		auto newParams = Texture::OverwriteParams(params, overwriteParams);
 
+		// bit of a hack here, will need to update the param
+		if (glbImageData.bits == 16)
+		{
+			newParams.dataType = GL_UNSIGNED_SHORT;
+			newParams.internalFormat = GL_RGBA16;
+			newParams.format = GL_RGBA;
+		}
+
 		// Create a new texture
 		auto jltexture = m_resourceLoader->CreateTexture(finalName, imgData, newParams);
 
