@@ -221,8 +221,8 @@ int MainApp(std::string assetFolder)
     
     auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
     auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    planeMat->metallicFactor = 0.0f;
-    planeMat->roughnessFactor = 1.0f;
+    planeMat->metallicFactor = 0.7f;
+    planeMat->roughnessFactor = 0.2f;
     planeMat->castShadows = false;
     planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
@@ -232,6 +232,8 @@ int MainApp(std::string assetFolder)
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
 
     //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
+
+    auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(5, 1, 5));
 
     auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(0, 0, 0));
     auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(4, 0, 0));
