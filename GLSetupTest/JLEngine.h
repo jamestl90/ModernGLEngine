@@ -28,7 +28,7 @@ namespace JLEngine
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::vec3& pos, const glm::quat& rotation, const glm::vec3& scale);
         std::shared_ptr<Node> LoadAndAttachToRoot(const std::string& fileName, const glm::mat4& transform);
-        std::shared_ptr<Node> MakeInstanceOf(std::shared_ptr<Node>& existingNode, glm::vec3& pos, bool attachToRoot);
+        std::shared_ptr<Node> MakeInstanceOf(std::shared_ptr<Node>& existingNode, const glm::vec3& pos, bool attachToRoot);        
         void FinalizeLoading();
 
         GraphicsAPI* GetGraphicsAPI()           const;
@@ -43,7 +43,7 @@ namespace JLEngine
         void setMaxFrameRate(int fps);
         void setVsync(bool toggle);
 
-        void logPerformanceMetrics();
+        void CloneChildNodes(const std::shared_ptr<Node>& originalNode, const std::shared_ptr<Node>& clonedNode);
 
         IMGuiManager m_imguiManager;
 

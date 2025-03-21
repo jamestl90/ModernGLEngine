@@ -13,7 +13,6 @@
 #include "ShaderStorageBuffer.h"
 #include "ResourceLoader.h"
 #include "GPUBuffer.h"
-#include "CameraInfo.h"
 #include "UniformBuffer.h"
 #include "TexturePool.h"
 #include "SceneManager.h"
@@ -49,7 +48,7 @@ namespace JLEngine
         void Initialize();
         void Resize(int width, int height);
         
-        void Render(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void Render(const glm::vec3& eyePos, const glm::vec3& camDir, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, double dt);
 
         const Light& GetDirectionalLight() const { return m_directionalLight; }
         bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
@@ -71,6 +70,8 @@ namespace JLEngine
     private:
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
+        void RayMarchPass(const glm::mat4& viewMat, const glm::mat4& projMatrix);
+        void CombinePass(const glm::mat4& viewMat, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void TransparencyPass(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
         void RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
@@ -97,6 +98,7 @@ namespace JLEngine
 
         DebugModes m_debugModes;
 
+        int m_frameCount = 0;
         int m_width, m_height;
         std::string m_assetFolder;
 
@@ -108,7 +110,12 @@ namespace JLEngine
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
         RenderTarget* m_lightOutputTarget;
+        RenderTarget* m_finalOutputTarget;
         RenderTarget* m_transparentTarget;
+        RenderTarget* m_rayMarchGITarget1;
+        RenderTarget* m_rayMarchGITarget2;
+
+        bool rayMarchSwap = false;
 
         // raster shaders
         ShaderProgram* m_gBufferShader;
@@ -120,6 +127,8 @@ namespace JLEngine
         ShaderProgram* m_blendShader;
         ShaderProgram* m_transmissionShader;
         ShaderProgram* m_skinningGBufferShader;
+        ShaderProgram* m_rayMarchGIShader;
+        ShaderProgram* m_combineShader;
 
         // compute shaders
         ShaderProgram* m_simpleBlurCompute;
@@ -127,7 +136,7 @@ namespace JLEngine
 
         VertexArrayObject m_triangleVAO;
 
-        UniformBuffer m_cameraUBO;
+        UniformBuffer m_gShaderData;
         ShaderStorageBuffer<PerDrawData> m_ssboStaticPerDraw;
         ShaderStorageBuffer<PerDrawData> m_ssboInstancedPerDraw;
         ShaderStorageBuffer<SkinnedMeshPerDrawData> m_ssboDynamicPerDraw;

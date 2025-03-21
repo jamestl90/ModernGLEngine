@@ -11,7 +11,7 @@ namespace JLEngine
     {
     public:
         FlyCamera(glm::vec3 position, glm::vec3 up, float yaw, float pitch)
-            : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.5f), MouseSensitivity(0.1f) 
+            : Forward(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(5.5f), MouseSensitivity(0.1f) 
         {
             Position = position;
             WorldUp = up;
@@ -22,7 +22,7 @@ namespace JLEngine
 
         glm::mat4 GetViewMatrix() const
         {
-            return glm::lookAt(Position, Position + Front, Up);
+            return glm::lookAt(Position, Position + Forward, Up);
         }
         
         void ProcessKeyboard(GLFWwindow* window, float deltaTime) 
@@ -69,6 +69,10 @@ namespace JLEngine
             input->SetMouseCursor(m_freeCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
         }
 
+        const glm::vec3& GetForward() { return Forward; }
+        const glm::vec3& GetRight() { return Right; }
+        const glm::vec3& GetUp() { return Up; }
+
     private:
         void updateCameraVectors() 
         {
@@ -76,9 +80,9 @@ namespace JLEngine
             front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
             front.y = sin(glm::radians(Pitch));
             front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
-            Front = glm::normalize(front);
-            Right = glm::normalize(glm::cross(Front, WorldUp));
-            Up = glm::normalize(glm::cross(Right, Front));
+            Forward = glm::normalize(front);
+            Right = glm::normalize(glm::cross(Forward, WorldUp));
+            Up = glm::normalize(glm::cross(Right, Forward));
         }
 
         void handleKeyPress(int key, float deltaTime)
@@ -89,9 +93,9 @@ namespace JLEngine
 
             float velocity = MovementSpeed * deltaTime * multi;
             if (key == GLFW_KEY_W)
-                Position += Front * velocity;
+                Position += Forward * velocity;
             if (key == GLFW_KEY_S)
-                Position -= Front * velocity;
+                Position -= Forward * velocity;
             if (key == GLFW_KEY_A)
                 Position -= Right * velocity;
             if (key == GLFW_KEY_D)
@@ -101,7 +105,7 @@ namespace JLEngine
         GLFWwindow* m_window;
         Input* m_input;
         glm::vec3 Position;
-        glm::vec3 Front;
+        glm::vec3 Forward;
         glm::vec3 Up;
         glm::vec3 Right;
         glm::vec3 WorldUp;

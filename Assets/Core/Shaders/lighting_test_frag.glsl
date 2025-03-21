@@ -27,10 +27,21 @@ uniform float u_Near;
 uniform float u_Far;
 
 uniform vec3 u_LightDirection;
-uniform vec3 u_LightColor;     
-uniform vec3 u_CameraPos;      
+uniform vec3 u_LightColor;      
 
-out vec4 FragColor;
+layout(std140, binding = 0) uniform ShaderGlobalData 
+{
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec4 camPos;
+    vec4 camDir;
+    vec2 timeInfo;
+    vec2 windowSize;
+    int frameCount;
+};
+
+layout(location = 0) out vec3 DirectLight;
+layout(location = 1) out vec3 IBL;
 
 struct GBufferData 
 {
@@ -143,21 +154,25 @@ float geometrySmith(float NdotV, float NdotL, float roughness)
     return gV * gL;
 }
 
-// Direct lighting calculation
-vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDir, vec3 viewDir)
+vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDirVS, vec3 viewDirVS)
 {
-    vec3 halfDir = normalize(lightDir + normalize(u_CameraPos - gData.worldPos));
+    vec3 normalVS = gData.normal; // already in view space
+    vec3 halfDir = normalize(lightDirVS + viewDirVS);
 
-    vec3 F = fresnelSchlickRoughness(max(dot(viewDir, halfDir), 0.0), gData.F0, gData.roughness);
-    float NDF = ggxNDF(max(dot(gData.normal, halfDir), 0.0), gData.roughness);
-    float G = geometrySmith(max(dot(gData.normal, normalize(u_CameraPos - gData.worldPos)), 0.0), max(dot(gData.normal, lightDir), 0.0), gData.roughness);
+    float NdotL = max(dot(normalVS, lightDirVS), 0.0);
+    float NdotV = max(dot(normalVS, viewDirVS), 0.0);
+    float NdotH = max(dot(normalVS, halfDir), 0.0);
+    float VdotH = max(dot(viewDirVS, halfDir), 0.0);
 
-    vec3 specular = F * NDF * G / (4.0 * max(dot(gData.normal, normalize(u_CameraPos - gData.worldPos)), 0.01) * max(dot(gData.normal, lightDir), 0.01));
+    vec3 F = fresnelSchlickRoughness(VdotH, gData.F0, gData.roughness);
+    float NDF = ggxNDF(NdotH, gData.roughness);
+    float G = geometrySmith(NdotV, NdotL, gData.roughness);
+
+    vec3 specular = F * NDF * G / max(4.0 * NdotV * NdotL, 0.001);
     vec3 diffuse = (1.0 - F) * gData.albedo / 3.14159265359;
 
-    return (diffuse + specular) * u_LightColor * max(dot(gData.normal, lightDir), 0.0) * shadow;
+    return (diffuse + specular) * u_LightColor * NdotL * shadow;
 }
-
 
 // Diffuse IBL calculation
 vec3 CalculateDiffuseIBL(vec3 normal, vec3 albedo)
@@ -214,33 +229,36 @@ void main()
 
     //float linearDepth = LinearizeDepth(gData.depth);
     vec3 viewPos = ReconstructViewPosFromDepth(v_TexCoords, gData.depth);
-    vec3 viewDir = normalize(u_CameraPos - gData.worldPos);
-    vec3 lightDir = normalize(-u_LightDirection);
+    vec3 viewDir = normalize(-viewPos);
+    vec3 viewDirWS = normalize(camPos.xyz - gData.worldPos);
+    vec3 lightDirWS = normalize(-u_LightDirection);
+    vec3 lightDirView = normalize((viewMatrix * vec4(-u_LightDirection, 0.0)).xyz);
 
     if (gData.depth > 0.999)
     {
-        FragColor = texture(gSkyTexture, -viewDir);
+        DirectLight = texture(gSkyTexture, -viewDirWS).rgb;
         return;
     }
 
+    vec3 normalWS = normalize((u_ViewInverse * vec4(gData.normal, 0.0)).xyz);
     vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(gData.worldPos, 1.0);
     float shadow = 1.0;
     if (gData.receiveShadows > 0.0)
     {
-        shadow = ShadowCalculation(fragPosLightSpace, gData.normal, lightDir);
+        shadow = ShadowCalculation(fragPosLightSpace, normalWS, lightDirWS);
     }
 
-    vec3 lighting = CalculateDirectLighting(gData, shadow, lightDir, viewDir);
-    vec3 iblDiffuse = CalculateDiffuseIBL(gData.normal, gData.albedo);
-    vec3 iblSpecular = CalculateSpecularIBL(gData.normal, viewDir, gData.roughness, gData.F0);
+    DirectLight = CalculateDirectLighting(gData, shadow, lightDirView, viewDir);
+    vec3 iblDiffuse = CalculateDiffuseIBL(normalWS, gData.albedo);
+    vec3 iblSpecular = CalculateSpecularIBL(normalWS, viewDirWS, gData.roughness, gData.F0);
+    IBL = iblDiffuse + iblSpecular;
 
+    //vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
+    //totalLighting += gData.emissive;
+    //totalLighting *= gData.ao;
 
-    vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
-    totalLighting += gData.emissive;
-    totalLighting *= gData.ao;
+    ////totalLighting = ApplyToneMapping(totalLighting);
+    ////totalLighting = ApplyGammaCorrection(totalLighting);
 
-    //totalLighting = ApplyToneMapping(totalLighting);
-    //totalLighting = ApplyGammaCorrection(totalLighting);
-
-    FragColor = vec4(totalLighting, 1.0);
+    //FragColor = vec4(gData.raymarchGI, 1.0);
 }

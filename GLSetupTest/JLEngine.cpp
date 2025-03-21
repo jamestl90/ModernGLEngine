@@ -120,8 +120,8 @@ namespace JLEngine
             ImGui::BulletText("Esc - Quit");
             ImGui::End();
 
-            double interpolationFactor = m_accumulatedTime / m_fixedUpdateInterval;
-            render(*Graphics::API(), interpolationFactor);
+            //double interpolationFactor = m_accumulatedTime / m_fixedUpdateInterval;
+            render(*Graphics::API(), m_deltaTime);
             m_frameCount++;
 
             ShowNodeHierarchy(m_renderer->GetSceneManager().GetRoot().get());
@@ -180,7 +180,7 @@ namespace JLEngine
         return node;
     }
 
-    std::shared_ptr<Node> JLEngineCore::MakeInstanceOf(std::shared_ptr<Node>& existingNode, glm::vec3& pos, bool attachToRoot)
+    std::shared_ptr<Node> JLEngineCore::MakeInstanceOf(std::shared_ptr<Node>& existingNode, const glm::vec3& pos, bool attachToRoot)
     {
         auto& submesh = existingNode->mesh->GetSubmesh(0);
         auto instanceCount = submesh.instanceTransforms == nullptr ? 2 : submesh.instanceTransforms->size() + 1;
@@ -225,6 +225,9 @@ namespace JLEngine
             newNode->rotation = existingNode->rotation;
             newNode->scale = existingNode->scale;
 
+            // Recursively clone child nodes
+            CloneChildNodes(existingNode, newNode);
+
             if (attachToRoot)
             {
                 m_renderer->SceneRoot()->AddChild(newNode);
@@ -249,6 +252,9 @@ namespace JLEngine
 
             // Attach the last created node as its child
             newParent->AddChild(lastInstance);
+
+            // Recursively clone child nodes
+            CloneChildNodes(currentOriginal, newParent);
 
             // Move up the hierarchy
             lastInstance = newParent;
@@ -277,6 +283,38 @@ namespace JLEngine
         return rootInstance ? rootInstance : newNode;
     }
 
+    // Helper function to recursively clone child nodes
+    void JLEngineCore::CloneChildNodes(const std::shared_ptr<Node>& originalNode, const std::shared_ptr<Node>& clonedNode)
+    {
+        for (const auto& child : originalNode->children)
+        {
+            auto clonedChild = std::make_shared<Node>(child->name + "_inst");
+
+            // Copy Transform Data
+            clonedChild->translation = child->translation;
+            clonedChild->rotation = child->rotation;
+            clonedChild->scale = child->scale;
+            clonedChild->tag = child->tag;
+
+            // Clone Mesh and Animation (if applicable)
+            if (child->mesh != nullptr)
+            {
+                clonedChild->mesh = child->mesh;
+
+                if (child->mesh->GetSkeleton() != nullptr)
+                {
+                    clonedChild->mesh->SetSkeleton(child->mesh->GetSkeleton());
+                    clonedChild->animController = std::make_shared<AnimationController>();
+                }
+            }
+
+            // Recursively clone child nodes
+            CloneChildNodes(child, clonedChild);
+
+            // Attach the cloned child to the cloned parent
+            clonedNode->AddChild(clonedChild);
+        }
+    }
 
     void JLEngineCore::FinalizeLoading()
     {

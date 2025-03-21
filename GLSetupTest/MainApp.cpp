@@ -19,7 +19,7 @@ JLEngine::ListCycler<std::string> hdriSkyCycler;
 JLEngine::HdriSkyInitParams skyInitParams;
 JLEngine::DeferredRenderer* renderer;
 
-void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
+void gameRender(JLEngine::GraphicsAPI& graphics, double dt)
 {
     float aspect = (float)graphics.GetWindow()->GetWidth() / (float)graphics.GetWindow()->GetHeight();
     glm::mat4 view = flyCamera->GetViewMatrix();
@@ -28,7 +28,7 @@ void gameRender(JLEngine::GraphicsAPI& graphics, double interpolationFactor)
 
     //cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
 
-    renderer->Render(flyCamera->GetPosition(), view, projection);
+    renderer->Render(flyCamera->GetPosition(), flyCamera->GetForward(), view, projection, dt);
     //m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection);
 }
 
@@ -179,7 +179,7 @@ void DemoInstancing(JLEngine::JLEngineCore& engine, const std::string& assetFold
 }
 void DemoSkinning(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
 {
-    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, 0, 0));
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(-6, 0, 0));
     auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
     auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
     skeletonNode->animController->SetCurrentAnimation(anim.get());
@@ -221,6 +221,8 @@ int MainApp(std::string assetFolder)
     
     auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
     auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    planeMat->metallicFactor = 0.0f;
+    planeMat->roughnessFactor = 1.0f;
     planeMat->castShadows = false;
     planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
@@ -231,8 +233,9 @@ int MainApp(std::string assetFolder)
 
     //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
 
-    //auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(5, 0, 0));
-    auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(0, 0, -3));
+    auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(0, 0, 0));
+    auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(4, 0, 0));
+    engine.MakeInstanceOf(tree1, glm::vec3(-4, 0, 0), true);
 
     //DemoInstancing(engine, m_assetPath);
     DemoSkinning(engine, m_assetPath);

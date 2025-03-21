@@ -37,6 +37,17 @@ layout(std430, binding = 0) readonly buffer MaterialBuffer
     MaterialGPU materials[];
 };
 
+layout(std140, binding = 0) uniform ShaderGlobalData 
+{
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec4 camPos;
+    vec4 camDir;
+    vec2 timeInfo;
+    vec2 windowSize;
+    int frameCount;
+};
+
 // Inputs from vertex shader
 in vec3 v_Normal;        
 in vec2 v_TexCoord;     
@@ -118,10 +129,10 @@ void main()
         discard;
     }
 
-    vec4 texValue = texture(sampler2D(material.metallicRoughnessHandle), v_TexCoord);
+    vec3 viewNormal = normalize((viewMatrix * vec4(normal, 0.0)).xyz);
 
     gAlbedoAO = vec4(baseColor.rgb, ao);          // Albedo + Ambient Occlusion
-    gNormalShadow = vec4(normal, material.receiveShadows); // Encoded Normal + Shadow Info
+    gNormalShadow = vec4(viewNormal, material.receiveShadows); // Encoded Normal + Shadow Info
     gMetallicRoughness = metallicRoughness;       // Metallic + Roughness
     gEmissive = vec4(emissive, 0.0);                   // Emissive + Reserved
 }

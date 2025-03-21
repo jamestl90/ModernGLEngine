@@ -45,12 +45,15 @@ layout(std430, binding = 1) readonly buffer PerDrawDataBuffer
     PerDrawData perDrawData[];
 };
 
-layout(std140, binding = 2) uniform CameraInfo 
+layout(std140, binding = 0) uniform ShaderGlobalData 
 {
     mat4 viewMatrix;
     mat4 projMatrix;
-    vec4 cameraPosition;
-    vec4 timeInfo;
+    vec4 camPos;
+    vec4 camDir;
+    vec2 timeInfo;
+    vec2 windowSize;
+    int frameCount;
 };
 
 out vec3 v_Normal;
