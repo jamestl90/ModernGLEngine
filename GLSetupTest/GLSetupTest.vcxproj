@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -136,6 +136,7 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="DDGI.cpp" />
     <ClCompile Include="Graphics.cpp">
       <SubType>
       </SubType>
@@ -238,6 +239,7 @@
     <ClInclude Include="AnimationFactory.h" />
     <ClInclude Include="AnimData.h" />
     <ClInclude Include="AnimHelpers.h" />
+    <ClInclude Include="DDGI.h" />
     <ClInclude Include="ShaderGlobalData.h" />
     <ClInclude Include="Cubemap.h">
       <SubType>

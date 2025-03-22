@@ -35,6 +35,7 @@ layout(std140, binding = 0) uniform ShaderGlobalData
     int frameCount;
 };
 
+out vec3 v_WorldPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 out vec3 v_Tangent;
@@ -52,7 +53,7 @@ void main()
     float weightSum = a_Weights.x + a_Weights.y + a_Weights.z + a_Weights.w;
     vec4 normalizedWeights = a_Weights / weightSum;
 
-    // debug my weight values, model should only show if the weights are ~1.0
+    // debug weight values, model should only show if the weights are ~1.0
     if (weightSum < 0.99 || weightSum > 1.01)
     {
         gl_Position = vec4(0.0);
@@ -67,6 +68,7 @@ void main()
         normalizedWeights.w * globalTransforms[data.baseJointIndex + a_Joints.w];
 
     vec4 worldPosition = skinningMatrix * vec4(a_Position, 1.0);
+    v_WorldPos = worldPosition.xyz;
 
     mat3 modelMatrixNormal = transpose(inverse(mat3(modelMatrix)));
     mat3 skinningMatrixNormal = transpose(inverse(mat3(skinningMatrix)));

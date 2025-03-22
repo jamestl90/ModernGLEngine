@@ -192,6 +192,9 @@
     <ClCompile Include="ImageHelpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DDGI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainApp.h">
@@ -391,6 +394,9 @@
     </ClInclude>
     <ClInclude Include="UIHelperFunctions.h">
       <Filter>Header Files\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="DDGI.h">
+      <Filter>Header Files\Graphics\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

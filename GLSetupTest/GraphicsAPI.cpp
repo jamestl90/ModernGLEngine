@@ -138,7 +138,7 @@ namespace JLEngine
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	}
 
-	void GraphicsAPI::SyncSSBO()
+	void GraphicsAPI::SyncShaderStorageBarrier()
 	{
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 	}
@@ -235,6 +235,12 @@ namespace JLEngine
 	template <>
 	void GraphicsAPI::SetProgUniform<glm::vec3>(uint32_t progId, uint32_t location, const glm::vec3& value) {
 		glProgramUniform3fv(progId, location, 1, glm::value_ptr(value));
+	}
+
+	template<>
+	void GraphicsAPI::SetProgUniform(uint32_t progId, uint32_t location, const glm::ivec3& value)
+	{
+		glProgramUniform3iv(progId, location, 1, glm::value_ptr(value));
 	}
 
 	template <>

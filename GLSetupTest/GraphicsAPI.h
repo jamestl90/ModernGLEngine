@@ -113,7 +113,7 @@ namespace JLEngine
 		 void Clear(uint32_t flags);
 		 void ClearColour(float x, float y, float z, float w);
 		 void SyncCompute();
-		 void SyncSSBO();
+		 void SyncShaderStorageBarrier();
 		 void SyncFramebuffer();
 				
 		 // Shader
@@ -133,6 +133,8 @@ namespace JLEngine
 		 void SetProgUniform<glm::vec2>(uint32_t progId, uint32_t location, const glm::vec2& value);
 		 template <>
 		 void SetProgUniform<glm::vec3>(uint32_t progId, uint32_t location, const glm::vec3& value);
+		 template <>
+		 void SetProgUniform<glm::ivec3>(uint32_t progId, uint32_t location, const glm::ivec3& value);
 		 template <>
 		 void SetProgUniform<glm::vec4>(uint32_t progId, uint32_t location, const glm::vec4& value);
 		 template <>

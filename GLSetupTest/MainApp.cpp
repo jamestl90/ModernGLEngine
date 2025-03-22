@@ -221,8 +221,8 @@ int MainApp(std::string assetFolder)
     
     auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
     auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    planeMat->metallicFactor = 0.7f;
-    planeMat->roughnessFactor = 0.2f;
+    planeMat->metallicFactor = 0.0f;
+    planeMat->roughnessFactor = 0.5f;
     planeMat->castShadows = false;
     planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();

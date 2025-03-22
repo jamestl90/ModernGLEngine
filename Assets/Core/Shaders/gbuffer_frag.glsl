@@ -29,8 +29,9 @@ struct MaterialGPU
 // Outputs to G-buffer
 layout(location = 0) out vec4 gAlbedoAO;          // Albedo (RGB) + AO (A)
 layout(location = 1) out vec4 gNormalShadow;      // Normal (RGB) + ShadowInfo
-layout(location = 2) out vec4 gMetallicRoughness; // Metallic (R) + Roughness (G)
+layout(location = 2) out vec4 gMetallicRoughness; // Metallic (R) + Roughness (G) (check gltf format)
 layout(location = 3) out vec4 gEmissive;          // Emissive (RGB) + Reserved (A)
+layout(location = 4) out vec3 gPositions;          // World Positions (RGB)
 
 layout(std430, binding = 0) readonly buffer MaterialBuffer 
 {
@@ -49,6 +50,7 @@ layout(std140, binding = 0) uniform ShaderGlobalData
 };
 
 // Inputs from vertex shader
+in vec3 v_WorldPos;
 in vec3 v_Normal;        
 in vec2 v_TexCoord;     
 in vec3 v_Tangent;       
@@ -135,4 +137,5 @@ void main()
     gNormalShadow = vec4(viewNormal, material.receiveShadows); // Encoded Normal + Shadow Info
     gMetallicRoughness = metallicRoughness;       // Metallic + Roughness
     gEmissive = vec4(emissive, 0.0);                   // Emissive + Reserved
+    gPositions = v_WorldPos;
 }

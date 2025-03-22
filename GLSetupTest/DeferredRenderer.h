@@ -70,7 +70,6 @@ namespace JLEngine
     private:
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
-        void RayMarchPass(const glm::mat4& viewMat, const glm::mat4& projMatrix);
         void CombinePass(const glm::mat4& viewMat, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
         void TransparencyPass(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
@@ -112,10 +111,6 @@ namespace JLEngine
         RenderTarget* m_lightOutputTarget;
         RenderTarget* m_finalOutputTarget;
         RenderTarget* m_transparentTarget;
-        RenderTarget* m_rayMarchGITarget1;
-        RenderTarget* m_rayMarchGITarget2;
-
-        bool rayMarchSwap = false;
 
         // raster shaders
         ShaderProgram* m_gBufferShader;
@@ -127,7 +122,6 @@ namespace JLEngine
         ShaderProgram* m_blendShader;
         ShaderProgram* m_transmissionShader;
         ShaderProgram* m_skinningGBufferShader;
-        ShaderProgram* m_rayMarchGIShader;
         ShaderProgram* m_combineShader;
 
         // compute shaders

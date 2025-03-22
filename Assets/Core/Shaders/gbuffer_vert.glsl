@@ -56,6 +56,7 @@ layout(std140, binding = 0) uniform ShaderGlobalData
     int frameCount;
 };
 
+out vec3 v_WorldPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
 out vec3 v_Tangent;
@@ -98,5 +99,6 @@ void main()
 
     // clip-space position
     vec4 worldPosition = modelMatrix * vec4(a_Position, 1.0);
+    v_WorldPos = worldPosition.xyz;
     gl_Position = projMatrix * viewMatrix * worldPosition;
 }

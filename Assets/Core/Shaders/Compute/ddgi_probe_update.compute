@@ -1,0 +1,84 @@
+#version 460
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0) uniform sampler2D u_PositionBuffer;
+layout(binding = 1) uniform sampler2D u_NormalBuffer;
+layout(binding = 2) uniform sampler2D u_AlbedoBuffer;
+
+struct DDGIProbe
+{
+    vec4 WorldPosition;
+    vec4 Irradiance;
+    float HitDistance;
+    vec3 _pad;
+};
+
+layout (std430, binding = 3) buffer ProbeBuffer
+{
+    DDGIProbe probes[];
+}
+
+uniform ivec3 u_GridResolution;
+uniform vec3 u_ProbeSpacing;
+uniform vec3 u_GridOrigin;
+uniform int u_RaysPerProbe;
+uniform float u_BlendFactor;
+
+vec3 SampleHemisphere(uint i, uint total, vec3 normal)
+{
+    float phi = 2.0 * 3.14159265 * float(i) / float(total);
+    float cosTheta = 1.0 - float(i) / float(total);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
+    vec3 bitangent = cross(normal, tangent);
+
+    return normalize(
+        sinTheta * cos(phi) * tangent +
+        sinTheta * sin(phi) * bitangent +
+        cosTheta * normal
+    );
+}
+
+void main()
+{
+    // index of the probe to update
+    uint index = gl_GlobalInvocationID.x + 
+                 gl_GlobalInvocationID.y * u_GridResolution.x + 
+                 gl_GlobalInvocationID.z * u_GridResolution.x * u_GridResolution.y;
+
+    // shouldn't occur, but just incase 
+    if (index >= probes.length()) return;
+
+    DDGIProbe probe = probes[index];
+
+    vec3 totalIrradiance = vec3(0.0);
+    float totalDistance = 0.0;
+
+    for (int i = 0; i < u_RaysPerProbe; i++)
+    {
+        vec3 origin = probe.WorldPosition.xyz;
+        vec3 dir = SampleHemisphere(i, u_RaysPerProbe, vec3(0.0, 1.0, 0.0));
+
+        // setup defaults
+        vec3 hitPos = origin + dir * 5.0;
+        vec3 albedo = vec3(1.0);
+        vec3 normal = vec3(0.0, 1.0, 0.0);
+        vec3 incomingLight = vec3(1.0);
+
+        float visibility = 1.0;
+        vec3 irradiance = visibility * albedo * incomingLight * max(dot(dir, normal), 0.0);
+
+        totalIrradiance += irradiance;
+        totalDistance += 5.0;  
+    }
+
+    // average out the accumulated irradiance and distance
+    totalIrradiance /= float(u_RaysPerProbe);
+    totalDistance /= float(u_RaysPerProbe);
+
+    probe.Irradiance.rgb = mix(probe.Irradiance.rgb, totalIrradiance, u_BlendFactor);
+    probe.HitDistance = mix(probe.HitDistance, totalDistance, u_BlendFactor);
+
+    probes[index] = probe;
+}

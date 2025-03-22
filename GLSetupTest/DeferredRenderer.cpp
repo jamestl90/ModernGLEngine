@@ -112,10 +112,6 @@ namespace JLEngine
 
         m_finalOutputTarget = m_resourceLoader->CreateRenderTarget("FinalOutputTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
 
-        RTParams raymarchParams;
-        raymarchParams.internalFormat = GL_RGB8;
-        m_rayMarchGITarget1 = m_resourceLoader->CreateRenderTarget("RayMarchGITarget1", m_width, m_height, raymarchParams, DepthType::None, 1).get();
-        m_rayMarchGITarget2 = m_resourceLoader->CreateRenderTarget("RayMarchGITarget2", m_width, m_height, raymarchParams, DepthType::None, 1).get();
         GL_CHECK_ERROR();
 
         // --- SHADERS --- 
@@ -127,7 +123,6 @@ namespace JLEngine
         m_passthroughShader = m_resourceLoader->CreateShaderFromFile("PassthroughShader", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
-        m_rayMarchGIShader = m_resourceLoader->CreateShaderFromFile("RaymarchGI", "screenspacetriangle.glsl", "raymarch_gi_frag.glsl", shaderAssetPath).get();
         m_combineShader = m_resourceLoader->CreateShaderFromFile("CombineStages", "screenspacetriangle.glsl", "combine_frag.glsl", shaderAssetPath).get();
 
         // --- COMPUTE --- 
@@ -154,11 +149,12 @@ namespace JLEngine
     void DeferredRenderer::SetupGBuffer() 
     {
         // Configure G-buffer render target
-        std::vector<RTParams> attributes(4);
+        std::vector<RTParams> attributes(5);
         attributes[0] = { GL_RGBA8 };           // Albedo (RGB) + AO (A)
         attributes[1] = { GL_RGBA16F };         // Normals (RGB) + Cast/Receive Shadows (A)
         attributes[2] = { GL_RGBA8 };           // Metallic (B) + Roughness (G), Height (R), Reserved (A)
         attributes[3] = { GL_RGBA16F };         // Emissive (RGB) + Reserved (A)
+        attributes[4] = { GL_RGB32F };          // World Position
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
             "GBufferTarget", 
@@ -377,7 +373,7 @@ namespace JLEngine
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
 
         GBufferPass(viewMatrix, projMatrix);
-
+        GL_CHECK_ERROR();
         if (m_debugModes != DebugModes::None)
         {
             DebugPass(viewMatrix, projMatrix);
@@ -385,9 +381,9 @@ namespace JLEngine
         else
         {
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
-            RayMarchPass(viewMatrix, projMatrix);
+            GL_CHECK_ERROR();
             CombinePass(viewMatrix, projMatrix);
-
+            GL_CHECK_ERROR();
             if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
             {
                 ImageHelpers::CopyToScreen(m_finalOutputTarget, m_width, m_height, m_passthroughShader);
@@ -414,49 +410,6 @@ namespace JLEngine
         GL_CHECK_ERROR();
     }
 
-    void DeferredRenderer::RayMarchPass(const glm::mat4& viewMat, const glm::mat4& projMatrix)
-    {
-        RenderTarget* currTarget, *lastTarget;
-
-        if (!rayMarchSwap)
-        {
-            currTarget = m_rayMarchGITarget1;
-            lastTarget = m_rayMarchGITarget2;
-            rayMarchSwap = true;
-        }
-        else
-        {
-            currTarget = m_rayMarchGITarget2;
-            lastTarget = m_rayMarchGITarget1;
-            rayMarchSwap = false;
-        }
-
-        Graphics::API()->BindFrameBuffer(currTarget->GetGPUID());
-        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
-        Graphics::API()->SetViewport(0, 0, m_width, m_height);
-
-        Graphics::API()->BindShader(m_rayMarchGIShader->GetProgramId());
-        Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 0);
-
-        auto frustum = m_graphics->GetViewFrustum();
-        m_rayMarchGIShader->SetUniformf("u_Near", frustum->GetNear());
-        m_rayMarchGIShader->SetUniformf("u_Far", frustum->GetFar());
-
-        GLuint textures[] =
-        {
-            m_gBufferTarget->GetTexId(0),           // albedo       
-            m_gBufferTarget->GetTexId(1),           // normals
-            m_gBufferTarget->GetTexId(2),           // M/R
-            m_gBufferTarget->GetDepthBufferId(),    // depth
-            lastTarget->GetTexId(0),                // previous frame results
-            m_lightOutputTarget->GetTexId(0),       // direct light contribution
-        };
-
-        Graphics::API()->BindTextures(0, 6, textures);
-
-        RenderScreenSpaceTriangle();
-    }
-
     void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
     {
         Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
@@ -478,7 +431,6 @@ namespace JLEngine
             m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
             m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
             m_hdriSky->GetBRDFLutGPUID(),             // gBRDFLUT
-            //rayMarchSwap ? m_rayMarchGITarget2->GetTexId(0) : m_rayMarchGITarget1->GetTexId(0),        // ray march gi texture
         };
 
         Graphics::API()->BindTextures(0, 10, textures);
@@ -523,15 +475,14 @@ namespace JLEngine
         Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 0);
 
         GLuint textures[] =
-        {
-            rayMarchSwap ? m_rayMarchGITarget2->GetTexId(0) : m_rayMarchGITarget1->GetTexId(0),        // ray march gi texture
+        {            
             m_lightOutputTarget->GetTexId(0),
             m_lightOutputTarget->GetTexId(1),
             m_gBufferTarget->GetTexId(3),   // emmission
-            m_gBufferTarget->GetTexId(0)    // albedo
+            m_gBufferTarget->GetTexId(0),    // albedo
         };
 
-        Graphics::API()->BindTextures(0, 5, textures);
+        Graphics::API()->BindTextures(0, 4, textures);
 
         RenderScreenSpaceTriangle();
     }
@@ -1143,8 +1094,6 @@ namespace JLEngine
 
         m_gBufferTarget->ResizeTextures(m_width, m_height);
         m_lightOutputTarget->ResizeTextures(m_width, m_height);
-        m_rayMarchGITarget1->ResizeTextures(m_width, m_height);
-        m_rayMarchGITarget2->ResizeTextures(m_width, m_height);
         m_finalOutputTarget->ResizeTextures(m_width, m_height);
 
         // Recreate the G-buffer to match the new dimensions
