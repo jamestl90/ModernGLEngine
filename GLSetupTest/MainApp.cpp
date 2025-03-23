@@ -10,7 +10,6 @@ JLEngine::Mesh* cubeMesh;
 JLEngine::Mesh* planeMesh;
 JLEngine::Mesh* sphereMesh;
 std::shared_ptr<JLEngine::Node> sceneRoot;
-std::shared_ptr<JLEngine::Node> cardinalDirections;
 std::string m_assetPath;
 JLEngine::ShaderProgram* meshShader;
 JLEngine::ShaderProgram* basicLit;
@@ -21,15 +20,10 @@ JLEngine::DeferredRenderer* renderer;
 
 void gameRender(JLEngine::GraphicsAPI& graphics, double dt)
 {
-    float aspect = (float)graphics.GetWindow()->GetWidth() / (float)graphics.GetWindow()->GetHeight();
     glm::mat4 view = flyCamera->GetViewMatrix();
     auto frustum = graphics.GetViewFrustum();
-    glm::mat4 projection = glm::perspective(glm::radians(40.0f), aspect, frustum->GetNear(), frustum->GetFar());
 
-    //cardinalDirections->SetTranslationRotation(m_defRenderer->GetDirectionalLight().position, rotation);
-
-    renderer->Render(flyCamera->GetPosition(), flyCamera->GetForward(), view, projection, dt);
-    //m_defRenderer->Render(sceneRoot.get(), flyCamera->GetPosition(), view, projection);
+    renderer->Render(flyCamera->GetPosition(), flyCamera->GetForward(), view, frustum->GetProjectionMatrix(), dt);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -210,7 +204,7 @@ int MainApp(std::string assetFolder)
     };
     hdriSkyCycler.Set(std::move(skyTextures));
 
-    flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
+    flyCamera = engine.GetFlyCamera();
 
     //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
     //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
@@ -222,7 +216,7 @@ int MainApp(std::string assetFolder)
     auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
     auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
     planeMat->metallicFactor = 0.0f;
-    planeMat->roughnessFactor = 0.5f;
+    planeMat->roughnessFactor = 0.2f;
     planeMat->castShadows = false;
     planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();

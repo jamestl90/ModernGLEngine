@@ -43,6 +43,9 @@
     <Filter Include="Header Files\Graphics\Rendering\Animation">
       <UniqueIdentifier>{64b5e066-4d80-46de-85ac-07a195a35179}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Im3d">
+      <UniqueIdentifier>{5b339ee5-43a2-4d7a-b202-145e61c7aed5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -194,6 +197,12 @@
     </ClCompile>
     <ClCompile Include="DDGI.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Im3dManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="im3d\im3d.cpp">
+      <Filter>Source Files\Im3d</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -397,6 +406,9 @@
     </ClInclude>
     <ClInclude Include="DDGI.h">
       <Filter>Header Files\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Im3dManager.h">
+      <Filter>Header Files\Graphics\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -6,6 +6,8 @@
 #include "Window.h"
 #include <functional>
 
+#include <glm/glm.hpp>
+
 using std::map;
 
 namespace JLEngine
@@ -29,6 +31,18 @@ namespace JLEngine
         int IsMouseDown(int button);
         void SetMousePos(double  x, double  y); 
         void GetMouseDelta(double& x, double& y);
+
+        glm::vec2 GetNDC()
+        {
+            auto screenSize = glm::vec2(m_window->GetWidth(), m_window->GetHeight());
+            auto mouseX = GetMouseX();
+            auto mouseY = GetMouseY();
+
+            glm::vec2 ndc{};
+            ndc.x = ((float)mouseX / screenSize.x) * 2.0f - 1.0f;
+            ndc.y = ((float)mouseY / screenSize.y) * 2.0f + 1.0f;
+            return ndc;
+        }
 
         // callback functions
         void SetKeyboardCallback(std::function<void(int key, int scancode, int action, int mods)> callback);

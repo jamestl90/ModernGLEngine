@@ -102,7 +102,7 @@ namespace JLEngine
             return translationMatrix * rotationMatrix * scaleMatrix;
         }
 
-        glm::mat4 GetGlobalTransform() const
+        glm::mat4 GetGlobalTransform()
         {
             return globalTransform; // Use cached value
         }

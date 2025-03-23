@@ -38,6 +38,11 @@ namespace JLEngine
 
 		 float SetAspect(float aspect) { m_aspect = aspect; };
 
+		 glm::mat4 GetProjectionMatrix() 
+		 {
+			 return m_projMatrix;
+		 }
+
 	private:
 
 		Window* m_window;
@@ -48,6 +53,7 @@ namespace JLEngine
 		float m_fov;
 		float m_aspect; 
 
+		glm::mat4 m_projMatrix;
 		glm::vec3 m_corners[8];
 		Plane m_planes[6];
 	};

@@ -4,6 +4,7 @@
 #include "Input.h"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
 namespace JLEngine
 {
@@ -59,6 +60,18 @@ namespace JLEngine
             }
 
             updateCameraVectors();
+        }
+
+        glm::vec3 ScreenToWorldRay(glm::vec2 ndc, const glm::mat4& proj) const
+        {
+            glm::vec4 rayClip(ndc.x, ndc.y, -1.0f, 1.0f); // start in clip space
+
+            glm::mat4 invVP = glm::inverse(proj * GetViewMatrix());
+            glm::vec4 rayWorld = invVP * rayClip;
+            rayWorld /= rayWorld.w;
+
+            glm::vec3 rayDir = glm::normalize(glm::vec3(rayWorld) - Position);
+            return rayDir;
         }
 
         const glm::vec3 GetPosition() { return Position; }

@@ -37,7 +37,10 @@ namespace JLEngine
 
     JLEngineCore::~JLEngineCore()
     {
+        m_im3dManager.Shutdown();
+        m_imguiManager.Shutdown();
 
+        delete m_flyCamera;
     }
 
     void JLEngineCore::setFixedUpdateRate(int fps)
@@ -69,6 +72,7 @@ namespace JLEngine
         double frameTimeAccumulator = 0.0;
 
         SceneManager& sceneManager = m_renderer->GetSceneManager();
+        ViewFrustum* frustum = Graphics::API()->GetViewFrustum();
 
         // The main game loop
         while (!m_window->ShouldClose()) 
@@ -80,7 +84,8 @@ namespace JLEngine
             m_accumulatedTime += m_deltaTime;
             frameTimeAccumulator += m_deltaTime;
 
-            m_imguiManager.BeginFrame();
+            m_im3dManager.BeginFrame(m_input.get(), m_flyCamera, frustum->GetProjectionMatrix(), frustum->GetFov(), (float)m_deltaTime);
+            m_imguiManager.BeginFrame();           
 
             logicUpdate(m_deltaTime);
 
@@ -109,8 +114,17 @@ namespace JLEngine
                 frameTimeAccumulator = 0.0f;
             }
 
+            // any im3D gizmo/debug drawing must be called before render
+
+            //double interpolationFactor = m_accumulatedTime / m_fixedUpdateInterval;
+            render(*Graphics::API(), m_deltaTime);
+            m_frameCount++;
+
+            auto view = m_flyCamera->GetViewMatrix();
+            auto proj = frustum->GetProjectionMatrix();
+
             ImGui::Begin("Info");
-            ImGui::Text("FPS: %.1f", fps); 
+            ImGui::Text("FPS: %.1f", fps);
             ImGui::Text("Delta Time: %.3f ms", m_deltaTime * 1000.0);
             ImGui::Separator();
             ImGui::Text("Controls:");
@@ -120,17 +134,10 @@ namespace JLEngine
             ImGui::BulletText("Esc - Quit");
             ImGui::End();
 
-            //double interpolationFactor = m_accumulatedTime / m_fixedUpdateInterval;
-            render(*Graphics::API(), m_deltaTime);
-            m_frameCount++;
-
             ShowNodeHierarchy(m_renderer->GetSceneManager().GetRoot().get());
 
-            ImGui::Begin("Info");
-
-            ImGui::End();
-
             m_imguiManager.EndFrame();
+
             m_window->SwapBuffers();
             m_window->PollEvents();
 
@@ -187,7 +194,7 @@ namespace JLEngine
         auto newNode = std::make_shared<Node>(existingNode->name + std::to_string(instanceCount));
 
         // Step 1: Clone Mesh and Animation (if applicable)
-        auto mesh = existingNode->mesh;
+        auto& mesh = existingNode->mesh;
         if (mesh != nullptr)
         {
             newNode->mesh = mesh;
@@ -349,5 +356,21 @@ namespace JLEngine
     DeferredRenderer* JLEngineCore::GetRenderer() const
     {
         return m_renderer;
+    }
+
+    FlyCamera* JLEngineCore::GetFlyCamera()
+    {
+        if (m_flyCamera == nullptr)
+        {
+            m_flyCamera = new JLEngine::FlyCamera(glm::vec3(0.0f, 1.0f, 5.0f), glm::vec3(0.0f, 1.0f, 0.0f), -90.0f, 0.0f);
+        }
+        return m_flyCamera;
+    }
+
+    void JLEngineCore::InitIMGUI()
+    {
+        m_imguiManager.Initialize(m_window->GetGLFWwindow());
+        m_im3dManager.Initialise(m_window.get(), m_resourceLoader);
+        m_renderer->SetDebugDrawer(&m_im3dManager);
     }
 }

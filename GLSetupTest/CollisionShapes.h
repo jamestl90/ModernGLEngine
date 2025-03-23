@@ -15,6 +15,7 @@ namespace JLEngine
 		glm::vec3 max;
 
 		bool HasCollided(AABB& other);
+		bool ContainsPoint(const glm::vec3& point, const glm::mat4& worldTransform) const;
 	};
 
 	struct Plane

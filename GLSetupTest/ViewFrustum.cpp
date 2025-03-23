@@ -8,6 +8,8 @@ namespace JLEngine
 		m_near = near;
 		m_far = far;
 		m_aspect = aspect;
+
+		m_projMatrix = glm::perspective(glm::radians(fov), aspect, m_near, m_far);
 	}
 
 	ViewFrustum::~ViewFrustum()
@@ -22,6 +24,7 @@ namespace JLEngine
 
 		m_aspect = aspect; // use aspect based on window width/height if set to -1.0f
 
+		m_projMatrix = glm::perspective(glm::radians(fov), aspect, m_near, m_far);
 		UpdatePerspective(transform);
 	}
 

@@ -9,6 +9,8 @@
 #include "Input.h"
 #include "ResourceLoader.h"
 #include "IMGuiManager.h"
+#include "Im3dManager.h"
+#include "FlyCamera.h"
 
 namespace JLEngine
 {
@@ -36,7 +38,9 @@ namespace JLEngine
         ResourceLoader* GetResourceLoader()     const;
         DeferredRenderer* GetRenderer()         const;
 
-        void InitIMGUI() { m_imguiManager.Initialize(m_window->GetGLFWwindow()); }
+        FlyCamera* GetFlyCamera();
+
+        void InitIMGUI();
 
     private:
         void setFixedUpdateRate(int fps);
@@ -46,12 +50,15 @@ namespace JLEngine
         void CloneChildNodes(const std::shared_ptr<Node>& originalNode, const std::shared_ptr<Node>& clonedNode);
 
         IMGuiManager m_imguiManager;
+        IM3DManager m_im3dManager;
 
         std::unique_ptr<Input> m_input;
         std::unique_ptr<Window> m_window;
         ResourceLoader* m_resourceLoader;
 
         DeferredRenderer* m_renderer;
+
+        FlyCamera* m_flyCamera;
 
         // Frame timing variables
         int m_maxFrameRate;

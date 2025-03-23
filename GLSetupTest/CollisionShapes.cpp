@@ -14,6 +14,36 @@ namespace JLEngine
 		return true;
 	}
 
+	bool AABB::ContainsPoint(const glm::vec3& point, const glm::mat4& worldTransform) const
+	{
+		// transform all 8 corners to get the world-space AABB
+		glm::vec3 corners[8] =
+		{
+			{ min.x, min.y, min.z },
+			{ min.x, min.y, max.z },
+			{ min.x, max.y, min.z },
+			{ min.x, max.y, max.z },
+			{ max.x, min.y, min.z },
+			{ max.x, min.y, max.z },
+			{ max.x, max.y, min.z },
+			{ max.x, max.y, max.z }
+		};
+
+		glm::vec3 worldMin = glm::vec3(worldTransform * glm::vec4(corners[0], 1.0f));
+		glm::vec3 worldMax = worldMin;
+
+		for (int i = 1; i < 8; ++i)
+		{
+			glm::vec3 transformed = glm::vec3(worldTransform * glm::vec4(corners[i], 1.0f));
+			worldMin = glm::min(worldMin, transformed);
+			worldMax = glm::max(worldMax, transformed);
+		}
+
+		return point.x >= worldMin.x && point.x <= worldMax.x &&
+			point.y >= worldMin.y && point.y <= worldMax.y &&
+			point.z >= worldMin.z && point.z <= worldMax.z;
+	}
+
 	Plane::Plane( glm::vec3& v0, glm::vec3& v1, glm::vec3& v2 )
 	{
 		m_normal = v1 - v0;

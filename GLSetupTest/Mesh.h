@@ -29,11 +29,11 @@ namespace JLEngine
 	struct SubMesh
 	{
 		uint32_t flags = SubmeshFlags::NONE;
-		AABB aabb;
-		std::shared_ptr<std::vector<Node*>> instanceTransforms;
-		uint32_t attribKey;
-		uint32_t materialHandle;
-		DrawIndirectCommand command;
+		AABB aabb{};
+		std::shared_ptr<std::vector<Node*>> instanceTransforms{};
+		uint32_t attribKey = 0;
+		uint32_t materialHandle = 0;
+		DrawIndirectCommand command{};
 	};
 
 	std::string MakeKey(const std::string& meshName, const SubMesh& subMesh);

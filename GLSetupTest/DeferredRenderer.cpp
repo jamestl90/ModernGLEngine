@@ -11,6 +11,8 @@
 #include "ImageHelpers.h"
 #include "AnimHelpers.h"
 #include "ShaderGlobalData.h"
+#include "DDGI.h"
+#include "JLMath.h"
 
 namespace JLEngine
 {
@@ -23,6 +25,8 @@ namespace JLEngine
         m_assetFolder(assetFolder),
         m_enableDLShadows(true),
         m_debugModes(DebugModes::None),
+        m_im3dManager(nullptr),
+        m_ddgi(nullptr),
 
         // Initialize scene manager
         m_sceneManager(SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader)),
@@ -35,7 +39,8 @@ namespace JLEngine
         m_downsampleShader(nullptr),
         m_lightingTestShader(nullptr),
         m_passthroughShader(nullptr),
-        m_skinningGBufferShader(nullptr),      
+        m_skinningGBufferShader(nullptr),
+        m_combineShader(nullptr),
         m_transmissionShader(nullptr),
         m_simpleBlurCompute(nullptr),
         m_jointTransformCompute(nullptr),
@@ -43,7 +48,7 @@ namespace JLEngine
         // Initialize render targets
         m_lightOutputTarget(nullptr),
         m_gBufferTarget(nullptr),
-        m_transparentTarget(nullptr),
+        m_finalOutputTarget(nullptr),
 
         m_hdriSky(nullptr),        
         m_dlShadowMap(nullptr),
@@ -77,10 +82,14 @@ namespace JLEngine
         Graphics::DisposeGPUBuffer(&m_ssboMaterials.GetGPUBuffer());
         Graphics::DisposeGPUBuffer(&m_ssboJointMatrices.GetGPUBuffer());
         Graphics::DisposeGPUBuffer(&m_ssboGlobalTransforms.GetGPUBuffer());
+
+        delete m_ddgi;
     }
     
     void DeferredRenderer::Initialize() 
     {
+        m_sceneManager.ForceUpdate();
+
         m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
         m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
@@ -108,8 +117,6 @@ namespace JLEngine
 
         RTParams rtParams;
         rtParams.internalFormat = GL_RGBA8;
-        m_transparentTarget = m_resourceLoader->CreateRenderTarget("TransparentTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
-
         m_finalOutputTarget = m_resourceLoader->CreateRenderTarget("FinalOutputTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
 
         GL_CHECK_ERROR();
@@ -140,6 +147,9 @@ namespace JLEngine
         m_hdriSky = new HDRISky(m_resourceLoader);
         m_hdriSky->Initialise(m_assetFolder, params);
         
+        m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
+        m_ddgi->GenerateProbes(m_sceneManager.GetSubmeshes());
+
         // possible not needed now
         m_triangleVAO.SetGPUID(Graphics::API()->CreateVertexArray());
 
@@ -373,17 +383,28 @@ namespace JLEngine
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
 
         GBufferPass(viewMatrix, projMatrix);
-        GL_CHECK_ERROR();
-        if (m_debugModes != DebugModes::None)
+
+        if (m_debugModes != DebugModes::None) // specialized debug views
         {
             DebugPass(viewMatrix, projMatrix);
         }
         else
         {
+            // update GI probes 
+            m_ddgi->Update(
+                static_cast<float>(dt), 
+                m_gShaderData,                  // global shader data
+                m_gBufferTarget->GetTexId(4),   // gbuffer positions
+                m_gBufferTarget->GetTexId(1),   // gbuffer normals
+                m_gBufferTarget->GetTexId(0));  // gbuffer albedo
+
+            // do lighting pass
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
-            GL_CHECK_ERROR();
             CombinePass(viewMatrix, projMatrix);
-            GL_CHECK_ERROR();
+
+            // renders debug geometry/lines/points etc including imgui 
+            RenderDebugTools(viewMatrix, projMatrix);
+
             if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
             {
                 ImageHelpers::CopyToScreen(m_finalOutputTarget, m_width, m_height, m_passthroughShader);
@@ -406,6 +427,8 @@ namespace JLEngine
         // wrap the frame count once it gets too big
         if (m_frameCount >= std::numeric_limits<int>::max() - 1)
             m_frameCount = 0;
+
+        Graphics::API()->BindFrameBuffer(0);
 
         GL_CHECK_ERROR();
     }
@@ -649,6 +672,107 @@ namespace JLEngine
         RenderScreenSpaceTriangle();
 
         m_graphics->SetViewport(0, 0, m_width, m_height);
+    }
+
+    void DeferredRenderer::DebugDDGI()
+    {
+        for (const auto& probe : m_ddgi->GetProbeSSBO().GetDataImmutable())
+        {
+            if (probe.HitDistance == -1.0f)
+                Im3d::PushColor(Im3d::Color_Red);
+            else
+                Im3d::PushColor(Im3d::Color_Green);
+            const glm::vec3 center = glm::vec3(probe.WorldPosition);
+            Im3d::DrawSphere(Im3d::Vec3(center.x, center.y, center.z), 0.5f);
+            Im3d::PopColor();
+        }       
+    }
+
+    void DeferredRenderer::DebugDDGIRays()
+    {
+        auto& dataSSBO = m_ddgi->GetDebugRays();
+
+        DebugRay* rays = static_cast<DebugRay*>(Graphics::API()->MapNamedBuffer(dataSSBO.GetGPUBuffer().GetGPUID(), GL_READ_ONLY));
+
+        for (int i = 0; i < m_ddgi->GetDebugRayCount(); ++i)
+        {
+            const DebugRay& ray = rays[i];
+
+            if (ray.Origin == ray.Hit)
+                continue;
+
+            Im3d::DrawLine(Math::Convert(ray.Origin), Math::Convert(ray.Hit), 0.1f, Im3d::Color_Cyan);
+        }
+
+        Graphics::API()->UnmapNamedBuffer(dataSSBO.GetGPUBuffer().GetGPUID());
+    }
+
+    void DeferredRenderer::DebugAABB()
+    {
+        const auto& submeshNodes = m_sceneManager.GetSubmeshes();
+
+        Im3d::PushColor(Im3d::Color_Yellow);
+
+        for (const auto& smNodePair : submeshNodes)
+        {
+            auto& localAABB = smNodePair.first.aabb;
+            auto worldTransform = smNodePair.second->GetGlobalTransform();
+            glm::vec3 corners[8] =
+            {
+                { localAABB.min.x, localAABB.min.y, localAABB.min.z },
+                { localAABB.min.x, localAABB.min.y, localAABB.max.z },
+                { localAABB.min.x, localAABB.max.y, localAABB.min.z },
+                { localAABB.min.x, localAABB.max.y, localAABB.max.z },
+                { localAABB.max.x, localAABB.min.y, localAABB.min.z },
+                { localAABB.max.x, localAABB.min.y, localAABB.max.z },
+                { localAABB.max.x, localAABB.max.y, localAABB.min.z },
+                { localAABB.max.x, localAABB.max.y, localAABB.max.z }
+            };
+
+            glm::vec3 transformedMin = glm::vec3(worldTransform * glm::vec4(corners[0], 1.0f));
+            glm::vec3 transformedMax = transformedMin;
+
+            for (int i = 1; i < 8; ++i)
+            {
+                glm::vec3 transformed = glm::vec3(worldTransform * glm::vec4(corners[i], 1.0f));
+                transformedMin = glm::min(transformedMin, transformed);
+                transformedMax = glm::max(transformedMax, transformed);
+            }
+
+            glm::vec3 center = (transformedMin + transformedMax) * 0.5f;
+            glm::vec3 halfExtents = (transformedMax - transformedMin) * 0.5f;
+
+            m_im3dManager->DrawBox(center, halfExtents, Im3d::Color_Red);
+        }
+
+        Im3d::PopColor();
+    }
+
+    void DeferredRenderer::RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        if (ImGui::Begin("Debug Options"))
+        {
+            ImGui::Checkbox("Show DDGI Probes", &m_showDDGI);
+            ImGui::Checkbox("Show AABBs", &m_showAABB);
+        }
+        ImGui::End();
+        if (m_showDDGI)
+        {
+            DebugDDGI();
+        }
+
+        if (m_showAABB)
+        {
+            DebugAABB();
+        }
+
+        DebugDDGIRays();
+
+        // render im3d here
+        if (m_im3dManager != nullptr)
+        {
+            m_im3dManager->EndFrameAndRender(projMatrix * viewMatrix);
+        }
     }
 
     void DeferredRenderer::DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)

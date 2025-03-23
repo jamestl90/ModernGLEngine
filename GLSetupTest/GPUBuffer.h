@@ -24,11 +24,12 @@ namespace JLEngine
 		const bool IsDirty()			const { return m_isDirty; }
 		const bool IsImmutable()		const { return m_immutable; }
 
-		void SetCreated(bool created)		{ m_created = created; }
-		void SetImmutable(bool immutable)	{ m_immutable = immutable; }
-		void SetSizeInBytes(size_t size)	{ m_bufferSize = size; }
-		void MarkDirty()					{ m_isDirty = true; }
-		void ClearDirty()					{ m_isDirty = false; }
+		void SetUsageFlags(GLbitfield flags)  { m_usageFlags = flags; }
+		void SetCreated(bool created)		  { m_created = created; }
+		void SetImmutable(bool immutable)	  { m_immutable = immutable; }
+		void SetSizeInBytes(size_t size)	  { m_bufferSize = size; }
+		void MarkDirty()					  { m_isDirty = true; }
+		void ClearDirty()					  { m_isDirty = false; }
 
 		GLbitfield GetUsageFlags() const { return m_usageFlags; }
 

@@ -16,6 +16,7 @@
 #include "UniformBuffer.h"
 #include "TexturePool.h"
 #include "SceneManager.h"
+#include "Im3dManager.h"
 
 namespace JLEngine
 {
@@ -37,6 +38,7 @@ namespace JLEngine
     class Material;
     class DirectionalLightShadowMap;
     class HDRISky;
+    class DDGI;
 
     class DeferredRenderer 
     {
@@ -67,6 +69,8 @@ namespace JLEngine
 
         HDRISky* GetHDRISky() { return m_hdriSky; }
 
+        void SetDebugDrawer(IM3DManager* im3dMgr) { m_im3dManager = im3dMgr; }
+
     private:
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
@@ -78,6 +82,10 @@ namespace JLEngine
         void DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugGBuffer(int debugMode);
         void DebugDirectionalLightShadows();
+        void DebugDDGI();
+        void DebugDDGIRays();
+        void DebugAABB();
+        void RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
@@ -105,12 +113,13 @@ namespace JLEngine
         float m_diffuseIndirectFactor = 1.0f;
         glm::vec3 m_lastEyePos;
 
+        IM3DManager* m_im3dManager;
+
         TexturePool m_texPool;
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
         RenderTarget* m_lightOutputTarget;
         RenderTarget* m_finalOutputTarget;
-        RenderTarget* m_transparentTarget;
 
         // raster shaders
         ShaderProgram* m_gBufferShader;
@@ -149,9 +158,13 @@ namespace JLEngine
 
         SceneManager m_sceneManager;
 
+        DDGI* m_ddgi;
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;
         bool m_enableDLShadows;
+
+        bool m_showDDGI = false;
+        bool m_showAABB = false;
 
         HDRISky* m_hdriSky;
     };

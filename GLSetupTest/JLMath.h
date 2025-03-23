@@ -34,6 +34,11 @@ namespace JLEngine
 
 			return weights;
 		}
+
+		static Im3d::Vec3 Convert(const glm::vec3& in)
+		{
+			return Im3d::Vec3(in.x, in.y, in.z);
+		}
 	};
 }
 

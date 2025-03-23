@@ -2,10 +2,12 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
+// input sampler bindings
 layout(binding = 0) uniform sampler2D u_PositionBuffer;
 layout(binding = 1) uniform sampler2D u_NormalBuffer;
 layout(binding = 2) uniform sampler2D u_AlbedoBuffer;
 
+// probe data
 struct DDGIProbe
 {
     vec4 WorldPosition;
@@ -14,30 +16,74 @@ struct DDGIProbe
     vec3 _pad;
 };
 
+// struct for storing debug ray info
+struct DebugRay
+{
+    vec3 origin;
+    vec3 hit;
+};
+
 layout (std430, binding = 3) buffer ProbeBuffer
 {
     DDGIProbe probes[];
-}
+};
 
+layout(std430, binding = 4) buffer DebugRayBuffer
+{
+    DebugRay debugRays[];
+};
+
+layout(std140, binding = 5) uniform ShaderGlobalData 
+{
+    mat4 viewMatrix;
+    mat4 projMatrix;
+    vec4 camPos;
+    vec4 camDir;
+    vec2 timeInfo;
+    vec2 windowSize;
+    int frameCount;
+};
+
+// uniforms
+uniform int u_DebugRayCount;
+uniform uint u_DebugProbeIndex;
 uniform ivec3 u_GridResolution;
 uniform vec3 u_ProbeSpacing;
 uniform vec3 u_GridOrigin;
 uniform int u_RaysPerProbe;
 uniform float u_BlendFactor;
 
-vec3 SampleHemisphere(uint i, uint total, vec3 normal)
+// fast and effective way to distribute points 
+// evenly (uniformly?) on a sphere
+vec3 SampleFibonacciSphere(uint i, uint total)
 {
-    float phi = 2.0 * 3.14159265 * float(i) / float(total);
-    float cosTheta = 1.0 - float(i) / float(total);
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-    vec3 tangent = normalize(cross(normal, vec3(0.0, 1.0, 0.0)));
-    vec3 bitangent = cross(normal, tangent);
+    const float GOLDEN_RATIO = 1.61803398875;
+    float u = float(i);
+    float v = float(total);
 
-    return normalize(
-        sinTheta * cos(phi) * tangent +
-        sinTheta * sin(phi) * bitangent +
-        cosTheta * normal
-    );
+    float phi = 2.0 * 3.14159265 * fract(u * GOLDEN_RATIO);
+    float cosTheta = 1.0 - 2.0 * (u + 0.5) / v;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    return vec3(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
+}
+
+// raymarch using the gbuffer
+bool RaymarchGBufferHit(vec3 origin, vec3 dir, out vec3 hitPos, out vec3 hitNormal, out vec3 hitAlbedo)
+{
+    // 64 steps at 0.25 a step will be 16 units of ray distance
+    const int maxSteps = 64;
+    const float stepSize = 0.25;
+    const float maxDistance = 16;
+
+    for (int step = 0; step < maxSteps; step++)
+    {
+        float t = float(step) * stepSize;
+        vec3 samplePos = origin + dir * t;
+
+        // projection
+        vec4 viewPos = viewMatrix * vec4(samplePos, 1.0);
+    }
 }
 
 void main()
@@ -58,13 +104,19 @@ void main()
     for (int i = 0; i < u_RaysPerProbe; i++)
     {
         vec3 origin = probe.WorldPosition.xyz;
-        vec3 dir = SampleHemisphere(i, u_RaysPerProbe, vec3(0.0, 1.0, 0.0));
+        vec3 dir = SampleFibonacciSphere(i, u_RaysPerProbe);
 
         // setup defaults
         vec3 hitPos = origin + dir * 5.0;
         vec3 albedo = vec3(1.0);
         vec3 normal = vec3(0.0, 1.0, 0.0);
         vec3 incomingLight = vec3(1.0);
+
+        if (i < u_DebugRayCount && i < debugRays.length())
+        {
+            debugRays[i].origin = origin;
+            debugRays[i].hit = hitPos;
+        }
 
         float visibility = 1.0;
         vec3 irradiance = visibility * albedo * incomingLight * max(dot(dir, normal), 0.0);

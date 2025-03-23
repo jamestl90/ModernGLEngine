@@ -141,6 +141,8 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="Im3dManager.cpp" />
+    <ClCompile Include="im3d\im3d.cpp" />
     <ClCompile Include="ImageHelpers.cpp">
       <SubType>
       </SubType>
@@ -240,6 +242,7 @@
     <ClInclude Include="AnimData.h" />
     <ClInclude Include="AnimHelpers.h" />
     <ClInclude Include="DDGI.h" />
+    <ClInclude Include="Im3dManager.h" />
     <ClInclude Include="ShaderGlobalData.h" />
     <ClInclude Include="Cubemap.h">
       <SubType>

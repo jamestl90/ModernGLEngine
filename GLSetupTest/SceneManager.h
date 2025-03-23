@@ -31,6 +31,9 @@ namespace JLEngine
 			m_transparentObjects.clear();
 			m_skinnedAnimControllers.clear();
 			m_rigidAnimControllers.clear();
+			m_submeshList.clear();
+			m_skinnedAnimControllers.clear();
+			m_rigidAnimControllers.clear();
 
 			std::function<void(Node*)> populateLists = [&](Node* node)
 				{
@@ -46,6 +49,7 @@ namespace JLEngine
 						for (auto i = 0; i < submeshes.size(); i++)
 						{
 							auto& submesh = node->mesh->GetSubmesh(i); 
+							m_submeshList.push_back(std::make_pair(submesh, node));
 							auto isInstanced = submesh.instanceTransforms != nullptr;
 							auto isStatic = (submesh.flags & SubmeshFlags::STATIC) != 0;
 							auto isSkinned = (submesh.flags & SubmeshFlags::SKINNED) != 0;
@@ -98,6 +102,11 @@ namespace JLEngine
 					}
 				};
 			populateLists(m_sceneRoot.get());
+		}
+
+		std::vector<std::pair<JLEngine::SubMesh, Node*>> GetSubmeshes()
+		{
+			return m_submeshList;
 		}
 
 		std::vector<std::pair<SubMesh, Node*>>& GetNonInstancedStatic()
@@ -202,6 +211,7 @@ namespace JLEngine
 		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects; // transparent meshes
 		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedStatic;	// instanced static meshes
 		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedDynamic; // instanced skinned meshes
+		std::vector<std::pair<SubMesh, Node*>> m_submeshList;
 		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_skinnedAnimControllers;
 		std::vector<std::pair<std::shared_ptr<AnimationController>, Node*>> m_rigidAnimControllers;
 
