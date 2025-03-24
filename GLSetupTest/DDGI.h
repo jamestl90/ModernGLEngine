@@ -8,6 +8,8 @@
 
 namespace JLEngine
 {
+    class UniformBuffer;
+
     struct alignas(16) DDGIProbe
     {
         glm::vec4 WorldPosition; // world centre of this probe
@@ -45,7 +47,7 @@ namespace JLEngine
         const int GetDebugRayCount() const { return m_debugRayCount; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
-        void Update(float dt, UniformBuffer& shaderGlobaldata, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex);
+        void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex);
 
         ShaderStorageBuffer<DDGIProbe>& GetProbeSSBO() { return m_probeSSBO; }
         ShaderStorageBuffer<DebugRay>& GetDebugRays() { return m_debugRaysSSBO; }

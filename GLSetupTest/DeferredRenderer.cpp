@@ -393,7 +393,8 @@ namespace JLEngine
             // update GI probes 
             m_ddgi->Update(
                 static_cast<float>(dt), 
-                m_gShaderData,                  // global shader data
+                &m_gShaderData,                 // global shader data
+                glm::inverse(viewMatrix),       // inverse view matrix for normals -> world space
                 m_gBufferTarget->GetTexId(4),   // gbuffer positions
                 m_gBufferTarget->GetTexId(1),   // gbuffer normals
                 m_gBufferTarget->GetTexId(0));  // gbuffer albedo

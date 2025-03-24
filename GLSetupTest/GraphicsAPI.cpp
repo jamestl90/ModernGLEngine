@@ -16,7 +16,7 @@ PFNGLMAKETEXTUREHANDLERESIDENTARBPROC glMakeTextureHandleResidentARB = nullptr;
 namespace JLEngine
 {
 	GraphicsAPI::GraphicsAPI(Window* window) 
-		: m_drawAABB(false), m_shaderInfo(""), m_versionInfo(""), 
+		: m_shaderInfo(""), m_versionInfo(""), 
 		m_vendorInfo(""), m_extensionInfo(""), m_rendererInfo(""), m_window(window), m_usingMSAA(false)
 	{
 		float fov = 45.0f;
@@ -146,6 +146,22 @@ namespace JLEngine
 	void GraphicsAPI::SyncFramebuffer()
 	{
 		glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT);
+	}
+
+	inline void GraphicsAPI::PrintVRAMUsage()
+	{
+		// I think this prints total vram used by GPU, not this specific app
+		if (GL_NVX_gpu_memory_info) {
+			GLint total_mem_kb = 0;
+			glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &total_mem_kb);
+
+			GLint available_mem_kb = 0;
+			glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &available_mem_kb);
+
+			GLint used_mem_kb = total_mem_kb - available_mem_kb;
+			std::cout << "Used VRAM: " << used_mem_kb << " KB" << std::endl;
+		}
+		// amd: GL_ATI_meminfo
 	}
 
 	glm::mat4& GraphicsAPI::CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view)
@@ -299,52 +315,11 @@ namespace JLEngine
 			std::cout << location << " " << name << std::endl;
 		}
 	}
-	
-	template <>
-	void GraphicsAPI::SetUniform<uint32_t>(uint32_t location, const uint32_t& value) {
-		glUniform1i(location, value);
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<float>(uint32_t location, const float& value) {
-		glUniform1f(location, value);
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<glm::vec2>(uint32_t location, const glm::vec2& value) {
-		glUniform2fv(location, 1, glm::value_ptr(value));
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<glm::vec3>(uint32_t location, const glm::vec3& value) {
-		glUniform3fv(location, 1, glm::value_ptr(value));
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<glm::vec4>(uint32_t location, const glm::vec4& value) {
-		glUniform4fv(location, 1, glm::value_ptr(value));
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<glm::mat2>(uint32_t location, const glm::mat2& value) {
-		glUniformMatrix2fv(location, 1, GL_FALSE, glm::value_ptr(value));
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<glm::mat3>(uint32_t location, const glm::mat3& value) {
-		glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(value));
-	}
-
-	template <>
-	void GraphicsAPI::SetUniform<glm::mat4>(uint32_t location, const glm::mat4& value) {
-		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
-	}
 
 	uint32_t GraphicsAPI::CreateVertexArray()
 	{
 		GLuint id;
-		glGenVertexArrays(1, &id);
-		glBindVertexArray(id);
+		glCreateVertexArrays(1, &id);
 		return id;
 	}
 
@@ -366,7 +341,7 @@ namespace JLEngine
 
 	void GraphicsAPI::CreateFrameBuffer(uint32_t count, uint32_t& id )
 	{
-		glGenFramebuffers(count, &id);
+		glCreateFramebuffers(count, &id);
 	}
 
 	void GraphicsAPI::BindVertexArray( uint32_t vaoID )
@@ -378,8 +353,6 @@ namespace JLEngine
 	{
 		glDeleteVertexArrays(1, &vaoID);
 	}
-
-	// VBO
 
 	void GraphicsAPI::CreateNamedBuffer(uint32_t& id)
 	{
@@ -511,6 +484,7 @@ namespace JLEngine
 		}
 	}
 
+	/* UPDATE TO USE DSA IN FUTURE */
 	void GraphicsAPI::ReadTexture2D(uint32_t texId, ImageData& imageData, int width, int height, int channels, bool hdr, bool useFramebuffer)
 	{
 		GLenum format = (channels == 3) ? GL_RGB : GL_RGBA;
@@ -525,7 +499,7 @@ namespace JLEngine
 		{
 			// Use a framebuffer to read the texture
 			GLuint fbo;
-			glGenFramebuffers(1, &fbo);
+			glGenFramebuffers(1, &fbo);			
 			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texId, 0);
 
@@ -581,6 +555,7 @@ namespace JLEngine
 		std::cout << "Successfully read Texture2D with " << (imageData.isHDR ? "HDR" : "LDR") << " data." << std::endl;
 	}
 
+	/* UPDATE TO USE DSA IN FUTURE */
 	void GraphicsAPI::ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer)
 	{
 		GLenum format = channels == 3 ? GL_RGB : GL_RGBA;
@@ -708,7 +683,7 @@ namespace JLEngine
 
 	void GraphicsAPI::CreateRenderBuffer(uint32_t count, uint32_t& id)
 	{
-		glGenRenderbuffers(count, &id);
+		glCreateRenderbuffers(count, &id);
 	}
 
 	void GraphicsAPI::BindRenderBuffer(uint32_t id )
@@ -716,9 +691,9 @@ namespace JLEngine
 		glBindRenderbuffer(GL_RENDERBUFFER, id);
 	}
 
-	void GraphicsAPI::BindFrameBufferToTexture( uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level )
+	void GraphicsAPI::BindFrameBufferToTexture(uint32_t fbo, uint32_t attachment, uint32_t texture, int32_t level)
 	{
-		glFramebufferTexture2D(type, attachment, target, id, level);
+		glNamedFramebufferTexture(fbo, attachment, texture, level);
 	}
 
 	bool GraphicsAPI::FramebufferComplete(uint32_t fboID)
@@ -726,16 +701,16 @@ namespace JLEngine
 		return glCheckNamedFramebufferStatus(fboID, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
 	}
 
-	void GraphicsAPI::BindFrameBufferToRenderbuffer( uint32_t type, uint32_t attachment, uint32_t target, uint32_t id)
+	void GraphicsAPI::BindFrameBufferToRenderbuffer(uint32_t fbo, uint32_t attachment, uint32_t target, uint32_t id)
 	{
-		glFramebufferRenderbuffer(type, attachment, target, id);
+		glNamedFramebufferRenderbuffer(fbo, attachment, target, id);
 	}
 
 	void GraphicsAPI::RenderBufferStorage( uint32_t type, uint32_t internalFormat, uint32_t width, uint32_t height )
 	{
 		glRenderbufferStorage(type, internalFormat, width, height);
 	}
-
+	
 	void GraphicsAPI::DrawBuffers( uint32_t count, uint32_t* targets)
 	{
 		glDrawBuffers(count, targets);
@@ -823,6 +798,7 @@ namespace JLEngine
 		CreatePrimitiveBuffers(coneVerts, sizeof(coneVerts), coneInds, sizeof(coneInds), m_coneGeom);
 	}
 
+	/* Needs deprecating/updating*/
 	void GraphicsAPI::CreatePrimitiveBuffers( float vertices[], uint32_t vertSize, uint32_t indices[], uint32_t indSize, uint32_t ids[] )
 	{
 		glGenVertexArrays(1, &ids[0]);
@@ -839,6 +815,7 @@ namespace JLEngine
 		glBindVertexArray(0);
 	}
 
+	/* Needs deprecating/updating*/
 	void GraphicsAPI::CreatePrimitiveBuffers(float vertices[], uint32_t vertSize, uint32_t ids[])
 	{
 		glGenVertexArrays(1, &ids[0]);
@@ -879,17 +856,18 @@ namespace JLEngine
 		glUseProgram(m_defaultShader);
 	}
 
+	/* Probably replace/remove this */
 	void GraphicsAPI::RenderPrimitive(glm::mat4& mvp, uint32_t type, uint32_t shaderId )
 	{
 		if (shaderId == -1)
 		{	
 			auto loc = glGetUniformLocation(m_defaultShader, "u_MVP");
-			SetUniform<glm::mat4>(loc, mvp);
+			SetProgUniform<glm::mat4>(shaderId, loc, mvp);
 		}
 		else
 		{
 			auto loc = glGetUniformLocation(shaderId, "u_MVP");
-			SetUniform<glm::mat4>(loc, mvp);
+			SetProgUniform<glm::mat4>(shaderId, loc, mvp);
 		}
 
 		switch (type)
@@ -919,7 +897,7 @@ namespace JLEngine
 		glCullFace(face);
 	}
 
-	void GraphicsAPI::DumpInfo() const
+	void GraphicsAPI::DumpInfo()
 	{
 		std::cout << "****************************************************" << std::endl;
 		std::cout << m_shaderInfo << std::endl;

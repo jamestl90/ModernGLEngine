@@ -16,6 +16,7 @@
 #include "ImageData.h"
 
 #include <glad/glad.h>
+#include <GL/glext.h>
 
 inline void* BUFFER_OFFSET(std::size_t i) 
 {
@@ -92,19 +93,17 @@ namespace JLEngine
 
 		 void Initialise();
 
-		 void toggleDrawAABB() { m_drawAABB = !m_drawAABB; }
-
-		 const string& GetVersionInfo()   { return m_versionInfo; }
-		 const string& GetVendorInfo()    { return m_vendorInfo; }
-		 const string& GetRendererInfo()  { return m_rendererInfo; }
-		 const string& GetExtensionInfo() { return m_extensionInfo; }
-		 const string& GetShaderInfo()    { return m_shaderInfo; }
+		 const string& GetVersionInfo()		{ return m_versionInfo; }
+		 const string& GetVendorInfo()		{ return m_vendorInfo; }
+		 const string& GetRendererInfo()	{ return m_rendererInfo; }
+		 const string& GetExtensionInfo()	{ return m_extensionInfo; }
+		 const string& GetShaderInfo()		{ return m_shaderInfo; }
 
 		 const int32_t& GetNumMSAABuffers() { return m_MSAABuffers; }
 		 const int32_t& GetNumMSAASamples() { return m_MSAASamples; }
 
-		 ViewFrustum* GetViewFrustum()    { return m_viewFrustum; }
-		 Window* GetWindow()			 { return m_window; }
+		 ViewFrustum* GetViewFrustum()		{ return m_viewFrustum; }
+		 Window* GetWindow()				{ return m_window; }
 
 		 glm::mat4& CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view);
 
@@ -143,25 +142,6 @@ namespace JLEngine
 		 void SetProgUniform<glm::mat3>(uint32_t progId, uint32_t location, const glm::mat3& value);
 		 template <>
 		 void SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4& value);
-
-		 template <typename T>
-		 void SetUniform(uint32_t location, const T& value);
-		 template <>
-		 void SetUniform<uint32_t>(uint32_t location, const uint32_t& value);
-		 template <>
-		 void SetUniform<float>(uint32_t location, const float& value);
-		 template <>
-		 void SetUniform<glm::vec2>(uint32_t location, const glm::vec2& value);
-		 template <>
-		 void SetUniform<glm::vec3>(uint32_t location, const glm::vec3& value);
-		 template <>
-		 void SetUniform<glm::vec4>(uint32_t location, const glm::vec4& value);
-		 template <>
-		 void SetUniform<glm::mat2>(uint32_t location, const glm::mat2& value);
-		 template <>
-		 void SetUniform<glm::mat3>(uint32_t location, const glm::mat3& value);
-		 template <>
-		 void SetUniform<glm::mat4>(uint32_t location, const glm::mat4& value);
 
 		 void BindShader(uint32_t programId);
 		 void UnbindShader();
@@ -212,7 +192,7 @@ namespace JLEngine
 		void CreateRenderBuffer(uint32_t count, uint32_t& id);
 		void BindRenderBuffer(uint32_t id);
 		void RenderBufferStorage(uint32_t type, uint32_t internalFormat, uint32_t width, uint32_t height);
-		void BindFrameBufferToRenderbuffer(uint32_t type, uint32_t internalFormat, uint32_t target, uint32_t id);
+		void BindFrameBufferToRenderbuffer(uint32_t fbo, uint32_t internalFormat, uint32_t target, uint32_t id);
 		// VAO
 		uint32_t CreateVertexArray();
 		void BindVertexArray(uint32_t vaoID);
@@ -237,7 +217,7 @@ namespace JLEngine
 		// deprecated
 		void BindTexture(uint32_t target, uint32_t id);
 		void SetActiveTexture(uint32_t texunit);
-		void BindFrameBufferToTexture(uint32_t type, uint32_t attachment, uint32_t target, uint32_t id, int32_t level = 0);
+		void BindFrameBufferToTexture(uint32_t fbo, uint32_t attachment, uint32_t texture, int32_t level);
 
 		// Render calls
 		void BeginPrimitiveDraw();
@@ -250,7 +230,8 @@ namespace JLEngine
 		void MultiDrawElementsIndirect(uint32_t mode, uint32_t type, const void* indirect, uint32_t drawCount, uint32_t stride);
 
 		void GeneratePrimitives();
-		void DumpInfo() const;
+		void DumpInfo();
+		void PrintVRAMUsage();
 
 	private:
 
@@ -266,7 +247,6 @@ namespace JLEngine
 		int32_t m_MSAABuffers;
 		int32_t m_MSAASamples;
 
-		bool m_drawAABB;
 		bool m_usingMSAA;
 
 		uint32_t m_coneGeom[4];

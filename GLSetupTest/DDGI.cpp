@@ -76,7 +76,7 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	Graphics::CreateGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), m_debugRaysSSBO.GetDataImmutable());
 }
 
-void JLEngine::DDGI::Update(float dt, UniformBuffer& shaderGlobaldata, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex)
+void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex)
 {
     Graphics::API()->BindShader(m_updateProbesCompute->GetProgramId());
 
@@ -87,7 +87,7 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer& shaderGlobaldata, uint32_t 
     // bind probe data
     Graphics::BindGPUBuffer(m_probeSSBO.GetGPUBuffer(), 3);
 	Graphics::BindGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), 4);
-	Graphics::BindGPUBuffer(shaderGlobaldata.GetGPUBuffer(), 5);
+	Graphics::BindGPUBuffer(shaderGlobaldata->GetGPUBuffer(), 5);
 
     m_updateProbesCompute->SetUniform("u_GridResolution", m_gridResolution);
     m_updateProbesCompute->SetUniform("u_GridOrigin", m_gridOrigin);
@@ -96,6 +96,7 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer& shaderGlobaldata, uint32_t 
     m_updateProbesCompute->SetUniformf("u_BlendFactor", m_blendFactor);
 	m_updateProbesCompute->SetUniformi("u_DebugRayCount", m_debugRayCount);
 	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", 0);
+	m_updateProbesCompute->SetUniform("u_InverseView", inverseView);
 
     Graphics::API()->DispatchCompute(m_gridResolution.x, m_gridResolution.y, m_gridResolution.z);
     Graphics::API()->SyncShaderStorageBarrier();
