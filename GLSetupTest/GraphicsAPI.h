@@ -232,6 +232,10 @@ namespace JLEngine
 		void GeneratePrimitives();
 		void DumpInfo();
 		void PrintVRAMUsage();
+		void DebugLabelObject(uint32_t type, uint32_t item, const char* label)
+		{
+			glObjectLabel(type, item, -1, label);
+		}
 
 	private:
 

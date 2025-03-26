@@ -8,10 +8,11 @@ layout(binding = 2) uniform sampler2D gMetallicRoughness;
 layout(binding = 3) uniform sampler2D gEmissive;
 layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 5) uniform sampler2D gDLShadowMap;
-layout(binding = 5) uniform samplerCube gSkyTexture;
+layout(binding = 6) uniform samplerCube gSkyTexture;
 layout(binding = 7) uniform samplerCube gIrradianceMap;
 layout(binding = 8) uniform samplerCube gPrefilteredMap;
 layout(binding = 9) uniform sampler2D gBRDFLUT;
+layout(binding = 10) uniform sampler2D gPositions;
 
 uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
@@ -29,7 +30,7 @@ uniform float u_Far;
 uniform vec3 u_LightDirection;
 uniform vec3 u_LightColor;      
 
-layout(std140, binding = 0) uniform ShaderGlobalData 
+layout(std140, binding = 4) uniform ShaderGlobalData 
 {
     mat4 viewMatrix;
     mat4 projMatrix;

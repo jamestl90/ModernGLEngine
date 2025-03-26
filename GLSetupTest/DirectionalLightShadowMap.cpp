@@ -14,7 +14,7 @@ namespace JLEngine
     {
         
     }
-
+    
     void DirectionalLightShadowMap::Initialise()
     {
         glGenFramebuffers(1, &m_shadowFBO);

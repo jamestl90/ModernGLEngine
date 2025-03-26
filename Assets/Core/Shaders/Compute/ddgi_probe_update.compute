@@ -13,7 +13,6 @@ struct DDGIProbe
     vec4 WorldPosition;
     vec4 Irradiance;
     float HitDistance;
-    vec3 _pad;
 };
 
 // struct for storing debug ray info
@@ -21,6 +20,7 @@ struct DebugRay
 {
     vec3 origin;
     vec3 hit;
+    vec3 color;
 };
 
 layout (std430, binding = 3) buffer ProbeBuffer
@@ -46,7 +46,7 @@ layout(std140, binding = 5) uniform ShaderGlobalData
 
 // uniforms
 uniform int u_DebugRayCount;
-uniform uint u_DebugProbeIndex;
+uniform int u_DebugProbeIndex;
 uniform ivec3 u_GridResolution;
 uniform vec3 u_ProbeSpacing;
 uniform vec3 u_GridOrigin;
@@ -56,9 +56,10 @@ uniform mat4 u_InverseView;
 
 // 64 steps at 0.25 a step will be 16 units of ray distance
 const int maxSteps = 64;
-const float stepSize = 0.25;
-const float maxDistance = 16;
+const float maxDistance = 7.0;
+const float stepSize = maxDistance / float(maxSteps);
 const float hitThreshold = 0.2;
+const float normalThreshold = 0.8; 
 
 // fast and effective way to distribute points 
 // evenly (uniformly?) on a sphere
@@ -76,36 +77,67 @@ vec3 SampleFibonacciSphere(uint i, uint total)
 }
 
 // raymarch using the gbuffer
-bool RaymarchGBufferHit(vec3 origin, vec3 dir, out vec3 hitPos, out vec3 hitNormal, out vec3 hitAlbedo)
+bool RaymarchGBufferHit(
+    vec3 origin,
+    vec3 dir,
+    out vec3 hitPos,
+    out vec3 hitNormal,
+    out vec3 hitAlbedo) 
 {
-    for (int step = 0; step < maxSteps; step++)
+    for (int step = 0; step < maxSteps; ++step)
     {
         float t = float(step) * stepSize;
         vec3 samplePos = origin + dir * t;
 
-        // project to screen space
-        vec4 viewPos = viewMatrix * vec4(samplePos, 1.0);
-        vec4 clipPos = projMatrix * viewPos;
-        vec3 ndc = clipPos.xyz / clipPos.w; // normalize
-        vec2 uv = ndc.xy * 0.5 + 0.5;
-
-        // bounds checking
-        if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0)
+        if (length(samplePos - origin) > maxDistance)
             break;
 
-        vec3 gBufferPos = texture(u_PositionBuffer, uv).rgb;
+        // Project to screen space
+        vec4 viewPos = viewMatrix * vec4(samplePos, 1.0);
+        vec4 clipPos = projMatrix * viewPos;
+
+        if (clipPos.w <= 0.0)
+            continue;
+
+        vec3 ndc = clipPos.xyz / clipPos.w;
+        vec2 uv = ndc.xy * 0.5 + 0.5;
+        
+        // Add bounds checking
+        if (any(lessThan(uv, vec2(0)))) continue;
+        if (any(greaterThan(uv, vec2(1)))) continue;
+
+        ivec2 pixel = ivec2(uv * windowSize);
+        vec3 gBufferPos = texelFetch(u_PositionBuffer, pixel, 0).rgb;
         float distToSurface = length(gBufferPos - samplePos);
 
         if (distToSurface < hitThreshold)
         {
-            hitPos = gBufferPos;
-            hitNormal = texture(u_NormalBuffer, uv).rgb;
-            hitNormal = normalize((mat3(u_InverseView) * hitNormal));
-            hitAlbedo = texture(u_AlbedoBuffer, uv).rgb;
-            return true;
+            // Additional normal consistency check
+            vec3 surfaceNormal = normalize(mat3(u_InverseView) * texelFetch(u_NormalBuffer, pixel, 0).rgb);
+            float normalSimilarity = dot(surfaceNormal, -dir);
+            
+            if (normalSimilarity > normalThreshold) {
+                hitPos = samplePos;
+                hitNormal = surfaceNormal;
+                hitAlbedo = texelFetch(u_AlbedoBuffer, pixel, 0).rgb;
+                return true;
+            }
         }
     }
     return false;
+}
+
+void ResetDebugRays(int index)
+{
+    for (int i = 0; i < u_RaysPerProbe; i++)
+    {
+        if (i < u_DebugRayCount && i < debugRays.length() && u_DebugProbeIndex == index)
+        {
+            debugRays[i].origin = vec3(0);
+            debugRays[i].hit = vec3(0);
+            debugRays[i].color = vec3(0);
+        }
+    }
 }
 
 void main()
@@ -120,11 +152,14 @@ void main()
 
     DDGIProbe probe = probes[index];
 
+    ResetDebugRays(u_DebugProbeIndex);
+
     vec3 totalIrradiance = vec3(0.0);
     float totalDistance = 0.0;
 
     for (int i = 0; i < u_RaysPerProbe; i++)
     {
+        vec3 rayCol = vec3(0,0,1);
         vec3 origin = probe.WorldPosition.xyz;
         vec3 dir = SampleFibonacciSphere(i, u_RaysPerProbe);
 
@@ -143,22 +178,24 @@ void main()
         else
         {
             totalDistance += maxDistance;
+            rayCol = vec3(1,0,0);
             hitPos = origin;
         }
 
-        if (i < u_DebugRayCount && i < debugRays.length() && index == 0)
+        if (i < u_DebugRayCount && i < debugRays.length() && index == u_DebugProbeIndex)
         {
             debugRays[i].origin = origin;
             debugRays[i].hit = hitPos;
+            debugRays[i].color = rayCol;
         }
     }
 
     // average out the accumulated irradiance and distance
-    totalIrradiance /= float(u_RaysPerProbe);
-    totalDistance /= float(u_RaysPerProbe);
+    //totalIrradiance /= float(u_RaysPerProbe);
+    //totalDistance /= float(u_RaysPerProbe);
 
-    probe.Irradiance.rgb = mix(probe.Irradiance.rgb, totalIrradiance, u_BlendFactor);
-    probe.HitDistance = mix(probe.HitDistance, totalDistance, u_BlendFactor);
+    //probe.Irradiance.rgb = mix(probe.Irradiance.rgb, totalIrradiance, u_BlendFactor);
+    //probe.HitDistance = mix(probe.HitDistance, totalDistance, u_BlendFactor);
 
     probes[index] = probe;
 }

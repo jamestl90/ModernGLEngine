@@ -165,6 +165,7 @@ namespace JLEngine
 
         bool m_showDDGI = false;
         bool m_showAABB = false;
+        bool m_showDDGIRays = false;
 
         HDRISky* m_hdriSky;
     };

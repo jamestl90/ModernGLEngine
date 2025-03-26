@@ -95,7 +95,7 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm
     m_updateProbesCompute->SetUniformi("u_RaysPerProbe", m_raysPerProbe);
     m_updateProbesCompute->SetUniformf("u_BlendFactor", m_blendFactor);
 	m_updateProbesCompute->SetUniformi("u_DebugRayCount", m_debugRayCount);
-	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", 0);
+	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", m_debugProbeIndex);
 	m_updateProbesCompute->SetUniform("u_InverseView", inverseView);
 
     Graphics::API()->DispatchCompute(m_gridResolution.x, m_gridResolution.y, m_gridResolution.z);

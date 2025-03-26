@@ -12,7 +12,7 @@
 namespace JLEngine
 {
     JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder) :
-        m_maxFrameRate(maxFrameRate), m_maxFrameRateInterval(0),
+        m_maxFrameRate(maxFrameRate), m_maxFrameRateInterval(0), m_assetFolder(assetFolder),
         m_deltaTime(0.0), m_accumulatedTime(0.0), m_fixedUpdateRate(fixedUpdates) 
     {
         // Set up fixed update interval based on target FPS
@@ -135,7 +135,6 @@ namespace JLEngine
             ImGui::End();
 
             ShowNodeHierarchy(m_renderer->GetSceneManager().GetRoot().get());
-
             m_imguiManager.EndFrame();
 
             m_window->SwapBuffers();
@@ -370,7 +369,7 @@ namespace JLEngine
     void JLEngineCore::InitIMGUI()
     {
         m_imguiManager.Initialize(m_window->GetGLFWwindow());
-        m_im3dManager.Initialise(m_window.get(), m_resourceLoader);
+        m_im3dManager.Initialise(m_window.get(), m_resourceLoader, m_assetFolder);
         m_renderer->SetDebugDrawer(&m_im3dManager);
     }
 }

@@ -45,7 +45,7 @@ layout(std430, binding = 1) readonly buffer PerDrawDataBuffer
     PerDrawData perDrawData[];
 };
 
-layout(std140, binding = 0) uniform ShaderGlobalData 
+layout(std140, binding = 2) uniform ShaderGlobalData 
 {
     mat4 viewMatrix;
     mat4 projMatrix;

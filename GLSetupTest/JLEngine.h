@@ -56,6 +56,7 @@ namespace JLEngine
         std::unique_ptr<Window> m_window;
         ResourceLoader* m_resourceLoader;
 
+        std::string m_assetFolder;
         DeferredRenderer* m_renderer;
 
         FlyCamera* m_flyCamera;

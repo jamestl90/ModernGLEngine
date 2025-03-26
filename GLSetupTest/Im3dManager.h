@@ -3,6 +3,8 @@
 
 #include <glm/glm.hpp>
 
+#include <string>
+
 #define IM3D_IMPLEMENTATION
 #include "im3d/im3d.h"
 #include "Window.h"
@@ -18,7 +20,7 @@ namespace JLEngine
 	class IM3DManager
 	{
 	public:
-		void Initialise(Window* window, ResourceLoader* resLoader);
+		void Initialise(Window* window, ResourceLoader* resLoader, const std::string& assetFolder);
 		void BeginFrame(Input* input, FlyCamera* flyCam, const glm::mat4& proj, float fov, float deltaTime);
 		void EndFrameAndRender(const glm::mat4& mvp);
 		void Shutdown();
@@ -30,7 +32,7 @@ namespace JLEngine
 
 		static void DrawCallback(const Im3d::DrawList& drawList);
 		void SetupBuffers();
-		void LoadShader();
+		void LoadShader(const std::string& assetFolder);
 
 		Window* m_window = nullptr;
 		GLuint m_vao;

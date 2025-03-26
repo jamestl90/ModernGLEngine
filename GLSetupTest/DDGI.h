@@ -24,6 +24,8 @@ namespace JLEngine
         float _pad0;
         glm::vec3 Hit;
         float _pad1;
+        glm::vec3 Color;
+        float _pad2;
     };
 
     class DDGI
@@ -38,6 +40,7 @@ namespace JLEngine
         void SetRaysPerProbe(const int raysPerProbe) { m_raysPerProbe = raysPerProbe; }
         void SetBlendFactor(const float blendFactor) { m_blendFactor = blendFactor; }
         void SetDebugRayCount(const int count) { m_debugRayCount = count; }
+        void SetDebugProbeIndex(const int idx) { m_debugProbeIndex = idx; }
 
         const glm::vec3& GetGridOrigin() const { return m_gridOrigin; }
         const glm::ivec3& GetGridResolution() const { return m_gridResolution; }
@@ -45,6 +48,8 @@ namespace JLEngine
         const int GetRaysPerProbe() const { return m_raysPerProbe; }
         const float GetBlendFactor() const { return m_blendFactor; }
         const int GetDebugRayCount() const { return m_debugRayCount; }
+        const int GetDebugProbeIndex() const { return m_debugProbeIndex; }
+        int& GetDebugProbeIndexMutable() { return m_debugProbeIndex; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
         void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex);
@@ -62,8 +67,9 @@ namespace JLEngine
         glm::ivec3 m_gridResolution { 6, 3, 5 };
         glm::vec3 m_probeSpacing { 4.0f, 3.0f, 4.0f };
         
-        int m_debugRayCount = 32;
-        int m_raysPerProbe = 32;
+        int m_debugRayCount = 128;
+        int m_raysPerProbe = 128;
+        int m_debugProbeIndex = 0;
         float m_blendFactor = 0.8f;
 
         ShaderStorageBuffer<DDGIProbe> m_probeSSBO;

@@ -148,12 +148,17 @@ namespace JLEngine
             }
             shaders[0].SetSource(vertFile);
 
-            std::string fragFile;
-            if (!ReadTextFile(program->GetFilePath() + shaders[1].GetName(), fragFile))
+            // hack, but if the first shader is not a compute shader, its probably a vertex shader
+            // so load the frag shader
+            if (shaders[0].GetType() != GL_COMPUTE_SHADER)
             {
-                throw "Could not find file: " + program->GetFilePath() + shaders[1].GetName(), "Graphics";
+                std::string fragFile;
+                if (!ReadTextFile(program->GetFilePath() + shaders[1].GetName(), fragFile))
+                {
+                    throw "Could not find file: " + program->GetFilePath() + shaders[1].GetName(), "Graphics";
+                }
+                shaders[1].SetSource(fragFile);
             }
-            shaders[1].SetSource(fragFile);
 
             Graphics::CreateShader(program);     
             GL_CHECK_ERROR();

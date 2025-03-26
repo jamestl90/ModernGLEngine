@@ -24,7 +24,7 @@ layout(std430, binding = 3) readonly buffer GlobalTransforms
     mat4 globalTransforms[];
 };
 
-layout(std140, binding = 0) uniform ShaderGlobalData 
+layout(std140, binding = 2) uniform ShaderGlobalData 
 {
     mat4 viewMatrix;
     mat4 projMatrix;

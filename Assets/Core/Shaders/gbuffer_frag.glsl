@@ -38,7 +38,7 @@ layout(std430, binding = 0) readonly buffer MaterialBuffer
     MaterialGPU materials[];
 };
 
-layout(std140, binding = 0) uniform ShaderGlobalData 
+layout(std140, binding = 2) uniform ShaderGlobalData 
 {
     mat4 viewMatrix;
     mat4 projMatrix;

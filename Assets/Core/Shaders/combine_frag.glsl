@@ -7,17 +7,6 @@ layout(binding = 3) uniform sampler2D gAlbedo;
 
 layout(location = 0) out vec4 FragColor;
 
-layout(std140, binding = 0) uniform ShaderGlobalData 
-{
-    mat4 viewMatrix;
-    mat4 projMatrix;
-    vec4 camPos;
-    vec4 camDir;
-    vec2 timeInfo;
-    vec2 windowSize;
-    int frameCount;
-};
-
 in vec2 v_TexCoords;
 
 void main()

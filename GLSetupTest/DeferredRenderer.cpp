@@ -100,7 +100,7 @@ namespace JLEngine
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
-
+        
         // --- SHADOW MAP --- 
         auto dlShader = m_resourceLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
         auto dlShaderSkinning = m_resourceLoader->CreateShaderFromFile("DLShadowMapSkinning", "dlshadowmap_skinning_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
@@ -153,6 +153,9 @@ namespace JLEngine
         // possible not needed now
         m_triangleVAO.SetGPUID(Graphics::API()->CreateVertexArray());
 
+        Graphics::API()->DebugLabelObject(GL_FRAMEBUFFER, m_gBufferTarget->GetGPUID(), "gBuffer");
+        Graphics::API()->DebugLabelObject(GL_FRAMEBUFFER, m_lightOutputTarget->GetGPUID(), "lightingTarget");
+
         GL_CHECK_ERROR();
     }
 
@@ -160,11 +163,11 @@ namespace JLEngine
     {
         // Configure G-buffer render target
         std::vector<RTParams> attributes(5);
-        attributes[0] = { GL_RGBA8 };           // Albedo (RGB) + AO (A)
-        attributes[1] = { GL_RGBA16F };         // Normals (RGB) + Cast/Receive Shadows (A)
-        attributes[2] = { GL_RGBA8 };           // Metallic (B) + Roughness (G), Height (R), Reserved (A)
-        attributes[3] = { GL_RGBA16F };         // Emissive (RGB) + Reserved (A)
-        attributes[4] = { GL_RGB32F };          // World Position
+        attributes[0] = { GL_RGBA8, GL_LINEAR, GL_LINEAR };           // Albedo (RGB) + AO (A)
+        attributes[1] = { GL_RGBA16F, GL_NEAREST, GL_NEAREST };         // Normals (RGB) + Cast/Receive Shadows (A)
+        attributes[2] = { GL_RGBA8, GL_LINEAR, GL_LINEAR };           // Metallic (B) + Roughness (G), Height (R), Reserved (A)
+        attributes[3] = { GL_RGBA16F, GL_LINEAR, GL_LINEAR };         // Emissive (RGB) + Reserved (A)
+        attributes[4] = { GL_RGB32F, GL_NEAREST, GL_NEAREST };          // World Position
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
             "GBufferTarget", 
@@ -381,8 +384,9 @@ namespace JLEngine
         UpdateSkinnedAnimations();
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
-
         GBufferPass(viewMatrix, projMatrix);
+        // TEST: not sure if needed?
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         if (m_debugModes != DebugModes::None) // specialized debug views
         {
@@ -397,7 +401,7 @@ namespace JLEngine
                 glm::inverse(viewMatrix),       // inverse view matrix for normals -> world space
                 m_gBufferTarget->GetTexId(4),   // gbuffer positions
                 m_gBufferTarget->GetTexId(1),   // gbuffer normals
-                m_gBufferTarget->GetTexId(0));  // gbuffer albedo
+                m_gBufferTarget->GetTexId(0));  // gbuffer albedo 
 
             // do lighting pass
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
@@ -443,6 +447,8 @@ namespace JLEngine
         Graphics::API()->BindShader(m_lightingTestShader->GetProgramId());
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
 
+        Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 4);
+
         GLuint textures[] =
         {
             m_gBufferTarget->GetTexId(0),         // gAlbedoAO
@@ -455,19 +461,10 @@ namespace JLEngine
             m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
             m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
             m_hdriSky->GetBRDFLutGPUID(),             // gBRDFLUT
+            m_gBufferTarget->GetTexId(4),         // gEmissive
         };
 
-        Graphics::API()->BindTextures(0, 10, textures);
-
-        const char* textureUniforms[] = {
-            "gAlbedoAO", "gNormals", "gMetallicRoughness", "gEmissive", "gDepth",
-            "gDLShadowMap", "gSkyTexture", "gIrradianceMap", "gPrefilteredMap", "gBRDFLUT"
-        };
-
-        for (int i = 0; i < 10; ++i)
-        {
-            m_lightingTestShader->SetUniformi(textureUniforms[i], i);
-        }
+        Graphics::API()->BindTextures(0, 11, textures);
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
@@ -495,9 +492,7 @@ namespace JLEngine
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
         Graphics::API()->BindShader(m_combineShader->GetProgramId());
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
-
-        Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 0);
-
+         
         GLuint textures[] =
         {            
             m_lightOutputTarget->GetTexId(0),
@@ -675,6 +670,7 @@ namespace JLEngine
         m_graphics->SetViewport(0, 0, m_width, m_height);
     }
 
+    // draws probe positions
     void DeferredRenderer::DebugDDGI()
     {
         for (const auto& probe : m_ddgi->GetProbeSSBO().GetDataImmutable())
@@ -684,11 +680,12 @@ namespace JLEngine
             else
                 Im3d::PushColor(Im3d::Color_Green);
             const glm::vec3 center = glm::vec3(probe.WorldPosition);
-            Im3d::DrawSphere(Im3d::Vec3(center.x, center.y, center.z), 0.5f);
+            Im3d::DrawSphere(Im3d::Vec3(center.x, center.y, center.z), 0.25f);
             Im3d::PopColor();
         }       
     }
 
+    // draws probe rays
     void DeferredRenderer::DebugDDGIRays()
     {
         auto& dataSSBO = m_ddgi->GetDebugRays();
@@ -699,10 +696,18 @@ namespace JLEngine
         {
             const DebugRay& ray = rays[i];
 
-            if (ray.Origin == ray.Hit)
+            // if they are the same dont render (used to hide invalid rays)
+            if (glm::distance(ray.Origin, ray.Hit) < 0.1)
                 continue;
 
-            Im3d::DrawLine(Math::Convert(ray.Origin), Math::Convert(ray.Hit), 0.1f, Im3d::Color_Cyan);
+            auto imOrigin = Math::Convert(ray.Origin);
+            auto imHit = Math::Convert(ray.Hit);
+            Im3d::DrawLine(imOrigin, imHit, 10.0f, ray.Color.r == 1.0 ? Im3d::Color_Red : Im3d::Color_Green);
+
+            if (glm::distance(ray.Origin, ray.Hit) > 0.01f)
+            {
+                Im3d::DrawPoint(imHit, 15.0f, Im3d::Color_Blue);
+            }
         }
 
         Graphics::API()->UnmapNamedBuffer(dataSSBO.GetGPUBuffer().GetGPUID());
@@ -755,6 +760,11 @@ namespace JLEngine
         {
             ImGui::Checkbox("Show DDGI Probes", &m_showDDGI);
             ImGui::Checkbox("Show AABBs", &m_showAABB);
+            ImGui::Checkbox("Show Probe Rays", &m_showDDGIRays);
+
+            int maxIndex = static_cast<int>(m_ddgi->GetProbeSSBO().GetDataImmutable().size()) - 1;
+            int& probeIndex = m_ddgi->GetDebugProbeIndexMutable();
+            ImGui::SliderInt("Debug Probe Index", &probeIndex, 0, std::max(0, maxIndex));
         }
         ImGui::End();
         if (m_showDDGI)
@@ -767,7 +777,10 @@ namespace JLEngine
             DebugAABB();
         }
 
-        DebugDDGIRays();
+        if (m_showDDGIRays)
+        {
+            DebugDDGIRays();
+        }        
 
         // render im3d here
         if (m_im3dManager != nullptr)
