@@ -41,6 +41,7 @@ namespace JLEngine
         void SetBlendFactor(const float blendFactor) { m_blendFactor = blendFactor; }
         void SetDebugRayCount(const int count) { m_debugRayCount = count; }
         void SetDebugProbeIndex(const int idx) { m_debugProbeIndex = idx; }
+        void SetHitThreshold(const float hitThresh) { m_hitThreshold = hitThresh; }
 
         const glm::vec3& GetGridOrigin() const { return m_gridOrigin; }
         const glm::ivec3& GetGridResolution() const { return m_gridResolution; }
@@ -50,6 +51,7 @@ namespace JLEngine
         const int GetDebugRayCount() const { return m_debugRayCount; }
         const int GetDebugProbeIndex() const { return m_debugProbeIndex; }
         int& GetDebugProbeIndexMutable() { return m_debugProbeIndex; }
+        float& GetHitThreshMutable() { return m_hitThreshold; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
         void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex);
@@ -71,6 +73,7 @@ namespace JLEngine
         int m_raysPerProbe = 128;
         int m_debugProbeIndex = 0;
         float m_blendFactor = 0.8f;
+        float m_hitThreshold = 0.2f;
 
         ShaderStorageBuffer<DDGIProbe> m_probeSSBO;
         ShaderStorageBuffer<DebugRay> m_debugRaysSSBO;

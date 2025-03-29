@@ -97,6 +97,7 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm
 	m_updateProbesCompute->SetUniformi("u_DebugRayCount", m_debugRayCount);
 	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", m_debugProbeIndex);
 	m_updateProbesCompute->SetUniform("u_InverseView", inverseView);
+	m_updateProbesCompute->SetUniformf("u_HitThreshold", m_hitThreshold);
 
     Graphics::API()->DispatchCompute(m_gridResolution.x, m_gridResolution.y, m_gridResolution.z);
     Graphics::API()->SyncShaderStorageBarrier();

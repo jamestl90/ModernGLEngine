@@ -702,7 +702,8 @@ namespace JLEngine
 
             auto imOrigin = Math::Convert(ray.Origin);
             auto imHit = Math::Convert(ray.Hit);
-            Im3d::DrawLine(imOrigin, imHit, 10.0f, ray.Color.r == 1.0 ? Im3d::Color_Red : Im3d::Color_Green);
+            auto col = Math::Convert(ray.Color);
+            Im3d::DrawLine(imOrigin, imHit, 10.0f, Im3d::Color(ray.Color.x, ray.Color.y, ray.Color.z));
 
             if (glm::distance(ray.Origin, ray.Hit) > 0.01f)
             {
@@ -765,18 +766,18 @@ namespace JLEngine
             int maxIndex = static_cast<int>(m_ddgi->GetProbeSSBO().GetDataImmutable().size()) - 1;
             int& probeIndex = m_ddgi->GetDebugProbeIndexMutable();
             ImGui::SliderInt("Debug Probe Index", &probeIndex, 0, std::max(0, maxIndex));
+            ImGui::SliderFloat("Hit Threshold", &m_ddgi->GetHitThreshMutable(), 0.01f, 0.5f);
         }
         ImGui::End();
+
         if (m_showDDGI)
         {
             DebugDDGI();
         }
-
         if (m_showAABB)
         {
             DebugAABB();
         }
-
         if (m_showDDGIRays)
         {
             DebugDDGIRays();
