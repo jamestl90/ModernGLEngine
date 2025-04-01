@@ -110,10 +110,11 @@ namespace JLEngine
         SetupGBuffer();
         
         // --- RENDER TARGETS --- 
-        std::vector<RTParams> lightRTParams(2);
+        std::vector<RTParams> lightRTParams(3);
         lightRTParams[0] = { GL_RGB8 };    // direct lighting
         lightRTParams[1] = { GL_RGB8 };    // indirect specular  
-        m_lightOutputTarget = m_resourceLoader->CreateRenderTarget("LightOutputTarget", m_width, m_height, lightRTParams, DepthType::None, 2).get();
+        lightRTParams[2] = { GL_RGB8 };
+        m_lightOutputTarget = m_resourceLoader->CreateRenderTarget("LightOutputTarget", m_width, m_height, lightRTParams, DepthType::None, 3).get();
 
         RTParams rtParams;
         rtParams.internalFormat = GL_RGBA8;
@@ -448,6 +449,7 @@ namespace JLEngine
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
 
         Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 4);
+        Graphics::BindGPUBuffer(m_ddgi->GetProbeSSBO().GetGPUBuffer(), 6);
 
         GLuint textures[] =
         {
@@ -483,6 +485,13 @@ namespace JLEngine
         m_lightingTestShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
         m_lightingTestShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
 
+        auto& gridRes = m_ddgi->GetGridResolution();
+        auto& gridOrigin = m_ddgi->GetGridOrigin();
+        auto& probeSpacing = m_ddgi->GetProbeSpacing();
+        m_lightingTestShader->SetUniform("u_GridResolution", gridRes);
+        m_lightingTestShader->SetUniform("u_GridOrigin", gridOrigin);
+        m_lightingTestShader->SetUniform("u_ProbeSpacing", probeSpacing);
+
         RenderScreenSpaceTriangle();
     }
 
@@ -499,9 +508,10 @@ namespace JLEngine
             m_lightOutputTarget->GetTexId(1),
             m_gBufferTarget->GetTexId(3),   // emmission
             m_gBufferTarget->GetTexId(0),    // albedo
+            m_lightOutputTarget->GetTexId(2),
         };
 
-        Graphics::API()->BindTextures(0, 4, textures);
+        Graphics::API()->BindTextures(0, 5, textures);
 
         RenderScreenSpaceTriangle();
     }

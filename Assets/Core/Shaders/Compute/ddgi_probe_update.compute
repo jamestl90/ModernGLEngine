@@ -57,11 +57,12 @@ uniform float u_HitThreshold;
 
 // ray marching constants
 const int maxSteps = 64;
-const float maxDistance = 7.0;
+const float maxDistance = 8.0;
 const float stepSize = maxDistance / float(maxSteps);
 const float normalThreshold = 0.8; 
 const float minStepScale = 0.5; // For adaptive step size
 const float maxStepScale = 2.0; // For adaptive step size
+const float depthAdaptiveScale = 3.0; 
 
 // fast and effective way to distribute points 
 // evenly (uniformly?) on a sphere
@@ -89,38 +90,37 @@ bool RaymarchGBufferHit(
 {
     float currentStepSize = stepSize;
     float t = 0.0;
+    mat4 viewProjMatrix = projMatrix * viewMatrix;
 
     for (int step = 0; step < maxSteps; ++step)
     {
-        t = float(step) * stepSize;
         vec3 samplePos = origin + dir * t;
 
-        if (t > maxDistance)
-            break;
+        if (t > maxDistance) break;
 
-        vec4 viewPos = viewMatrix * vec4(samplePos, 1.0);
-        vec4 clipPos = projMatrix * viewPos;
-
-        if (viewPos.z > 0.0) 
-        { 
-            t += currentStepSize;
-            continue;
-        }
+        vec4 clipPos = viewProjMatrix * vec4(samplePos, 1.0);
 
         if (clipPos.w <= 0.0)
+        {
+            t += currentStepSize * maxStepScale;
             continue;
+        }
 
         vec3 ndc = clipPos.xyz / clipPos.w;
         vec2 uv = ndc.xy * 0.5 + 0.5;
         
-        if (any(lessThan(uv, vec2(0)))) continue;
-        if (any(greaterThan(uv, vec2(1)))) continue;
+        bool inView = all(greaterThanEqual(uv, vec2(0.0))) && all(lessThan(uv, vec2(1.0)));
+        if (!inView)
+        {
+            continue;
+        }
 
         ivec2 pixel = ivec2(uv * windowSize);
-        vec3 gBufferPos = texelFetch(u_PositionBuffer, pixel, 0).rgb;
+        vec3 gBufferWorldPos = texelFetch(u_PositionBuffer, pixel, 0).rgb;
 
-        float expectedDepth = -viewPos.z;
-        float actualDepth = -(viewMatrix * vec4(gBufferPos, 1.0)).z;
+        float actualDepth = length(gBufferWorldPos - camPos.xyz); // World-space distance
+        float expectedDepth = length(samplePos - camPos.xyz); 
+        
         float depthDiff = abs(actualDepth - expectedDepth);
 
         if (depthDiff < u_HitThreshold)
@@ -138,9 +138,7 @@ bool RaymarchGBufferHit(
                 return true;
             }
         }
-        currentStepSize = clamp(stepSize * (1.0 + depthDiff * 2.0), 
-        stepSize * minStepScale, 
-        stepSize * maxStepScale);
+        currentStepSize = stepSize;
         t += currentStepSize;
     }
 
@@ -199,6 +197,7 @@ void main()
             vec3 irradiance = hitAlbedo * incomingLight * max(dot(-dir, hitNormal), 0.0);
             totalIrradiance += irradiance;
             totalDistance += length(hitPos - origin);
+            rayCol = irradiance;
             hitCount++;
         }
         else // no hit
@@ -213,18 +212,17 @@ void main()
             debugRays[i].origin = origin;
             debugRays[i].hit = hitPos;
             // visualize the number of steps 
-            debugRays[i].color = vec3(0, float(stepsTaken) / float(maxSteps), 0);
+            debugRays[i].color = rayCol;
         }
     }
 
-    // average out the accumulated irradiance and distance
-    float hitRatio = float(hitCount) / float(u_RaysPerProbe);
-    vec3 avgIrradiance = totalIrradiance / max(1, hitCount);
-    float avgDistance = totalDistance / float(u_RaysPerProbe);
-
-    // Apply blending with previous frame's data
-    probe.Irradiance.rgb = mix(probe.Irradiance.rgb, avgIrradiance, u_BlendFactor * hitRatio);
-    probe.HitDistance = mix(probe.HitDistance, avgDistance, u_BlendFactor);
-
-    probes[index] = probe;
+    if (hitCount > 0) 
+    {
+        vec3 finalIrradiance = totalIrradiance / float(hitCount);
+        float finalDistance   = totalDistance / float(hitCount);
+    
+        probe.Irradiance.rgb = mix(probe.Irradiance.rgb, finalIrradiance, u_BlendFactor);
+        probe.HitDistance    = mix(probe.HitDistance, finalDistance, u_BlendFactor);
+        probes[index] = probe;
+    }
 }

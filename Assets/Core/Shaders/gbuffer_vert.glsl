@@ -97,7 +97,6 @@ void main()
     //    displacePos += (height * a_Normal);
     //}
 
-    // clip-space position
     vec4 worldPosition = modelMatrix * vec4(a_Position, 1.0);
     v_WorldPos = worldPosition.xyz;
     gl_Position = projMatrix * viewMatrix * worldPosition;

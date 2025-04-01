@@ -30,6 +30,22 @@ uniform float u_Far;
 uniform vec3 u_LightDirection;
 uniform vec3 u_LightColor;      
 
+uniform vec3 u_GridOrigin;
+uniform vec3 u_ProbeSpacing;
+uniform ivec3 u_GridResolution;
+
+struct DDGIProbe
+{
+    vec4 WorldPosition;
+    vec4 Irradiance;
+    float HitDistance;
+};
+
+layout(std430, binding = 6) readonly buffer ProbeData 
+{
+    DDGIProbe perDrawData[];
+};
+
 layout(std140, binding = 4) uniform ShaderGlobalData 
 {
     mat4 viewMatrix;
@@ -43,6 +59,7 @@ layout(std140, binding = 4) uniform ShaderGlobalData
 
 layout(location = 0) out vec3 DirectLight;
 layout(location = 1) out vec3 IBL;
+layout(location = 2) out vec3 IndirectLight;
 
 struct GBufferData 
 {
@@ -224,6 +241,52 @@ vec3 ApplyGammaCorrection(vec3 color)
     return pow(color, vec3(1.0 / 2.2));
 }
 
+// DDGI Functions
+int Flatten3DIndex(ivec3 coord, ivec3 resolution) 
+{
+    return coord.x + coord.y * resolution.x + coord.z * resolution.x * resolution.y;
+}
+
+bool IsInBounds(ivec3 coord, ivec3 resolution) 
+{
+    return all(greaterThanEqual(coord, ivec3(0))) && all(lessThan(coord, resolution));
+}
+
+vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
+{
+    vec3 gridCoord = (worldPos - u_GridOrigin) / u_ProbeSpacing;
+    ivec3 baseCoord = ivec3(floor(gridCoord));
+    vec3 localCoord = fract(gridCoord);
+
+    vec3 irradiance = vec3(0.0);
+    float totalWeight = 0.0;
+
+    for (int z = 0; z <= 1; ++z)
+    for (int y = 0; y <= 1; ++y)
+    for (int x = 0; x <= 1; ++x)
+    {
+        ivec3 coord = baseCoord + ivec3(x, y, z);
+        if (!IsInBounds(coord, ivec3(u_GridResolution))) continue;
+
+        int index = Flatten3DIndex(coord, ivec3(u_GridResolution));
+        DDGIProbe probe = perDrawData[index];
+
+        vec3 probePos = probe.WorldPosition.xyz;
+        vec3 toProbe = worldPos - probePos;
+        float dist = length(toProbe);
+
+        float visibilityWeight = clamp(1.0 - dist / max(probe.HitDistance, 0.001), 0.0, 1.0);
+        float normalWeight = max(dot(normalWS, normalize(toProbe)), 0.0);
+        float weight = visibilityWeight * normalWeight + 0.0001;
+
+        irradiance += probe.Irradiance.rgb * weight;
+        totalWeight += weight;
+    }
+
+    return irradiance / max(totalWeight, 0.0001);
+}
+
+// main
 void main() 
 {
     GBufferData gData = ExtractGBufferData(v_TexCoords);
@@ -249,10 +312,16 @@ void main()
         shadow = ShadowCalculation(fragPosLightSpace, normalWS, lightDirWS);
     }
 
+    // direct contribution
     DirectLight = CalculateDirectLighting(gData, shadow, lightDirView, viewDir);
+
+    // hdr sky contributions 
     vec3 iblDiffuse = CalculateDiffuseIBL(normalWS, gData.albedo);
     vec3 iblSpecular = CalculateSpecularIBL(normalWS, viewDirWS, gData.roughness, gData.F0);
     IBL = iblDiffuse + iblSpecular;
+
+    // global illumination contribution
+    IndirectLight = SampleDDGI(gData.worldPos, normalWS);
 
     //vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
     //totalLighting += gData.emissive;
