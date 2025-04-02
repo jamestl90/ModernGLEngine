@@ -163,19 +163,20 @@ namespace JLEngine
     void DeferredRenderer::SetupGBuffer() 
     {
         // Configure G-buffer render target
-        std::vector<RTParams> attributes(5);
+        std::vector<RTParams> attributes(6);
         attributes[0] = { GL_RGBA8, GL_LINEAR, GL_LINEAR };           // Albedo (RGB) + AO (A)
         attributes[1] = { GL_RGBA16F, GL_NEAREST, GL_NEAREST };         // Normals (RGB) + Cast/Receive Shadows (A)
         attributes[2] = { GL_RGBA8, GL_LINEAR, GL_LINEAR };           // Metallic (B) + Roughness (G), Height (R), Reserved (A)
         attributes[3] = { GL_RGBA16F, GL_LINEAR, GL_LINEAR };         // Emissive (RGB) + Reserved (A)
         attributes[4] = { GL_RGB32F, GL_NEAREST, GL_NEAREST };          // World Position
+        attributes[5] = { GL_R32F, GL_NEAREST, GL_NEAREST };            // manual write out depth
 
         m_gBufferTarget = m_resourceLoader->CreateRenderTarget(
             "GBufferTarget", 
             m_width, 
             m_height, 
             attributes, 
-            DepthType::Texture, 
+            DepthType::Texture,                                         // default depth
             static_cast<uint32_t>(attributes.size())).get();
     }
  
@@ -402,7 +403,8 @@ namespace JLEngine
                 glm::inverse(viewMatrix),       // inverse view matrix for normals -> world space
                 m_gBufferTarget->GetTexId(4),   // gbuffer positions
                 m_gBufferTarget->GetTexId(1),   // gbuffer normals
-                m_gBufferTarget->GetTexId(0));  // gbuffer albedo 
+                m_gBufferTarget->GetTexId(0),
+                m_gBufferTarget->GetTexId(5));  // linear depth
 
             // do lighting pass
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
@@ -449,7 +451,7 @@ namespace JLEngine
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
 
         Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 4);
-        Graphics::BindGPUBuffer(m_ddgi->GetProbeSSBO().GetGPUBuffer(), 6);
+        Graphics::BindGPUBuffer(m_ddgi->GetProbeSSBO().GetGPUBuffer(), 7);
 
         GLuint textures[] =
         {
@@ -463,10 +465,11 @@ namespace JLEngine
             m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
             m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
             m_hdriSky->GetBRDFLutGPUID(),             // gBRDFLUT
-            m_gBufferTarget->GetTexId(4),         // gEmissive
+            m_gBufferTarget->GetTexId(4),        // world pos
+            m_gBufferTarget->GetTexId(5),        // linear depth 
         };
 
-        Graphics::API()->BindTextures(0, 11, textures);
+        Graphics::API()->BindTextures(0, 12, textures);
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
@@ -491,6 +494,12 @@ namespace JLEngine
         m_lightingTestShader->SetUniform("u_GridResolution", gridRes);
         m_lightingTestShader->SetUniform("u_GridOrigin", gridOrigin);
         m_lightingTestShader->SetUniform("u_ProbeSpacing", probeSpacing);
+
+        glm::vec3 gridResolutionVec = glm::vec3(gridRes); // e.g., [6, 3, 5]
+        glm::vec3 totalGridWorldSize = gridResolutionVec * probeSpacing;
+        glm::vec3 gridHalfSizeWorld = totalGridWorldSize / 2.0f;
+        glm::vec3 gridMinCornerWorldPos = gridOrigin - gridHalfSizeWorld;
+        m_lightingTestShader->SetUniform("u_GridMinCorner", gridMinCornerWorldPos);
 
         RenderScreenSpaceTriangle();
     }

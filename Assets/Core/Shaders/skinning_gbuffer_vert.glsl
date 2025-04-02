@@ -40,6 +40,7 @@ out vec3 v_Normal;
 out vec2 v_TexCoord;
 out vec3 v_Tangent;
 out vec3 v_Bitangent;
+out float v_NegViewPos;
 flat out uint v_MaterialIndex;
 
 void main() 
@@ -69,6 +70,8 @@ void main()
 
     vec4 worldPosition = skinningMatrix * vec4(a_Position, 1.0);
     v_WorldPos = worldPosition.xyz;
+    vec4 viewPos = viewMatrix * modelMatrix * worldPosition;
+    v_NegViewPos = -viewPos.z;
 
     mat3 modelMatrixNormal = transpose(inverse(mat3(modelMatrix)));
     mat3 skinningMatrixNormal = transpose(inverse(mat3(skinningMatrix)));

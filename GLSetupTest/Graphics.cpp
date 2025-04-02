@@ -526,12 +526,12 @@ namespace JLEngine
 			glCreateTextures(GL_TEXTURE_2D, 1, &depth);
 			if (target->IsMultisampled())
 			{
-				glTextureStorage2DMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32,
+				glTextureStorage2DMultisample(depth, target->GetSamples(), GL_DEPTH_COMPONENT32F,
 					target->GetWidth(), target->GetHeight(), GL_TRUE);
 			}
 			else
 			{
-				glTextureStorage2D(depth, 1, GL_DEPTH_COMPONENT32, target->GetWidth(), target->GetHeight());
+				glTextureStorage2D(depth, 1, GL_DEPTH_COMPONENT32F, target->GetWidth(), target->GetHeight());
 			}
 			glTextureParameteri(depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTextureParameteri(depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

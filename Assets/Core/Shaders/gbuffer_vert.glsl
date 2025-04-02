@@ -61,6 +61,7 @@ out vec3 v_Normal;
 out vec2 v_TexCoord;
 out vec3 v_Tangent;
 out vec3 v_Bitangent;
+out float v_NegViewPos;
 flat out uint v_MaterialIndex;
 
 //float getHeight(MaterialGPU material) 
@@ -99,5 +100,7 @@ void main()
 
     vec4 worldPosition = modelMatrix * vec4(a_Position, 1.0);
     v_WorldPos = worldPosition.xyz;
-    gl_Position = projMatrix * viewMatrix * worldPosition;
+    vec4 viewPos = viewMatrix * worldPosition;
+    v_NegViewPos = -viewPos.z;
+    gl_Position = projMatrix * viewPos;
 }

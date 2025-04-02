@@ -233,6 +233,8 @@ int MainApp(std::string assetFolder)
     auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(4, 0, 0));
     engine.MakeInstanceOf(tree1, glm::vec3(-4, 0, 0), true);
 
+    auto depthTestCube = engine.LoadAndAttachToRoot(assetFolder + "depthTest.glb", glm::vec3(-6, 1, 6));
+
     //DemoInstancing(engine, m_assetPath);
     DemoSkinning(engine, m_assetPath);
 

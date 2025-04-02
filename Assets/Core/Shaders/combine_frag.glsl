@@ -21,7 +21,7 @@ void main()
     vec3 indirectLighting = texture(IndirectLight, v_TexCoords).rgb;
 
     //vec3 totalLighting = directLighting + iblLighting + (rayMarchColor * 0.3);
-    vec3 totalLighting = directLighting + iblLighting + indirectLighting + emissive;
+    vec3 totalLighting = directLighting + iblLighting + emissive;
 
     if (ao > 0.0)
         totalLighting *= ao;

@@ -13,6 +13,7 @@ layout(binding = 7) uniform samplerCube gIrradianceMap;
 layout(binding = 8) uniform samplerCube gPrefilteredMap;
 layout(binding = 9) uniform sampler2D gBRDFLUT;
 layout(binding = 10) uniform sampler2D gPositions;
+layout(binding = 11) uniform sampler2D gLinearDepth;
 
 uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
@@ -33,6 +34,7 @@ uniform vec3 u_LightColor;
 uniform vec3 u_GridOrigin;
 uniform vec3 u_ProbeSpacing;
 uniform ivec3 u_GridResolution;
+uniform vec3 u_GridMinCorner;
 
 struct DDGIProbe
 {
@@ -41,9 +43,9 @@ struct DDGIProbe
     float HitDistance;
 };
 
-layout(std430, binding = 6) readonly buffer ProbeData 
+layout(std430, binding = 7) readonly buffer ProbeData 
 {
-    DDGIProbe perDrawData[];
+    DDGIProbe probes[];
 };
 
 layout(std140, binding = 4) uniform ShaderGlobalData 
@@ -220,7 +222,7 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     gData.ao = max(albedoAOSample.a, 0.0);
     gData.normal = normalize(normalSample.xyz);
     gData.depth = texture(gDepth, texCoords).r;
-    gData.worldPos = ReconstructWorldPosFromDepth(texCoords, gData.depth);
+    gData.worldPos = texture(gPositions, texCoords).xyz; //ReconstructWorldPosFromDepth(texCoords, gData.depth);
     vec4 metallicRoughness = texture(gMetallicRoughness, texCoords);
     gData.metallic = metallicRoughness.b;
     gData.roughness = max(metallicRoughness.g, 0.05);
@@ -252,38 +254,48 @@ bool IsInBounds(ivec3 coord, ivec3 resolution)
     return all(greaterThanEqual(coord, ivec3(0))) && all(lessThan(coord, resolution));
 }
 
-vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
+vec3 SampleDDGI_DEBUG_STEP_1(vec3 worldPos, vec3 normalWS)
 {
-    vec3 gridCoord = (worldPos - u_GridOrigin) / u_ProbeSpacing;
+    vec3 relativePos = worldPos - u_GridMinCorner;
+    vec3 gridCoord = relativePos / u_ProbeSpacing;
     ivec3 baseCoord = ivec3(floor(gridCoord));
-    vec3 localCoord = fract(gridCoord);
 
-    vec3 irradiance = vec3(0.0);
+    vec3 accumulatedIrradiance = vec3(0.0);
     float totalWeight = 0.0;
+    const float epsilon = 0.0001;
 
     for (int z = 0; z <= 1; ++z)
     for (int y = 0; y <= 1; ++y)
     for (int x = 0; x <= 1; ++x)
     {
-        ivec3 coord = baseCoord + ivec3(x, y, z);
-        if (!IsInBounds(coord, ivec3(u_GridResolution))) continue;
+        ivec3 probeCoord = baseCoord + ivec3(x, y, z);
+        if (!IsInBounds(probeCoord, u_GridResolution)) continue;
 
-        int index = Flatten3DIndex(coord, ivec3(u_GridResolution));
-        DDGIProbe probe = perDrawData[index];
+        int index = Flatten3DIndex(probeCoord, u_GridResolution);
+        DDGIProbe probe = probes[index];
 
         vec3 probePos = probe.WorldPosition.xyz;
-        vec3 toProbe = worldPos - probePos;
-        float dist = length(toProbe);
+        float dist = length(worldPos - probePos);
 
-        float visibilityWeight = clamp(1.0 - dist / max(probe.HitDistance, 0.001), 0.0, 1.0);
-        float normalWeight = max(dot(normalWS, normalize(toProbe)), 0.0);
-        float weight = visibilityWeight * normalWeight + 0.0001;
+        // --- Visibility Weight ---
+        float visibilityWeight = clamp(1.0 - dist / max(probe.HitDistance, epsilon), 0.0, 1.0);
+        // Debug probe.HitDistance if this causes black areas (returns 0 weight).
 
-        irradiance += probe.Irradiance.rgb * weight;
+        // --- Normal Weight (Corrected) ---
+        // Direction FROM shading point TOWARDS the probe
+        vec3 dirToProbe = normalize(probePos - worldPos);
+        // Cosine angle between surface normal and direction TO the probe
+        float normalWeight = max(dot(normalWS, dirToProbe), 0.0);
+
+        // Combine weights (Adding epsilon prevents weight=0 causing issues later)
+        float weight = visibilityWeight * normalWeight + epsilon;
+
+        accumulatedIrradiance += probe.Irradiance.rgb * weight;
         totalWeight += weight;
     }
 
-    return irradiance / max(totalWeight, 0.0001);
+    // Normalize
+    return accumulatedIrradiance / max(totalWeight, epsilon);
 }
 
 // main
@@ -321,7 +333,7 @@ void main()
     IBL = iblDiffuse + iblSpecular;
 
     // global illumination contribution
-    IndirectLight = SampleDDGI(gData.worldPos, normalWS);
+    IndirectLight = SampleDDGI_DEBUG_STEP_1(gData.worldPos, normalWS);
 
     //vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
     //totalLighting += gData.emissive;

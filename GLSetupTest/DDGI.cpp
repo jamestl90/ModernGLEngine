@@ -76,16 +76,16 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	Graphics::CreateGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), m_debugRaysSSBO.GetDataImmutable());
 }
 
-void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex)
+void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex, uint32_t depthTex)
 {
     Graphics::API()->BindShader(m_updateProbesCompute->GetProgramId());
 
     // bind textures
-    GLuint textures[] = { posTex, normalTex, albedoTex };
-    Graphics::API()->BindTextures(0, 3, textures);
+    GLuint textures[] = { posTex, normalTex, albedoTex, depthTex };
+    Graphics::API()->BindTextures(0, 4, textures);
 
     // bind probe data
-    Graphics::BindGPUBuffer(m_probeSSBO.GetGPUBuffer(), 3);
+    Graphics::BindGPUBuffer(m_probeSSBO.GetGPUBuffer(), 7);
 	Graphics::BindGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), 4);
 	Graphics::BindGPUBuffer(shaderGlobaldata->GetGPUBuffer(), 5);
 
@@ -98,6 +98,8 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm
 	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", m_debugProbeIndex);
 	m_updateProbesCompute->SetUniform("u_InverseView", inverseView);
 	m_updateProbesCompute->SetUniformf("u_HitThreshold", m_hitThreshold);
+
+
 
     Graphics::API()->DispatchCompute(m_gridResolution.x, m_gridResolution.y, m_gridResolution.z);
     Graphics::API()->SyncShaderStorageBarrier();

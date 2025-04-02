@@ -54,7 +54,7 @@ void main()
     else if (debugMode == 4) 
     {
         float depth = texture(gDepth, v_TexCoords).r;
-        FragColor = vec4(vec3(depth), 1.0); // Normalize to [0, 1]
+        FragColor = vec4(vec3(depth), 1.0); 
     } 
     else if (debugMode == 5) 
     {

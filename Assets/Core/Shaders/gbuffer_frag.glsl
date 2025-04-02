@@ -32,6 +32,7 @@ layout(location = 1) out vec4 gNormalShadow;      // Normal (RGB) + ShadowInfo
 layout(location = 2) out vec4 gMetallicRoughness; // Metallic (R) + Roughness (G) (check gltf format)
 layout(location = 3) out vec4 gEmissive;          // Emissive (RGB) + Reserved (A)
 layout(location = 4) out vec3 gPositions;          // World Positions (RGB)
+layout(location = 5) out float gLinearDepth;              // linear depth;
 
 layout(std430, binding = 0) readonly buffer MaterialBuffer 
 {
@@ -54,7 +55,8 @@ in vec3 v_WorldPos;
 in vec3 v_Normal;        
 in vec2 v_TexCoord;     
 in vec3 v_Tangent;       
-in vec3 v_Bitangent;     
+in vec3 v_Bitangent;    
+in float v_NegViewPos; 
 flat in uint v_MaterialIndex;
 
 // Get material properties
@@ -138,4 +140,5 @@ void main()
     gMetallicRoughness = metallicRoughness;       // Metallic + Roughness
     gEmissive = vec4(emissive, 0.0);                   // Emissive + Reserved
     gPositions = v_WorldPos;
+    gLinearDepth = v_NegViewPos;
 }

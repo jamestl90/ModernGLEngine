@@ -54,7 +54,7 @@ namespace JLEngine
         float& GetHitThreshMutable() { return m_hitThreshold; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
-        void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex);
+        void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex, uint32_t depthTex);
 
         ShaderStorageBuffer<DDGIProbe>& GetProbeSSBO() { return m_probeSSBO; }
         ShaderStorageBuffer<DebugRay>& GetDebugRays() { return m_debugRaysSSBO; }
