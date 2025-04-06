@@ -503,9 +503,9 @@ namespace JLEngine
         auto& gridRes = m_ddgi->GetGridResolution();
         auto& gridOrigin = m_ddgi->GetGridOrigin();
         auto& probeSpacing = m_ddgi->GetProbeSpacing();
-        m_lightingTestShader->SetUniform("u_GridResolution", gridRes);
-        m_lightingTestShader->SetUniform("u_GridOrigin", gridOrigin);
-        m_lightingTestShader->SetUniform("u_ProbeSpacing", probeSpacing);
+        m_lightingTestShader->SetUniform("u_DDGI_GridResolution", gridRes);
+        m_lightingTestShader->SetUniform("u_DDGI_GridCenter", gridOrigin);
+        m_lightingTestShader->SetUniform("u_DDGI_ProbeSpacing", probeSpacing);
 
         glm::vec3 gridResolutionVec = glm::vec3(gridRes); 
         glm::vec3 totalGridWorldSize = gridResolutionVec * probeSpacing;

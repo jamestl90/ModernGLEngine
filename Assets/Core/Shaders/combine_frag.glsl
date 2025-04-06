@@ -20,11 +20,12 @@ void main()
     vec3 emissive = texture(gEmissive, v_TexCoords).rgb;
     vec3 indirectLighting = texture(IndirectLight, v_TexCoords).rgb;
 
-    //vec3 totalLighting = directLighting + iblLighting + (rayMarchColor * 0.3);
-    vec3 totalLighting = directLighting + iblLighting + emissive;
+    vec3 totalLighting = directLighting + iblLighting + emissive + indirectLighting;
 
     if (ao > 0.0)
+    {
         totalLighting *= ao;
+    }
 
     FragColor = vec4(totalLighting, 1.0);
 }

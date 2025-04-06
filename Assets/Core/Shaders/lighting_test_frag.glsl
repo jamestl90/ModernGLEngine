@@ -31,10 +31,9 @@ uniform float u_Far;
 uniform vec3 u_LightDirection;
 uniform vec3 u_LightColor;      
 
-uniform vec3 u_GridOrigin;
-uniform vec3 u_ProbeSpacing;
-uniform ivec3 u_GridResolution;
-uniform vec3 u_GridMinCorner;
+uniform vec3 u_DDGI_GridCenter;
+uniform vec3 u_DDGI_ProbeSpacing;
+uniform ivec3 u_DDGI_GridResolution;
 
 // change these to uniforms later
 const float u_DDGIVisibilityBias = 0.01;
@@ -257,18 +256,10 @@ int Flatten3DIndex(ivec3 coord, ivec3 resolution)
     return coord.x + coord.y * resolution.x + coord.z * resolution.x * resolution.y;
 }
 
-bool IsInBounds(ivec3 coord, ivec3 resolution) 
-{
-    return all(greaterThanEqual(coord, ivec3(0))) && all(lessThan(coord, resolution));
-}
-
-int GetProbeIndex(ivec3 coords)
-{
-    ivec3 clampedCoords = clamp(coords, ivec3(0), u_GridResolution - 1);
-
-    return clampedCoords.x +
-           clampedCoords.y * u_GridResolution.x +
-           clampedCoords.z * u_GridResolution.x * u_GridResolution.y;
+int GetProbeIndex(ivec3 coords, ivec3 gridResolution) 
+{ 
+    ivec3 clampedCoords = clamp(coords, ivec3(0), gridResolution - 1);
+    return Flatten3DIndex(clampedCoords, gridResolution);
 }
 
 vec3 EvaluateSH9(vec4 shCoeffs[9], vec3 direction)
@@ -337,16 +328,21 @@ float CalculateProbeVisibility(vec3 worldPos, int probeIndex)
 
 vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
 {
-vec3 relativePos = worldPos - u_GridMinCorner;
-    vec3 fracCoords = relativePos / u_ProbeSpacing;
+    vec3 posRelativeToCenter = worldPos - u_DDGI_GridCenter;
 
-    ivec3 baseCoords = ivec3(floor(fracCoords));
+    vec3 probeGridTotalSize = vec3(u_DDGI_GridResolution - 1) * u_DDGI_ProbeSpacing;
+    probeGridTotalSize = max(probeGridTotalSize, vec3(1e-5));
 
-    vec3 lerpFactors = fract(fracCoords);
+    vec3 normalizedPos_NegHalfToPosHalf = posRelativeToCenter / probeGridTotalSize;
 
-    // 4. Sample the 8 surrounding probes
+    vec3 normalizedPos_Indices = normalizedPos_NegHalfToPosHalf * vec3(u_DDGI_GridResolution - 1);
+    vec3 probeSpacePos = normalizedPos_Indices + vec3(u_DDGI_GridResolution - 1) * 0.5;
+
+    ivec3 baseCoords = ivec3(floor(probeSpacePos));
+    vec3 lerpFactors = fract(probeSpacePos);
+
     vec3 totalIrradiance = vec3(0.0);
-    float totalVisibility = 0.0;
+    float totalVisibilityWeight = 0.0;
 
     for (int z = 0; z < 2; ++z) 
     {
@@ -357,30 +353,27 @@ vec3 relativePos = worldPos - u_GridMinCorner;
                 ivec3 cornerOffset = ivec3(x, y, z);
                 ivec3 probeCoords = baseCoords + cornerOffset;
 
-                int probeIndex = GetProbeIndex(probeCoords);
+                int probeIndex = GetProbeIndex(probeCoords, u_DDGI_GridResolution);
+                float visibility = 1.0;
 
-                float visibility = 1.0;//CalculateProbeVisibility(worldPos, probeIndex);
-
-                if (visibility > 0.0) 
+                if (visibility > 1e-5)
                 {
                     vec3 probeIrradiance = EvaluateSH9(probes[probeIndex].SHCoeffs, normalWS);
 
-                    vec3 weight3D = vec3(x, y, z);
+                    vec3 weight3D = vec3(cornerOffset);
                     float weight = mix(1.0 - lerpFactors.x, lerpFactors.x, weight3D.x) *
                                    mix(1.0 - lerpFactors.y, lerpFactors.y, weight3D.y) *
                                    mix(1.0 - lerpFactors.z, lerpFactors.z, weight3D.z);
 
                     totalIrradiance += probeIrradiance * visibility * weight;
-
-                    totalVisibility += visibility * weight;
+                    totalVisibilityWeight += visibility * weight;
                 }
             }
         }
     }
 
-    if (totalVisibility > 1e-5) 
-    { 
-        return totalIrradiance / totalVisibility;
+    if (totalVisibilityWeight > 1e-5) {
+        return totalIrradiance / totalVisibilityWeight;
     } else {
         return vec3(0.0);
     }
@@ -391,44 +384,72 @@ void main()
 {
     GBufferData gData = ExtractGBufferData(v_TexCoords);
 
-    //float linearDepth = LinearizeDepth(gData.depth);
-    vec3 viewPos = ReconstructViewPosFromDepth(v_TexCoords, gData.depth);
-    vec3 viewDir = normalize(-viewPos);
-    vec3 viewDirWS = normalize(camPos.xyz - gData.worldPosFromDepth);
-    vec3 lightDirWS = normalize(-u_LightDirection);
-    vec3 lightDirView = normalize((viewMatrix * vec4(-u_LightDirection, 0.0)).xyz);
-
-    if (gData.depth > 0.999)    
-    {
-        DirectLight = texture(gSkyTexture, -viewDirWS).rgb;
-        return;
+    // Check for skybox fragments
+    if (gData.depth >= 0.9999) {
+        vec3 viewDirWS_Sky = normalize(gData.worldPosFromDepth - camPos.xyz);
+        // For skybox pixels, output sky color to appropriate target
+        // Depending on your combine pass, you might output sky to direct, or handle separately
+        DirectLight = texture(gSkyTexture, viewDirWS_Sky).rgb; // Example: Output sky to direct light buffer
+        IBL = vec3(0.0);
+        IndirectLight   = vec3(0.0);
+        discard; // Or return
     }
 
-    vec3 normalWS = normalize((u_ViewInverse * vec4(gData.normal, 0.0)).xyz);
+    // Calculate necessary vectors in world space
+    vec3 viewDirWS  = normalize(camPos.xyz - gData.worldPos);
+    vec3 lightDirWS = normalize(-u_LightDirection);
+    vec3 normalWS   = normalize((u_ViewInverse * vec4(gData.normal, 0.0)).xyz);
+
+    // --- Shadows ---
     vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(gData.worldPos, 1.0);
     float shadow = 1.0;
-    if (gData.receiveShadows > 0.0)
-    {
+    if (gData.receiveShadows > 0.0) {
         shadow = ShadowCalculation(fragPosLightSpace, normalWS, lightDirWS);
     }
 
-    // direct contribution
-    DirectLight = CalculateDirectLighting(gData, shadow, lightDirView, viewDir);
+    // --- Direct Lighting ---
+    vec3 halfDirWS    = normalize(lightDirWS + viewDirWS);
+    float NdotL_WS    = max(dot(normalWS, lightDirWS), 0.0);
+    float NdotV_WS    = max(dot(normalWS, viewDirWS), 0.0);
+    float NdotH_WS    = max(dot(normalWS, halfDirWS), 0.0);
+    float VdotH_WS    = max(dot(viewDirWS, halfDirWS), 0.0);
 
-    // hdr sky contributions 
-    vec3 iblDiffuse = CalculateDiffuseIBL(normalWS, gData.albedo);
-    vec3 iblSpecular = CalculateSpecularIBL(normalWS, viewDirWS, gData.roughness, gData.F0);
-    IBL = iblDiffuse + iblSpecular;
+    vec3 F            = fresnelSchlickRoughness(VdotH_WS, gData.F0, gData.roughness);
+    float NDF         = ggxNDF(NdotH_WS, gData.roughness);
+    float G           = geometrySmith(NdotV_WS, NdotL_WS, gData.roughness);
+    vec3 specularDirect = F * NDF * G / max(4.0 * NdotV_WS * NdotL_WS, 0.001);
+    vec3 kD           = (vec3(1.0) - F) * (1.0 - gData.metallic); // Diffuse factor
+    vec3 diffuseDirect= kD * gData.albedo / 3.14159;
+    vec3 directLighting = (diffuseDirect + specularDirect) * u_LightColor * NdotL_WS * shadow;
+    // --- End Direct Lighting ---
 
-    // global illumination contribution
-    IndirectLight = SampleDDGI(gData.worldPos, normalWS);
 
-    //vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
-    //totalLighting += gData.emissive;
-    //totalLighting *= gData.ao;
+    // --- Indirect Lighting ---
 
-    ////totalLighting = ApplyToneMapping(totalLighting);
-    ////totalLighting = ApplyGammaCorrection(totalLighting);
+    // Specular IBL (Still use global prefiltered map)
+    vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
+    vec3 prefilteredColor = textureLod(gPrefilteredMap, reflectionWS, gData.roughness * 4.0).rgb;
+    vec2 brdf             = texture(gBRDFLUT, vec2(NdotV_WS, gData.roughness)).rg;
+    // Use same Fresnel as direct lighting for consistency
+    vec3 specularIBL      = prefilteredColor * (F * brdf.x + brdf.y); // F = Fresnel calculated earlier
 
-    //FragColor = vec4(gData.raymarchGI, 1.0);
+    // Diffuse GI (Use DDGI result exclusively)
+    vec3 ddgiIrradiance   = SampleDDGI(gData.worldPos, normalWS);
+    // Apply surface albedo and energy conservation (Lambertian diffuse BRDF = albedo / PI)
+    // We use kD here again to modulate diffuse based on Fresnel/metallic, consistent with direct
+    vec3 diffuseGI        = ddgiIrradiance * kD * gData.albedo / 3.14159;
+    // Simpler alternative if kD isn't desired for indirect:
+    // vec3 diffuseGI     = ddgiIrradiance * gData.albedo / 3.14159;
+
+    // Apply scaling factors (optional, can be done in combine pass too)
+    diffuseGI            *= u_DiffuseIndirectFactor;
+    specularIBL          *= u_SpecularIndirectFactor;
+
+    // --- End Indirect Lighting ---
+
+    // --- Final Output Assignment (Option 1 Structure) ---
+    // AO affects all lighting components
+    DirectLight = (directLighting + gData.emissive) * gData.ao;
+    IBL = specularIBL * gData.ao;
+    IndirectLight   = diffuseGI * gData.ao;
 }
