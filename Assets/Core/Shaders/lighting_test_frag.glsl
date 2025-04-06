@@ -36,11 +36,16 @@ uniform vec3 u_ProbeSpacing;
 uniform ivec3 u_GridResolution;
 uniform vec3 u_GridMinCorner;
 
+// change these to uniforms later
+const float u_DDGIVisibilityBias = 0.01;
+const float u_DDGIVisibilitySharpness = 40.0;
+
 struct DDGIProbe
 {
-    vec4 WorldPosition;
-    vec4 Irradiance;
-    float HitDistance;
+    vec4 WorldPosition;     
+    vec4 SHCoeffs[9];       
+    float Depth;            
+    float DepthMoment2;     
 };
 
 layout(std430, binding = 7) readonly buffer ProbeData 
@@ -68,6 +73,7 @@ struct GBufferData
     vec3 albedo;
     vec3 normal;
     vec3 worldPos;
+    vec3 worldPosFromDepth;
     float ao;
     float metallic;
     float roughness;
@@ -75,6 +81,7 @@ struct GBufferData
     vec3 emissive;
     float receiveShadows;
     float depth;
+    float linearDepth;
 };
 
 // Linearize depth from non-linear clip space
@@ -222,7 +229,8 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     gData.ao = max(albedoAOSample.a, 0.0);
     gData.normal = normalize(normalSample.xyz);
     gData.depth = texture(gDepth, texCoords).r;
-    gData.worldPos = texture(gPositions, texCoords).xyz; //ReconstructWorldPosFromDepth(texCoords, gData.depth);
+    gData.worldPos = texture(gPositions, texCoords).xyz; 
+    gData.worldPosFromDepth = ReconstructWorldPosFromDepth(texCoords, gData.depth);
     vec4 metallicRoughness = texture(gMetallicRoughness, texCoords);
     gData.metallic = metallicRoughness.b;
     gData.roughness = max(metallicRoughness.g, 0.05);
@@ -254,48 +262,128 @@ bool IsInBounds(ivec3 coord, ivec3 resolution)
     return all(greaterThanEqual(coord, ivec3(0))) && all(lessThan(coord, resolution));
 }
 
-vec3 SampleDDGI_DEBUG_STEP_1(vec3 worldPos, vec3 normalWS)
+int GetProbeIndex(ivec3 coords)
 {
-    vec3 relativePos = worldPos - u_GridMinCorner;
-    vec3 gridCoord = relativePos / u_ProbeSpacing;
-    ivec3 baseCoord = ivec3(floor(gridCoord));
+    ivec3 clampedCoords = clamp(coords, ivec3(0), u_GridResolution - 1);
 
-    vec3 accumulatedIrradiance = vec3(0.0);
-    float totalWeight = 0.0;
-    const float epsilon = 0.0001;
+    return clampedCoords.x +
+           clampedCoords.y * u_GridResolution.x +
+           clampedCoords.z * u_GridResolution.x * u_GridResolution.y;
+}
 
-    for (int z = 0; z <= 1; ++z)
-    for (int y = 0; y <= 1; ++y)
-    for (int x = 0; x <= 1; ++x)
+vec3 EvaluateSH9(vec4 shCoeffs[9], vec3 direction)
+{
+    vec3 n = normalize(direction);
+    float x = n.x;
+    float y = n.y;
+    float z = n.z;
+
+    // constants MUST match projection
+    float Y[9];
+    // L=0
+    Y[0] = 0.2820947918; // Y00
+    // L=1
+    Y[1] = -0.4886025119 * y; // Y1-1
+    Y[2] =  0.4886025119 * z; // Y10
+    Y[3] = -0.4886025119 * x; // Y11
+    // L=2
+    Y[4] =  1.0925484306 * x * y; // Y2-2
+    Y[5] = -1.0925484306 * y * z; // Y2-1
+    Y[6] =  0.3153915652 * (3.0*z*z - 1.0); // Y20
+    Y[7] = -1.0925484306 * x * z; // Y21
+    Y[8] =  0.5462742153 * (x*x - y*y); // Y22
+
+    // reconstruct irradiance E(n) = sum(Clm * Ylm(n))
+    vec3 irradiance = vec3(0.0);
+    for (int i = 0; i < 9; ++i)
     {
-        ivec3 probeCoord = baseCoord + ivec3(x, y, z);
-        if (!IsInBounds(probeCoord, u_GridResolution)) continue;
-
-        int index = Flatten3DIndex(probeCoord, u_GridResolution);
-        DDGIProbe probe = probes[index];
-
-        vec3 probePos = probe.WorldPosition.xyz;
-        float dist = length(worldPos - probePos);
-
-        // --- Visibility Weight ---
-        float visibilityWeight = clamp(1.0 - dist / max(probe.HitDistance, epsilon), 0.0, 1.0);
-        // Debug probe.HitDistance if this causes black areas (returns 0 weight).
-
-        // --- Normal Weight (Corrected) ---
-        // Direction FROM shading point TOWARDS the probe
-        vec3 dirToProbe = normalize(probePos - worldPos);
-        // Cosine angle between surface normal and direction TO the probe
-        float normalWeight = max(dot(normalWS, dirToProbe), 0.0);
-
-        // Combine weights (Adding epsilon prevents weight=0 causing issues later)
-        float weight = visibilityWeight * normalWeight + epsilon;
-
-        accumulatedIrradiance += probe.Irradiance.rgb * weight;
-        totalWeight += weight;
+        irradiance += shCoeffs[i].rgb * Y[i];
     }
 
-    // Normalize
-    return accumulatedIrradiance / max(totalWeight, epsilon);
+    return max(irradiance, vec3(0.0));
+}
+
+float CalculateProbeVisibility(vec3 worldPos, int probeIndex)
+{
+    DDGIProbe probe = probes[probeIndex];
+
+    if (probe.Depth <= 0.01) 
+    {
+        return 0.0;
+    }
+
+    vec3 probePos = probe.WorldPosition.xyz;
+    vec3 probeToPoint = worldPos - probePos;
+    float dist = length(probeToPoint);
+
+    dist = max(0.0, dist - u_DDGIVisibilityBias);
+
+    float probeMeanDepth = probe.Depth;
+    float probeMeanDepthSq = probe.DepthMoment2;
+
+    float variance = probeMeanDepthSq - (probeMeanDepth * probeMeanDepth);
+    variance = max(0.0, variance);
+
+    float distDiff = max(0.0, dist - probeMeanDepth); 
+    float chebyshev = variance / (variance + distDiff * distDiff);
+
+    chebyshev = isnan(chebyshev) ? 1.0 : chebyshev; 
+
+    float visibility = pow(smoothstep(0.0, 1.0, chebyshev), u_DDGIVisibilitySharpness);
+
+    return visibility;
+}
+
+
+vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
+{
+vec3 relativePos = worldPos - u_GridMinCorner;
+    vec3 fracCoords = relativePos / u_ProbeSpacing;
+
+    ivec3 baseCoords = ivec3(floor(fracCoords));
+
+    vec3 lerpFactors = fract(fracCoords);
+
+    // 4. Sample the 8 surrounding probes
+    vec3 totalIrradiance = vec3(0.0);
+    float totalVisibility = 0.0;
+
+    for (int z = 0; z < 2; ++z) 
+    {
+        for (int y = 0; y < 2; ++y) 
+        {
+            for (int x = 0; x < 2; ++x) 
+            {
+                ivec3 cornerOffset = ivec3(x, y, z);
+                ivec3 probeCoords = baseCoords + cornerOffset;
+
+                int probeIndex = GetProbeIndex(probeCoords);
+
+                float visibility = 1.0;//CalculateProbeVisibility(worldPos, probeIndex);
+
+                if (visibility > 0.0) 
+                {
+                    vec3 probeIrradiance = EvaluateSH9(probes[probeIndex].SHCoeffs, normalWS);
+
+                    vec3 weight3D = vec3(x, y, z);
+                    float weight = mix(1.0 - lerpFactors.x, lerpFactors.x, weight3D.x) *
+                                   mix(1.0 - lerpFactors.y, lerpFactors.y, weight3D.y) *
+                                   mix(1.0 - lerpFactors.z, lerpFactors.z, weight3D.z);
+
+                    totalIrradiance += probeIrradiance * visibility * weight;
+
+                    totalVisibility += visibility * weight;
+                }
+            }
+        }
+    }
+
+    if (totalVisibility > 1e-5) 
+    { 
+        return totalIrradiance / totalVisibility;
+    } else {
+        return vec3(0.0);
+    }
 }
 
 // main
@@ -306,11 +394,11 @@ void main()
     //float linearDepth = LinearizeDepth(gData.depth);
     vec3 viewPos = ReconstructViewPosFromDepth(v_TexCoords, gData.depth);
     vec3 viewDir = normalize(-viewPos);
-    vec3 viewDirWS = normalize(camPos.xyz - gData.worldPos);
+    vec3 viewDirWS = normalize(camPos.xyz - gData.worldPosFromDepth);
     vec3 lightDirWS = normalize(-u_LightDirection);
     vec3 lightDirView = normalize((viewMatrix * vec4(-u_LightDirection, 0.0)).xyz);
 
-    if (gData.depth > 0.999)
+    if (gData.depth > 0.999)    
     {
         DirectLight = texture(gSkyTexture, -viewDirWS).rgb;
         return;
@@ -333,7 +421,7 @@ void main()
     IBL = iblDiffuse + iblSpecular;
 
     // global illumination contribution
-    IndirectLight = SampleDDGI_DEBUG_STEP_1(gData.worldPos, normalWS);
+    IndirectLight = SampleDDGI(gData.worldPos, normalWS);
 
     //vec3 totalLighting = lighting + iblDiffuse + iblSpecular;
     //totalLighting += gData.emissive;

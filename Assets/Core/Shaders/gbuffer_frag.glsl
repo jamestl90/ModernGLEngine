@@ -56,7 +56,7 @@ in vec3 v_Normal;
 in vec2 v_TexCoord;     
 in vec3 v_Tangent;       
 in vec3 v_Bitangent;    
-in float v_NegViewPos; 
+in float v_NegViewPosZ; 
 flat in uint v_MaterialIndex;
 
 // Get material properties
@@ -140,5 +140,5 @@ void main()
     gMetallicRoughness = metallicRoughness;       // Metallic + Roughness
     gEmissive = vec4(emissive, 0.0);                   // Emissive + Reserved
     gPositions = v_WorldPos;
-    gLinearDepth = v_NegViewPos;
+    gLinearDepth = v_NegViewPosZ;
 }

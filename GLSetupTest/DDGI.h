@@ -5,17 +5,19 @@
 
 #include "ShaderStorageBuffer.h"
 #include "ResourceLoader.h"
+#include "VoxelGrid.h"
 
 namespace JLEngine
 {
     class UniformBuffer;
 
-    struct alignas(16) DDGIProbe
+    struct alignas(16) DDGIProbe 
     {
-        glm::vec4 WorldPosition; // world centre of this probe
-        glm::vec4 Irradiance;    // rgb
-        float HitDistance;       // average hit distance 
-        float Padding2[3];       // padding
+        glm::vec4 WorldPosition; 
+        glm::vec4 SHCoeffs[9];   
+        float Depth;             
+        float DepthMoment2;      
+        glm::vec2 _padding;
     };
 
     struct alignas(16) DebugRay
@@ -54,10 +56,12 @@ namespace JLEngine
         float& GetHitThreshMutable() { return m_hitThreshold; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
-        void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex, uint32_t depthTex);
+        void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t skyTex, uint32_t voxtex);
 
         ShaderStorageBuffer<DDGIProbe>& GetProbeSSBO() { return m_probeSSBO; }
         ShaderStorageBuffer<DebugRay>& GetDebugRays() { return m_debugRaysSSBO; }
+
+        void SetVoxelGridInfo(VoxelGrid* voxelGrid) { m_voxelGrid = voxelGrid; }
 
     private:
 
@@ -79,6 +83,8 @@ namespace JLEngine
         ShaderStorageBuffer<DebugRay> m_debugRaysSSBO;
 
         ShaderProgram* m_updateProbesCompute;
+
+        VoxelGrid* m_voxelGrid;
     };
 }
 

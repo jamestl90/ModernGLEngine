@@ -2,18 +2,16 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-// input sampler bindings
-layout(binding = 0) uniform sampler2D u_PositionBuffer;
-layout(binding = 1) uniform sampler2D u_NormalBuffer;
-layout(binding = 2) uniform sampler2D u_AlbedoBuffer;
-layout(binding = 6) uniform sampler2D u_DepthBuffer; // Linear
+layout (binding = 0) uniform samplerCube u_SkyboxSampler;
+layout (binding = 1) uniform usampler3D u_VoxelGridSampler;
 
 // probe data
 struct DDGIProbe
 {
-    vec4 WorldPosition;
-    vec4 Irradiance;
-    float HitDistance;
+    vec4 WorldPosition;     
+    vec4 SHCoeffs[9];       
+    float Depth;            
+    float DepthMoment2;     
 };
 
 // struct for storing debug ray info
@@ -53,20 +51,42 @@ uniform vec3 u_ProbeSpacing;
 uniform vec3 u_GridOrigin;
 uniform int u_RaysPerProbe;
 uniform float u_BlendFactor;
-uniform mat4 u_InverseView;
-uniform float u_HitThreshold;
+
+uniform vec3 u_GridCenter;
+uniform vec3 u_GridWorldSize;
+uniform ivec3 u_VoxelGridResolution;
 
 // ray marching constants
-const int maxSteps = 64;
-const float maxDistance = 8.0;
-const float stepSize = maxDistance / float(maxSteps);
-const float normalThreshold = 0.05; 
-const float minStepSize = 0.02;  // Start small for accuracy
-const float maxStepSize = 3.0;   // Cap for performance
-const float stepScale = 0.2;
+const float maxDistance = 8.0; 
+const float epsilon = 0.00001;
 
-// fast and effective way to distribute points 
-// evenly (uniformly?) on a sphere
+
+vec3[9] ProjectOntoSH9(vec3 sampleColor, vec3 direction) 
+{
+    vec3 n = normalize(direction);
+    float x = n.x;
+    float y = n.y;
+    float z = n.z;
+    
+    vec3[9] sh;
+    // Band 0 (L=0)
+    sh[0] = sampleColor * 0.2820947918; // Y00 = 1/(2*sqrt(π))
+    
+    // Band 1 (L=1)
+    sh[1] = sampleColor * -0.4886025119 * y; // Y1-1 = sqrt(3/π)*y
+    sh[2] = sampleColor * 0.4886025119 * z;  // Y10  = sqrt(3/π)*z
+    sh[3] = sampleColor * -0.4886025119 * x; // Y11  = sqrt(3/π)*x
+    
+    // Band 2 (L=2)
+    sh[4] = sampleColor * 1.0925484306 * x * y; // Y2-2 = sqrt(15/π)*xy
+    sh[5] = sampleColor * -1.0925484306 * y * z; // Y2-1 = sqrt(15/π)*yz
+    sh[6] = sampleColor * 0.3153915652 * (3.0*z*z - 1.0); // Y20 = sqrt(5/π)*(3z²-1)/2
+    sh[7] = sampleColor * -1.0925484306 * x * z; // Y21 = sqrt(15/π)*xz
+    sh[8] = sampleColor * 0.5462742153 * (x*x - y*y); // Y22 = sqrt(15/π)*(x²-y²)/2
+    
+    return sh;
+}
+
 vec3 SampleFibonacciSphere(uint i, uint total)
 {
     const float GOLDEN_RATIO = 1.61803398875;
@@ -77,84 +97,61 @@ vec3 SampleFibonacciSphere(uint i, uint total)
     float cosTheta = 1.0 - 2.0 * (u + 0.5) / v;
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
-    return vec3(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta);
+    return normalize(vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta));
 }
 
-float LinearizeDepth(float depth)
+// raymarch the 3d voxel texture
+bool RaymarchVoxelGrid(
+    vec3 origin, vec3 dir, usampler3D voxelGrid,
+    vec3 gridCenter, vec3 gridWorldSize, ivec3 gridResolution,
+    float maxDist, out vec3 hitPos, out float hitDist
+) 
 {
-    float near = 0.1;
-    float far = 70.0;
+   float t = 0.0;
 
-    float z = depth * 2.0 - 1.0; // Convert to NDC space
-    return (2.0 * near * far) / (far + near - z * (far - near));
-}
+   // calculate step size based on world size and resolution
+   vec3 voxelWorldSize = gridWorldSize / vec3(gridResolution); // size of one voxel
+   float minVoxelDim = max(epsilon, min(min(voxelWorldSize.x, voxelWorldSize.y), voxelWorldSize.z));
+   float stepSize = minVoxelDim * 0.5;
+   int marchMaxSteps = int(maxDist / max(epsilon, stepSize));
 
-// raymarch using the gbuffer
-bool RaymarchGBufferHit(
-    vec3 origin,
-    vec3 dir,
-    out vec3 hitPos,
-    out vec3 hitNormal,
-    out vec3 hitAlbedo,
-    out int stepsTaken)
-{
-    float t = 0.0; // Start at origin like original
-    mat4 viewProjMatrix = projMatrix * viewMatrix;
-    // Need camPos for the rayDepth calculation
-    // Need windowSize for pixel coordinates
-    // Need u_HitThreshold for BOTH checks
+   for (int step = 0; step < marchMaxSteps; ++step) {
+       vec3 samplePosWorld = origin + dir * t;
 
-    // Constants for adaptive step (matching your list)
+       // I'm using center based voxel grid, so have to offset everything by half
+       // Alternative is to directly calculate the minimum corner and send it in a uniform
+       vec3 posRelativeToCenter = samplePosWorld - gridCenter;
+       vec3 normalizedPos_NegHalfToPosHalf = posRelativeToCenter / gridWorldSize;
+       vec3 normalizedPos_0_to_1 = normalizedPos_NegHalfToPosHalf + 0.5;
+       ivec3 voxelCoord = ivec3(floor(normalizedPos_0_to_1 * vec3(gridResolution)));
 
-    for (int step = 0; step < maxSteps; ++step)
-    {
-        vec3 samplePosWorld = origin + dir * t; // Current point along the ray
+       // bounds check
+       if (any(lessThan(voxelCoord, ivec3(0))) || any(greaterThanEqual(voxelCoord, gridResolution))) 
+       {
+            break; // ray left the grid volume
+       }
 
-        // --- Screen Space Projection ---
-        vec4 samplePosClip = viewProjMatrix * vec4(samplePosWorld, 1.0);
-        if (samplePosClip.w <= 0.0) { break; } // Behind camera
+       // Sample the grid (same logic)
+       uint occupancy = texelFetch(voxelGrid, voxelCoord, 0).r;
 
-        vec3 ndc = samplePosClip.xyz / samplePosClip.w;
-        vec2 uv = ndc.xy * 0.5 + 0.5;
+       // did we hit a voxel?
+       if (occupancy > 0u) 
+       {
+           hitPos = samplePosWorld;
+           hitDist = t;
+           return true;
+       }
 
-        if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) { break; } // Off screen
+       // advance ray 
+       t += stepSize;
+       if (t >= maxDist) {
+           break;
+       }
+   }
 
-        // --- Replicate Original Checks ---
-        ivec2 pixel = ivec2(uv * windowSize);
-
-        // Fetch Linearized Depth from buffer
-        float sceneDepth = texelFetch(u_DepthBuffer, pixel, 0).r;
-        // Calculate World distance from current ray sample point to camera position
-        float rayDepth = length(samplePosWorld - camPos.xyz);
-
-        // Check 1: Original Depth Comparison (Camera-relative)
-        if (rayDepth > sceneDepth - u_HitThreshold)
-        {
-            vec3 gBufferWorldPos = texelFetch(u_PositionBuffer, pixel, 0).rgb;
-            if (distance(samplePosWorld, gBufferWorldPos) < u_HitThreshold)
-            {
-                hitPos = gBufferWorldPos; 
-                hitAlbedo = texelFetch(u_AlbedoBuffer, pixel, 0).rgb;
-                vec3 gBufferNormalRaw = texelFetch(u_NormalBuffer, pixel, 0).rgb;
-                vec3 surfaceNormalWS = normalize(mat3(u_InverseView) * gBufferNormalRaw);
-                hitNormal = normalize(surfaceNormalWS);
-                stepsTaken = step;
-
-                float NdotV = dot(surfaceNormalWS, -dir);
-                if (NdotV > normalThreshold)
-                {
-                    return true;
-                }                
-            }
-        }
-
-        t += max(minStepSize, t * 0.2);
-        if (t > maxDistance) { break; } // Max distance check
-    }
-
-    // Loop finished without returning true
-    stepsTaken = maxSteps;
-    return false;
+   hitDist = maxDist;
+   hitPos = origin + dir * maxDist;
+   return false;
 }
 
 void ResetDebugRays(int index)
@@ -187,62 +184,109 @@ void main()
         ResetDebugRays(u_DebugProbeIndex);
     }
 
-    vec3 accumulatedIrradiance = vec3(0.0); 
+    // probe with default depth as 0.0 means it intersects so do an early out check
+    if (abs(probe.Depth - 0.0) < epsilon && abs(probe.DepthMoment2 - 0.0) < epsilon)
+        return;
+
+    vec3[9] accumulatedSH;
+    for (int i = 0; i < 9; i++) 
+    {
+        accumulatedSH[i] = vec3(0.0);
+    }
     float accumulatedDistance = 0.0;
+    float accumulatedDistanceSq = 0.0;
 
     for (int i = 0; i < u_RaysPerProbe; i++)
     {
         vec3 origin = probe.WorldPosition.xyz;
-        vec3 dir = SampleFibonacciSphere(i, u_RaysPerProbe);
+        vec3 dir = SampleFibonacciSphere(uint(i), uint(u_RaysPerProbe)); // ensure uint cast
 
-        // setup defaults
         float currentRayHitDist = maxDistance;
-        vec3 currentRaySampleColor = vec3(0.1, 0.1, 0.3);
-        vec3 hitPos = origin + dir * maxDistance;
-        vec3 hitAlbedo = vec3(1.0);
-        vec3 hitNormal = vec3(0.0, 1.0, 0.0);
+        vec3 currentRaySampleColor = vec3(0.0); // default to black
 
-        vec3 debugHitPos = origin;
-        vec3 debugRayColor = vec3(0,0,1);
+        // Debug visualization defaults
+        vec3 debugHitPos = origin + dir * maxDistance; 
+        vec3 debugRayColor = vec3(0.0, 0.0, 0.0); 
 
-        int stepsTaken = 0;
-        if (RaymarchGBufferHit(origin, dir, hitPos, hitNormal, hitAlbedo, stepsTaken))
+        vec3 hitPos;
+        float hitDist;
+
+        bool didHit = RaymarchVoxelGrid(
+            origin, dir,
+            u_VoxelGridSampler, 
+            u_GridCenter,       
+            u_GridWorldSize,    
+            u_VoxelGridResolution, 
+            maxDistance,
+            hitPos, hitDist
+        );
+
+        if (didHit)
         {
-            float NdotL = max(dot(hitNormal, -dir), 0.0);
-            // Update the values for *this* ray's hit
-            currentRaySampleColor = hitAlbedo * NdotL;
-            currentRayHitDist = length(hitPos - origin);
-            // Update debug info for hit
-            debugRayColor = hitAlbedo;
+            currentRaySampleColor = vec3(0.0); 
+            currentRayHitDist = hitDist;       
+
             debugHitPos = hitPos;
+            debugRayColor = vec3(0.8, 0.8, 0.8); 
         }
-
-        accumulatedIrradiance += currentRaySampleColor;
-        accumulatedDistance += currentRayHitDist;
-
-        if (i < u_DebugRayCount && i < debugRays.length() && index == u_DebugProbeIndex)
+        else
         {
-            debugRays[i].origin = origin;
-            debugRays[i].hit = debugHitPos; // Use the correct endpoint for hit/miss
-            debugRays[i].color = debugRayColor; // Use the correct color for hit/miss
+            currentRaySampleColor = texture(u_SkyboxSampler, dir).rgb; 
+            currentRayHitDist = maxDistance; // Distance is max on miss
+
+            debugHitPos = origin + dir * maxDistance; 
+            debugRayColor = currentRaySampleColor;    
+        }
+       
+        vec3[9] shContrib = ProjectOntoSH9(currentRaySampleColor, dir);
+        for (int j = 0; j < 9; ++j) 
+        {
+            accumulatedSH[j] += shContrib[j];
+        }
+        accumulatedDistance += currentRayHitDist;
+        accumulatedDistanceSq += currentRayHitDist * currentRayHitDist;
+      
+        if (index == u_DebugProbeIndex && i < u_DebugRayCount && i < debugRays.length())
+        {
+            int debugRayIndex = i; 
+            if (didHit)
+            {
+                debugRays[debugRayIndex].origin = origin;
+                debugRays[debugRayIndex].hit = debugHitPos;
+                debugRays[debugRayIndex].color = debugRayColor;
+            }
+            else
+            {
+                debugRays[debugRayIndex].origin = origin; 
+                debugRays[debugRayIndex].hit = origin + (maxDistance * dir);    
+                debugRays[debugRayIndex].color = vec3(0.0);
+            }
         }
     }
 
     if (u_RaysPerProbe > 0)
     {
-        vec3 currentFrameIrradiance = accumulatedIrradiance / float(u_RaysPerProbe);
-        float currentFrameDistance = accumulatedDistance / float(u_RaysPerProbe);
+        float invRaysPerProbe = 1.0 / float(u_RaysPerProbe);
 
-        vec3 blendedIrradiance = mix(probe.Irradiance.rgb, currentFrameIrradiance, u_BlendFactor);
-        float blendedDistance = mix(probe.HitDistance, currentFrameDistance, u_BlendFactor);
+        for (int i = 0; i < 9; i++) 
+        {
+            vec3 currentSH = accumulatedSH[i] * invRaysPerProbe;
+            probes[index].SHCoeffs[i].xyz = mix(probe.SHCoeffs[i].xyz, currentSH, u_BlendFactor);
+        }
 
-        probes[index].Irradiance.rgb = blendedIrradiance;
-        probes[index].HitDistance = blendedDistance;
+        // Average and blend distance moments
+        float meanDistance = accumulatedDistance * invRaysPerProbe;
+        float meanSqDistance = accumulatedDistanceSq * invRaysPerProbe;
+       
+        probes[index].Depth = mix(probe.Depth, meanDistance, u_BlendFactor);
+        probes[index].DepthMoment2 = mix(probe.DepthMoment2, meanSqDistance, u_BlendFactor);
     }
-    else
+    else 
     {
-        // Handle 0 rays case
-        probes[index].Irradiance.rgb = mix(probe.Irradiance.rgb, vec3(0.0), u_BlendFactor);
-        probes[index].HitDistance    = mix(probe.HitDistance, 0.0, u_BlendFactor);
+        for (int i = 0; i < 9; i++) {
+            probes[index].SHCoeffs[i].xyz = mix(probe.SHCoeffs[i].xyz, vec3(0.0), u_BlendFactor);
+        }
+        probes[index].Depth = mix(probe.Depth, 0.0, u_BlendFactor);
+        probes[index].DepthMoment2 = mix(probe.DepthMoment2, 0.0, u_BlendFactor);
     }
 }

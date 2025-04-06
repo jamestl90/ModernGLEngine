@@ -26,5 +26,5 @@ void main()
     if (ao > 0.0)
         totalLighting *= ao;
 
-    FragColor = vec4(indirectLighting, 1.0);
+    FragColor = vec4(totalLighting, 1.0);
 }

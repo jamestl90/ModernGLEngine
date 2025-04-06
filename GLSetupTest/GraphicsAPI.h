@@ -210,6 +210,7 @@ namespace JLEngine
 			GLintptr writeOffset,
 			GLsizeiptr size);
 		void* MapNamedBuffer(uint32_t id, GLbitfield access);
+		void* MapNamedBufferRange(uint32_t id, GLbitfield access, uint32_t offset, size_t length);
 		void UnmapNamedBuffer(uint32_t id);
 		void BindBuffer(uint32_t buffType, uint32_t boID);
 		void DisposeBuffer(uint32_t count, uint32_t* id);

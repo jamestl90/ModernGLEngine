@@ -17,6 +17,7 @@
 #include "TexturePool.h"
 #include "SceneManager.h"
 #include "Im3dManager.h"
+#include "VoxelGrid.h"
 
 namespace JLEngine
 {
@@ -47,7 +48,8 @@ namespace JLEngine
             int width, int height, const std::string& assetFolder);
         ~DeferredRenderer();
 
-        void Initialize();
+        void EarlyInitialize();
+        void LateInitialize();
         void Resize(int width, int height);
         
         void Render(const glm::vec3& eyePos, const glm::vec3& camDir, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, double dt);
@@ -60,6 +62,8 @@ namespace JLEngine
         void AddVAOs(VAOType vaoType, std::unordered_map<VertexAttribKey, std::shared_ptr<VertexArrayObject>>& vaos);
 
         void GenerateGPUBuffers();
+
+        void ExtractSceneTriangles();
 
         std::shared_ptr<Node>& SceneRoot() { return m_sceneManager.GetRoot(); }
         SceneManager& GetSceneManager() { return m_sceneManager; }
@@ -159,6 +163,7 @@ namespace JLEngine
         SceneManager m_sceneManager;
 
         DDGI* m_ddgi;
+        VoxelGridManager* m_vgm;
         DirectionalLightShadowMap* m_dlShadowMap;
         Light m_directionalLight;
         bool m_enableDLShadows;
@@ -166,6 +171,7 @@ namespace JLEngine
         bool m_showDDGI = false;
         bool m_showAABB = false;
         bool m_showDDGIRays = false;
+        bool m_showVoxelGridBounds = false;
 
         HDRISky* m_hdriSky;
     };

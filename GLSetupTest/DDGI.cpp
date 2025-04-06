@@ -25,6 +25,8 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	glm::vec3 gridSize = glm::vec3(m_gridResolution - 1) * m_probeSpacing;
 	glm::vec3 halfGrid = gridSize * 0.5f;
 
+	float maxDistance = 70.0f; 
+
 	for (int z = 0; z < m_gridResolution.z; ++z)
 	{
 		for (int y = 0; y < m_gridResolution.y; ++y)
@@ -51,16 +53,18 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 
 				if (intersects)
 				{
-					probe.WorldPosition = glm::vec4(worldPos, 1.0f);
-					probe.Irradiance = glm::vec4(0.0f);
-					probe.HitDistance = -1.0f; // disabled when hitDistance = -1
+					probe.WorldPosition = glm::vec4(worldPos, 1.0f); // or maybe w=0 as a flag?
+					for (int i = 0; i < 9; ++i) probe.SHCoeffs[i] = glm::vec4(0.0f);
+					probe.Depth = 0.0f; // indicate no valid distance data
+					probe.DepthMoment2 = 0.0f;
 					continue;
 				}
 
 				// Initialize normally
 				probe.WorldPosition = glm::vec4(worldPos, 1.0f);
-				probe.Irradiance = glm::vec4(0.0f);
-				probe.HitDistance = 1.0f;
+				for (int i = 0; i < 9; ++i) probe.SHCoeffs[i] = glm::vec4(0.0f); // Start black
+				probe.Depth = maxDistance; // initialize with max distance
+				probe.DepthMoment2 = maxDistance * maxDistance;
 			}
 		}
 	}
@@ -76,13 +80,13 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	Graphics::CreateGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), m_debugRaysSSBO.GetDataImmutable());
 }
 
-void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t posTex, uint32_t normalTex, uint32_t albedoTex, uint32_t depthTex)
+void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t skyTex, uint32_t voxtex)
 {
     Graphics::API()->BindShader(m_updateProbesCompute->GetProgramId());
 
     // bind textures
-    GLuint textures[] = { posTex, normalTex, albedoTex, depthTex };
-    Graphics::API()->BindTextures(0, 4, textures);
+    GLuint textures[] = { skyTex, voxtex };
+    Graphics::API()->BindTextures(0, 2, textures);
 
     // bind probe data
     Graphics::BindGPUBuffer(m_probeSSBO.GetGPUBuffer(), 7);
@@ -96,10 +100,10 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm
     m_updateProbesCompute->SetUniformf("u_BlendFactor", m_blendFactor);
 	m_updateProbesCompute->SetUniformi("u_DebugRayCount", m_debugRayCount);
 	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", m_debugProbeIndex);
-	m_updateProbesCompute->SetUniform("u_InverseView", inverseView);
-	m_updateProbesCompute->SetUniformf("u_HitThreshold", m_hitThreshold);
 
-
+	m_updateProbesCompute->SetUniform("u_GridCenter", m_voxelGrid->worldOrigin);
+	m_updateProbesCompute->SetUniform("u_GridWorldSize", m_voxelGrid->worldSize);
+	m_updateProbesCompute->SetUniform("u_VoxelGridResolution", m_voxelGrid->resolution);
 
     Graphics::API()->DispatchCompute(m_gridResolution.x, m_gridResolution.y, m_gridResolution.z);
     Graphics::API()->SyncShaderStorageBarrier();

@@ -331,13 +331,14 @@ namespace JLEngine
         auto& transparentVAOs = glbLoader->GetTransparentVAOs();
         auto& skinnedMeshVAOs = glbLoader->GetDynamicVAOs();
 
-        m_renderer->Initialize();
+        m_renderer->EarlyInitialize();
         m_renderer->AddVAOs(JLEngine::VAOType::STATIC, staticVAOs);
         m_renderer->AddVAOs(JLEngine::VAOType::JL_TRANSPARENT, transparentVAOs);
 
         if (skinnedMeshVAOs.size() > 0)
             m_renderer->AddVAO(JLEngine::VAOType::DYNAMIC, skinnedMeshVAOs.begin()->first, skinnedMeshVAOs.begin()->second);
         m_renderer->GenerateGPUBuffers();
+        m_renderer->LateInitialize();
     }
 
     GraphicsAPI* JLEngineCore::GetGraphicsAPI() const

@@ -399,6 +399,16 @@ namespace JLEngine
 		return mapped;
 	}
 
+	void* GraphicsAPI::MapNamedBufferRange(uint32_t id, GLbitfield access, uint32_t offset, size_t length)
+	{
+		auto mapped = glMapNamedBufferRange(id, offset, length, access);
+		if (!mapped)
+		{
+			throw std::runtime_error("Failed to map named buffer");
+		}
+		return mapped;
+	}
+
 	void GraphicsAPI::UnmapNamedBuffer(uint32_t id)
 	{
 		auto result = glUnmapNamedBuffer(id);
