@@ -4,7 +4,7 @@ https://trello.com/b/9M6YkL0b/opengl-engine-jlengine
 
 Current feature in progress: Dynamic Diffuse Global Illumination 
 
-Generate a grid of probes to populate the space in the world, using AABB collision to determine valid probes. Red probes = skip processing
+Generate a grid of irradiance probes to populate the space in the world, using AABB collision to determine valid probes. Red probes = skip processing
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/IrradianceProbeGrid.png'/>
 
 Cycle through each probe and visualize the rays it casts. White ray = hit, black ray = miss/sky 
