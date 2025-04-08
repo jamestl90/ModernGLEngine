@@ -20,6 +20,8 @@ namespace JLEngine
         static float* StitchSky(const std::string& assetPath, std::initializer_list<const char*> fileNames, int width, int height, int channels);
         static ImageData StitchSky(std::array<JLEngine::ImageData, 6>& files, int width, int height, int channels);
 
+        static void PrintImageData(ImageData& data);
+
     private:
 
     };

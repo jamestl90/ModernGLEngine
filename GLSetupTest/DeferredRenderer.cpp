@@ -153,8 +153,6 @@ namespace JLEngine
         m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
         m_ddgi->GenerateProbes(m_sceneManager.GetSubmeshes());
 
-       
-
         // possible not needed now
         m_triangleVAO.SetGPUID(Graphics::API()->CreateVertexArray());
 
@@ -169,6 +167,7 @@ namespace JLEngine
         m_vgm = new VoxelGridManager(m_resourceLoader, m_assetFolder);
         m_vgm->Initialise();
         ExtractSceneTriangles();
+        m_vgm->Render();
     }
 
     void DeferredRenderer::SetupGBuffer() 
@@ -398,8 +397,6 @@ namespace JLEngine
 
         auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
         GBufferPass(viewMatrix, projMatrix);
-        // TEST: not sure if needed?
-        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
 
         if (m_debugModes != DebugModes::None) // specialized debug views
         {
@@ -407,8 +404,6 @@ namespace JLEngine
         }
         else
         {
-            m_vgm->Render();
-
             // update GI probes 
             m_ddgi->SetVoxelGridInfo(&m_vgm->GetVoxelGrid());
             m_ddgi->Update(
@@ -527,12 +522,10 @@ namespace JLEngine
         {            
             m_lightOutputTarget->GetTexId(0),
             m_lightOutputTarget->GetTexId(1),
-            m_gBufferTarget->GetTexId(3),   // emmission
-            m_gBufferTarget->GetTexId(0),    // albedo
             m_lightOutputTarget->GetTexId(2),
         };
 
-        Graphics::API()->BindTextures(0, 5, textures);
+        Graphics::API()->BindTextures(0, 3, textures);
 
         RenderScreenSpaceTriangle();
     }
@@ -797,10 +790,13 @@ namespace JLEngine
             int maxIndex = static_cast<int>(m_ddgi->GetProbeSSBO().GetDataImmutable().size()) - 1;
             int& probeIndex = m_ddgi->GetDebugProbeIndexMutable();
             ImGui::SliderInt("Debug Probe Index", &probeIndex, 0, std::max(0, maxIndex));
-            ImGui::SliderFloat("Hit Threshold", &m_ddgi->GetHitThreshMutable(), 0.01f, 0.5f);
+            
+            //int& raysPerProbe = m_ddgi->GetRaysPerProbeMutable();
+            //ImGui::SliderInt("Rays Per Probe", &raysPerProbe, 16, 512);
         }
         if (ImGui::Checkbox("Show Voxel Grid Bounds", &m_showVoxelGridBounds)) {} // Add a bool member
-        if (m_showVoxelGridBounds && m_vgm) {
+        if (m_showVoxelGridBounds && m_vgm) 
+        {
             VoxelGrid& vg = m_vgm->GetVoxelGrid();
             glm::vec3 center = vg.worldOrigin; // Origin is often the center
             // If origin is min corner, calculate center: center = vg.worldOrigin + vg.worldSize * 0.5f;
@@ -950,8 +946,8 @@ namespace JLEngine
         ImGui::End();
 
         ImGui::Begin("HDRI Sky Settings");
-        ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 2.0f);
-        ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 2.0f);
+        ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 3.0f);
+        ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 3.0f);
         ImGui::End();
     }
     

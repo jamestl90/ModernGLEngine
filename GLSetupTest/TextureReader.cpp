@@ -156,4 +156,78 @@ namespace JLEngine
 
         return result;
     }
+
+    void TextureReader::PrintImageData(ImageData& data)
+    {
+        if (!data.hdrData.empty()) 
+        {
+            float minVal = std::numeric_limits<float>::max();
+            float maxVal = std::numeric_limits<float>::lowest();
+            double sum = 0.0;
+            size_t count = 0;
+
+            for (float val : data.hdrData) 
+            {
+                if (std::isfinite(val)) 
+                {
+                    minVal = std::min(minVal, val);
+                    maxVal = std::max(maxVal, val);
+                    sum += val;
+                    count++;
+                }
+            }
+
+            if (count > 0) 
+            {
+                double average = sum / count;
+                std::cout << "--- Raw Loaded HDR Data Stats ---" << std::endl;
+                std::cout << "  Min Value: " << minVal << std::endl;
+                std::cout << "  Max Value: " << maxVal << std::endl;
+                std::cout << "  Average Value: " << average << std::endl;
+                std::cout << "  Total Finite Values: " << count << std::endl;
+                std::cout << "  Expected Pixels: " << data.width * data.height << " (Components: " << count / 3.0 << ")" << std::endl;
+                std::cout << "---------------------------------" << std::endl;
+            }
+            else 
+            {
+                std::cerr << "WARNING: No finite HDR data found in loaded vector!" << std::endl;
+            }
+
+        }
+        if (!data.data.empty())
+        {
+            float minVal = std::numeric_limits<float>::max();
+            float maxVal = std::numeric_limits<float>::lowest();
+            double sum = 0.0;
+            size_t count = 0;
+
+            for (float val : data.data)
+            {
+                if (std::isfinite(val))
+                {
+                    minVal = std::min(minVal, val);
+                    maxVal = std::max(maxVal, val);
+                    sum += val;
+                    count++;
+                }
+            }
+
+            if (count > 0)
+            {
+                double average = sum / count;
+                std::cout << "--- Raw Loaded Data Stats ---" << std::endl;
+                std::cout << "  Min Value: " << minVal << std::endl;
+                std::cout << "  Max Value: " << maxVal << std::endl;
+                std::cout << "  Average Value: " << average << std::endl;
+                std::cout << "  Total Finite Values: " << count << std::endl;
+                std::cout << "  Expected Pixels: " << data.width * data.height << " (Components: " << count / 3.0 << ")" << std::endl;
+                std::cout << "---------------------------------" << std::endl;
+            }
+            else
+            {
+                std::cerr << "WARNING: No finite data found in loaded vector!" << std::endl;
+            }
+
+        }
+    }
 }

@@ -93,18 +93,34 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm
 	Graphics::BindGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), 4);
 	Graphics::BindGPUBuffer(shaderGlobaldata->GetGPUBuffer(), 5);
 
-    m_updateProbesCompute->SetUniform("u_GridResolution", m_gridResolution);
-    m_updateProbesCompute->SetUniform("u_GridOrigin", m_gridOrigin);
-    m_updateProbesCompute->SetUniform("u_ProbeSpacing", m_probeSpacing);
+    m_updateProbesCompute->SetUniform("u_ProbeGridResolution", m_gridResolution);
     m_updateProbesCompute->SetUniformi("u_RaysPerProbe", m_raysPerProbe);
     m_updateProbesCompute->SetUniformf("u_BlendFactor", m_blendFactor);
 	m_updateProbesCompute->SetUniformi("u_DebugRayCount", m_debugRayCount);
 	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", m_debugProbeIndex);
 
-	m_updateProbesCompute->SetUniform("u_GridCenter", m_voxelGrid->worldOrigin);
-	m_updateProbesCompute->SetUniform("u_GridWorldSize", m_voxelGrid->worldSize);
+	m_updateProbesCompute->SetUniform("u_VoxelGridCenter", m_voxelGrid->worldOrigin);
+	m_updateProbesCompute->SetUniform("u_VoxelGridWorldSize", m_voxelGrid->worldSize);
 	m_updateProbesCompute->SetUniform("u_VoxelGridResolution", m_voxelGrid->resolution);
 
-    Graphics::API()->DispatchCompute(m_gridResolution.x, m_gridResolution.y, m_gridResolution.z);
+	GLuint totalProbesX = this->m_gridResolution.x;
+	GLuint totalProbesY = this->m_gridResolution.y;
+	GLuint totalProbesZ = this->m_gridResolution.z;
+
+	const GLuint localSizeX = 1;
+	const GLuint localSizeY = 1;
+	const GLuint localSizeZ = 1;
+
+	// Calculate number of workgroups needed for each dimension
+	GLuint numGroupsX = (totalProbesX + localSizeX - 1) / localSizeX;
+	GLuint numGroupsY = (totalProbesY + localSizeY - 1) / localSizeY;
+	GLuint numGroupsZ = (totalProbesZ + localSizeZ - 1) / localSizeZ;
+
+    Graphics::API()->DispatchCompute(numGroupsX, numGroupsY, numGroupsZ);
     Graphics::API()->SyncShaderStorageBarrier();
+
+	Graphics::API()->BindShader(0);
+	Graphics::API()->BindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, 0);
+	Graphics::API()->BindBufferBase(GL_UNIFORM_BUFFER, 5, 0);
+	Graphics::API()->BindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, 0);
 }

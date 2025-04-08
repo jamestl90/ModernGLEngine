@@ -58,7 +58,7 @@ namespace JLEngine
         unsigned int hdrTexture = 0;
         glGenTextures(1, &hdrTexture);
         glBindTexture(GL_TEXTURE_2D, hdrTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, imgData.width, imgData.height, 0, GL_RGB, GL_FLOAT, imgData.hdrData.data());
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, imgData.width, imgData.height, 0, GL_RGB, GL_FLOAT, imgData.hdrData.data());
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -71,7 +71,7 @@ namespace JLEngine
 
         for (unsigned int face = 0; face < 6; ++face)
         {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB16F, cubeMapSize, cubeMapSize, 0, GL_RGB, GL_FLOAT, nullptr);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, 0, GL_RGB32F, cubeMapSize, cubeMapSize, 0, GL_RGB, GL_FLOAT, nullptr);
         }
 
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

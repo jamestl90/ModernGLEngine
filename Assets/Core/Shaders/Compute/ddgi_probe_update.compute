@@ -46,18 +46,16 @@ layout(std140, binding = 5) uniform ShaderGlobalData
 // uniforms
 uniform int u_DebugRayCount;
 uniform int u_DebugProbeIndex;
-uniform ivec3 u_GridResolution;
-uniform vec3 u_ProbeSpacing;
-uniform vec3 u_GridOrigin;
+uniform ivec3 u_ProbeGridResolution;
 uniform int u_RaysPerProbe;
 uniform float u_BlendFactor;
 
-uniform vec3 u_GridCenter;
-uniform vec3 u_GridWorldSize;
+uniform vec3 u_VoxelGridCenter;
+uniform vec3 u_VoxelGridWorldSize;
 uniform ivec3 u_VoxelGridResolution;
 
 // ray marching constants
-const float maxDistance = 8.0; 
+const float maxDistance = 5.0; 
 const float epsilon = 0.00001;
 
 
@@ -115,7 +113,8 @@ bool RaymarchVoxelGrid(
    float stepSize = minVoxelDim * 0.5;
    int marchMaxSteps = int(maxDist / max(epsilon, stepSize));
 
-   for (int step = 0; step < marchMaxSteps; ++step) {
+   for (int step = 0; step < marchMaxSteps; ++step) 
+   {
        vec3 samplePosWorld = origin + dir * t;
 
        // I'm using center based voxel grid, so have to offset everything by half
@@ -128,13 +127,11 @@ bool RaymarchVoxelGrid(
        // bounds check
        if (any(lessThan(voxelCoord, ivec3(0))) || any(greaterThanEqual(voxelCoord, gridResolution))) 
        {
-            break; // ray left the grid volume
+            break; 
        }
 
-       // Sample the grid (same logic)
        uint occupancy = texelFetch(voxelGrid, voxelCoord, 0).r;
 
-       // did we hit a voxel?
        if (occupancy > 0u) 
        {
            hitPos = samplePosWorld;
@@ -142,9 +139,9 @@ bool RaymarchVoxelGrid(
            return true;
        }
 
-       // advance ray 
        t += stepSize;
-       if (t >= maxDist) {
+       if (t >= maxDist) 
+       {
            break;
        }
    }
@@ -170,9 +167,20 @@ void ResetDebugRays(int index)
 void main()
 {
     // index of the probe to update
-    uint index = gl_GlobalInvocationID.x + 
-                 gl_GlobalInvocationID.y * u_GridResolution.x + 
-                 gl_GlobalInvocationID.z * u_GridResolution.x * u_GridResolution.y;
+    ivec3 probeCoord = ivec3(gl_GlobalInvocationID.x,
+                            gl_GlobalInvocationID.y,
+                            gl_GlobalInvocationID.z);
+
+    if (probeCoord.x >= u_ProbeGridResolution.x ||
+        probeCoord.y >= u_ProbeGridResolution.y ||
+        probeCoord.z >= u_ProbeGridResolution.z)
+    {
+        return; 
+    }
+
+    uint index = uint(probeCoord.x +
+                    probeCoord.y * u_ProbeGridResolution.x +
+                    probeCoord.z * u_ProbeGridResolution.x * u_ProbeGridResolution.y);
 
     // shouldn't occur, but just incase 
     if (index >= probes.length()) return;
@@ -214,8 +222,8 @@ void main()
         bool didHit = RaymarchVoxelGrid(
             origin, dir,
             u_VoxelGridSampler, 
-            u_GridCenter,       
-            u_GridWorldSize,    
+            u_VoxelGridCenter,       
+            u_VoxelGridWorldSize,    
             u_VoxelGridResolution, 
             maxDistance,
             hitPos, hitDist

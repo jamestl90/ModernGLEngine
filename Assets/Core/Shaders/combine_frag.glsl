@@ -2,30 +2,32 @@
 
 layout(binding = 0) uniform sampler2D DirectLight;
 layout(binding = 1) uniform sampler2D IBL;
-layout(binding = 2) uniform sampler2D gEmissive;
-layout(binding = 3) uniform sampler2D gAlbedo;
-layout(binding = 4) uniform sampler2D IndirectLight; // ddgi
+layout(binding = 2) uniform sampler2D IndirectLight; // ddgi
 
 layout(location = 0) out vec4 FragColor;
 
 in vec2 v_TexCoords;
 
+vec3 ApplyToneMapping(vec3 color)
+{
+    return color / (color + vec3(1.0));
+}
+
+vec3 ApplyGammaCorrection(vec3 color)
+{
+    return pow(color, vec3(1.0 / 2.2));
+}
+
 void main()
 {
-    //vec3 rayMarchColor = texture(rayMarchTex, v_TexCoords).rgb;
     vec3 directLighting = texture(DirectLight, v_TexCoords).rgb;
     vec3 iblLighting = texture(IBL, v_TexCoords).rgb;
-    vec4 albedo = texture(gAlbedo, v_TexCoords);
-    float ao = albedo.a;
-    vec3 emissive = texture(gEmissive, v_TexCoords).rgb;
     vec3 indirectLighting = texture(IndirectLight, v_TexCoords).rgb;
 
-    vec3 totalLighting = directLighting + iblLighting + emissive + indirectLighting;
+    vec3 combinedLight = directLighting + iblLighting + indirectLighting;
+    
+    // combinedLight = ApplyToneMapping(combinedLight);
+    // combinedLight = ApplyGammaCorrection(combinedLight);
 
-    if (ao > 0.0)
-    {
-        totalLighting *= ao;
-    }
-
-    FragColor = vec4(totalLighting, 1.0);
+    FragColor = vec4(combinedLight, 1.0);
 }

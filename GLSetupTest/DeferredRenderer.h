@@ -113,8 +113,8 @@ namespace JLEngine
         int m_width, m_height;
         std::string m_assetFolder;
 
-        float m_specularIndirectFactor = 1.0f;
-        float m_diffuseIndirectFactor = 1.0f;
+        float m_specularIndirectFactor = 2.0f;
+        float m_diffuseIndirectFactor = 2.0f;
         glm::vec3 m_lastEyePos;
 
         IM3DManager* m_im3dManager;

@@ -65,12 +65,12 @@ namespace JLEngine
 				m_voxelGrid.resolution.y,
 				m_voxelGrid.resolution.z);
 			glTextureParameteri(m_voxelGrid.textureId, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTextureParameteri(m_voxelGrid.textureId, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTextureParameteri(m_voxelGrid.textureId, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 			glTextureParameteri(m_voxelGrid.textureId, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 			glTextureParameteri(m_voxelGrid.textureId, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 			glTextureParameteri(m_voxelGrid.textureId, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-			float borderColour[] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			glTextureParameterfv(m_voxelGrid.textureId, GL_TEXTURE_BORDER_COLOR, borderColour);
+			GLuint borderColourUint[] = { 0u, 0u, 0u, 0u };
+			glTextureParameterIuiv(m_voxelGrid.textureId, GL_TEXTURE_BORDER_COLOR, borderColourUint);
 
 			GL_CHECK_ERROR();
 
@@ -78,12 +78,11 @@ namespace JLEngine
 
 			m_trianglesSSBO.GetGPUBuffer().SetImmutable(false);
 			Graphics::CreateGPUBuffer(m_trianglesSSBO.GetGPUBuffer());
-			Graphics::API()->DebugLabelObject(GL_BUFFER, m_trianglesSSBO.GetGPUBuffer().GetGPUID(), "SceneTrianglesSSBO");
 
 			m_debugVoxelSSBO.GetGPUBuffer().SetSizeInBytes(m_totalSceneTriangles * sizeof(DebugVoxelInfo));
 			m_debugVoxelSSBO.GetGPUBuffer().SetUsageFlags(GL_MAP_READ_BIT); 
+
 			Graphics::CreateGPUBuffer(m_debugVoxelSSBO.GetGPUBuffer());
-			Graphics::API()->DebugLabelObject(GL_BUFFER, m_debugVoxelSSBO.GetGPUBuffer().GetGPUID(), "VoxelDebugSSBO");
 
 			GL_CHECK_ERROR(); // Check error after clear
 		}
@@ -142,8 +141,10 @@ namespace JLEngine
 				//		for (size_t i = 0; i < printCount; ++i) {
 				//			std::cout << "[" << i << "] Centroid: " << glm::to_string(glm::vec3(debugData[i].centroid))
 				//				<< ", RelPos: " << glm::to_string(glm::vec3(debugData[i].relativePos))
-				//				<< ", Voxel: " << glm::to_string(glm::ivec3(debugData[i].centerVoxel))
-				//				<< ", InBounds: " << debugData[i].centerVoxel.w << std::endl;
+				//				<< ", Voxel: " << glm::to_string(glm::ivec3(
+				// debugData[i].centerVoxel))
+				//				<< ", InBounds: " << debugData[i].cente
+				// rVoxel.w << std::endl;
 				//		}
 				//		std::cout << "-----------------------------------------" << std::endl;
 				//

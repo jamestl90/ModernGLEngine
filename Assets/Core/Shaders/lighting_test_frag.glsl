@@ -240,16 +240,6 @@ GBufferData ExtractGBufferData(vec2 texCoords)
     return gData;
 }
 
-vec3 ApplyToneMapping(vec3 color)
-{
-    return color / (color + vec3(1.0));
-}
-
-vec3 ApplyGammaCorrection(vec3 color)
-{
-    return pow(color, vec3(1.0 / 2.2));
-}
-
 // DDGI Functions
 int Flatten3DIndex(ivec3 coord, ivec3 resolution) 
 {
@@ -372,9 +362,11 @@ vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
         }
     }
 
-    if (totalVisibilityWeight > 1e-5) {
+    if (totalVisibilityWeight > 1e-5) 
+    {
         return totalIrradiance / totalVisibilityWeight;
-    } else {
+    } else 
+    {
         return vec3(0.0);
     }
 }
@@ -384,15 +376,13 @@ void main()
 {
     GBufferData gData = ExtractGBufferData(v_TexCoords);
 
-    // Check for skybox fragments
-    if (gData.depth >= 0.9999) {
+    if (gData.depth >= 0.9999) 
+    {
         vec3 viewDirWS_Sky = normalize(gData.worldPosFromDepth - camPos.xyz);
-        // For skybox pixels, output sky color to appropriate target
-        // Depending on your combine pass, you might output sky to direct, or handle separately
-        DirectLight = texture(gSkyTexture, viewDirWS_Sky).rgb; // Example: Output sky to direct light buffer
+        DirectLight = texture(gSkyTexture, viewDirWS_Sky).rgb; 
         IBL = vec3(0.0);
         IndirectLight   = vec3(0.0);
-        discard; // Or return
+        return;
     }
 
     // Calculate necessary vectors in world space
@@ -403,26 +393,25 @@ void main()
     // --- Shadows ---
     vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(gData.worldPos, 1.0);
     float shadow = 1.0;
-    if (gData.receiveShadows > 0.0) {
+    if (gData.receiveShadows > 0.0) 
+    {
         shadow = ShadowCalculation(fragPosLightSpace, normalWS, lightDirWS);
     }
 
     // --- Direct Lighting ---
-    vec3 halfDirWS    = normalize(lightDirWS + viewDirWS);
-    float NdotL_WS    = max(dot(normalWS, lightDirWS), 0.0);
-    float NdotV_WS    = max(dot(normalWS, viewDirWS), 0.0);
-    float NdotH_WS    = max(dot(normalWS, halfDirWS), 0.0);
-    float VdotH_WS    = max(dot(viewDirWS, halfDirWS), 0.0);
-
-    vec3 F            = fresnelSchlickRoughness(VdotH_WS, gData.F0, gData.roughness);
-    float NDF         = ggxNDF(NdotH_WS, gData.roughness);
-    float G           = geometrySmith(NdotV_WS, NdotL_WS, gData.roughness);
+    vec3 halfDirWS      = normalize(lightDirWS + viewDirWS);
+    float NdotL_WS      = max(dot(normalWS, lightDirWS), 0.0);
+    float NdotV_WS      = max(dot(normalWS, viewDirWS), 0.0);
+    float NdotH_WS      = max(dot(normalWS, halfDirWS), 0.0);
+    float VdotH_WS      = max(dot(viewDirWS, halfDirWS), 0.0);
+  
+    vec3 F              = fresnelSchlickRoughness(VdotH_WS, gData.F0, gData.roughness);
+    float NDF           = ggxNDF(NdotH_WS, gData.roughness);
+    float G             = geometrySmith(NdotV_WS, NdotL_WS, gData.roughness);
     vec3 specularDirect = F * NDF * G / max(4.0 * NdotV_WS * NdotL_WS, 0.001);
-    vec3 kD           = (vec3(1.0) - F) * (1.0 - gData.metallic); // Diffuse factor
-    vec3 diffuseDirect= kD * gData.albedo / 3.14159;
+    vec3 kD             = (vec3(1.0) - F) * (1.0 - gData.metallic); // Diffuse factor
+    vec3 diffuseDirect  = kD * gData.albedo / 3.14159;
     vec3 directLighting = (diffuseDirect + specularDirect) * u_LightColor * NdotL_WS * shadow;
-    // --- End Direct Lighting ---
-
 
     // --- Indirect Lighting ---
 
@@ -432,24 +421,17 @@ void main()
     vec2 brdf             = texture(gBRDFLUT, vec2(NdotV_WS, gData.roughness)).rg;
     // Use same Fresnel as direct lighting for consistency
     vec3 specularIBL      = prefilteredColor * (F * brdf.x + brdf.y); // F = Fresnel calculated earlier
-
     // Diffuse GI (Use DDGI result exclusively)
     vec3 ddgiIrradiance   = SampleDDGI(gData.worldPos, normalWS);
-    // Apply surface albedo and energy conservation (Lambertian diffuse BRDF = albedo / PI)
-    // We use kD here again to modulate diffuse based on Fresnel/metallic, consistent with direct
     vec3 diffuseGI        = ddgiIrradiance * kD * gData.albedo / 3.14159;
-    // Simpler alternative if kD isn't desired for indirect:
-    // vec3 diffuseGI     = ddgiIrradiance * gData.albedo / 3.14159;
 
     // Apply scaling factors (optional, can be done in combine pass too)
     diffuseGI            *= u_DiffuseIndirectFactor;
     specularIBL          *= u_SpecularIndirectFactor;
 
-    // --- End Indirect Lighting ---
-
     // --- Final Output Assignment (Option 1 Structure) ---
     // AO affects all lighting components
-    DirectLight = (directLighting + gData.emissive) * gData.ao;
-    IBL = specularIBL * gData.ao;
-    IndirectLight   = diffuseGI * gData.ao;
+    DirectLight     = (directLighting + gData.emissive) * gData.ao * 2.0;
+    IBL             = specularIBL * gData.ao;
+    IndirectLight   = diffuseGI * gData.ao * 10;
 }

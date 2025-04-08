@@ -55,14 +55,86 @@ namespace JLEngine
         TextureReader::LoadTexture(assetPath + "HDRI/" + initParams.fileName, m_hdriSkyImageData, 0);
         int cubemapSize = m_hdriSkyImageData.width / 4;
 
+        //TextureReader::PrintImageData(m_hdriSkyImageData);
+
         Graphics::API()->Enable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
         CubemapBaker baker(assetPath, m_resourceLoader);
 
-        m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, true, initParams.compressionThreshold, initParams.maxValue);
+        m_hdriSky = baker.HDRtoCubemap(m_hdriSkyImageData, cubemapSize, false, initParams.compressionThreshold, initParams.maxValue);
         m_irradianceMap = baker.GenerateIrradianceCubemap(m_hdriSky, initParams.irradianceMapSize);
         m_prefilteredMap = baker.GeneratePrefilteredEnvMap(m_hdriSky, initParams.prefilteredMapSize, initParams.prefilteredSamples);
         m_brdfLUTMap = baker.GenerateBRDFLUT(512, 1024);
+
+        //std::array<ImageData, 6> cubemapData;
+        //Graphics::API()->ReadCubemap(m_hdriSky, m_hdriSkyImageData.width, m_hdriSkyImageData.height,
+        //    m_hdriSkyImageData.channels, true, cubemapData, true);
+        //
+        //float overallMinVal = std::numeric_limits<float>::max();
+        //float overallMaxVal = std::numeric_limits<float>::lowest();
+        //double overallSum = 0.0;
+        //size_t overallCount = 0;
+        //bool dataFound = false;
+        //
+        // Iterate through each of the 6 cubemap faces
+        //for (int face = 0; face < 6; ++face) {
+        //    const auto& faceData = cubemapData[face].hdrData; // Get ref to the float vector for this face
+        //
+        //    if (!faceData.empty()) {
+        //        dataFound = true; // Mark that we found some data
+        //        float faceMinVal = faceData[0];
+        //        float faceMaxVal = faceData[0];
+        //        double faceSum = 0.0;
+        //        size_t faceCount = 0;
+        //
+        //        // Iterate through float values (R, G, B components) for this face
+        //        for (float val : faceData) {
+        //            if (std::isfinite(val)) {
+        //                faceMinVal = std::min(faceMinVal, val);
+        //                faceMaxVal = std::max(faceMaxVal, val);
+        //                faceSum += val;
+        //                faceCount++;
+        //            }
+        //        }
+        //
+        //        if (faceCount > 0) {
+        //            // Update overall statistics
+        //            overallMinVal = std::min(overallMinVal, faceMinVal);
+        //            overallMaxVal = std::max(overallMaxVal, faceMaxVal);
+        //            overallSum += faceSum;
+        //            overallCount += faceCount;
+        //
+        //            // Print stats for the individual face
+        //            std::cout << "  Face " << face << " Stats:" << std::endl;
+        //            std::cout << "    Min Value: " << faceMinVal << std::endl;
+        //            std::cout << "    Max Value: " << faceMaxVal << std::endl;
+        //            std::cout << "    Average Value: " << (faceSum / faceCount) << std::endl;
+        //            std::cout << "    Finite Values: " << faceCount << std::endl;
+        //        }
+        //        else {
+        //            std::cerr << "  WARNING: No finite HDR data found for Face " << face << "!" << std::endl;
+        //        }
+        //    }
+        //    else {
+        //        std::cerr << "  WARNING: HDR Data vector is empty for Face " << face << "!" << std::endl;
+        //    }
+        //} // End loop over faces
+        //
+        //// Print overall summary statistics
+        //if (dataFound && overallCount > 0) {
+        //    std::cout << "  --- Overall Cubemap Stats ---" << std::endl;
+        //    std::cout << "    Overall Min: " << overallMinVal << std::endl;
+        //    std::cout << "    Overall Max: " << overallMaxVal << std::endl;
+        //    std::cout << "    Overall Average: " << (overallSum / overallCount) << std::endl;
+        //    std::cout << "    Total Finite Values: " << overallCount << std::endl;
+        //}
+        //else if (!dataFound) {
+        //    std::cerr << "  ERROR: No data found in any cubemap face vectors!" << std::endl;
+        //}
+        //else {
+        //    std::cerr << "  WARNING: No finite values found across all cubemap faces!" << std::endl;
+        //}
+        //std::cout << "---------------------------------------------" << std::endl;
 
         m_hdriSkyImageData.hdrData.clear();
     }

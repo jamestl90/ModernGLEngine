@@ -14,7 +14,7 @@ namespace JLEngine
 		std::string fileName;
 		
 		float compressionThreshold = 3.0f;
-		float maxValue = 10000.0f;
+		float maxValue = 1.0f;
 
 		int irradianceMapSize = 32;
 		int prefilteredMapSize = 128;

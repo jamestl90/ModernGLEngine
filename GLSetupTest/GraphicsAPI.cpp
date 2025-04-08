@@ -566,94 +566,159 @@ namespace JLEngine
 	}
 
 	/* UPDATE TO USE DSA IN FUTURE */
-	void GraphicsAPI::ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer)
+	void GraphicsAPI::ReadCubemap(uint32_t texId, int width, int height, int channels, bool hdr, std::array<ImageData, 6>& imgData, bool useFramebuffer /* = false */)
 	{
-		GLenum format = channels == 3 ? GL_RGB : GL_RGBA;
-		GLenum type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-		size_t faceSize = width * height * channels;
+		// --- Argument Validation ---
+		if (!glIsTexture(texId)) {
+			throw std::runtime_error("ReadCubemap: Invalid texture ID provided: " + std::to_string(texId));
+		}
+		if (width <= 0 || height <= 0) {
+			// Query texture dimensions if not provided or invalid?
+			// glGetTextureLevelParameteriv(texId, 0, GL_TEXTURE_WIDTH, &width);
+			// glGetTextureLevelParameteriv(texId, 0, GL_TEXTURE_HEIGHT, &height);
+			// if (width <= 0 || height <= 0) // Check again after query
+			throw std::runtime_error("ReadCubemap: Invalid dimensions provided: " + std::to_string(width) + "x" + std::to_string(height));
+		}
+		if (channels != 3 && channels != 4) {
+			throw std::runtime_error("ReadCubemap: Unsupported number of channels: " + std::to_string(channels));
+		}
 
+		// --- Setup ---
+		GLenum format = (channels == 3) ? GL_RGB : GL_RGBA;
+		GLenum type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+		size_t pixelSize = channels * (hdr ? sizeof(float) : sizeof(unsigned char));
+		size_t faceSizeBytes = (size_t)width * height * pixelSize;
+
+		if (faceSizeBytes == 0) {
+			throw std::runtime_error("ReadCubemap: Calculated face size is zero.");
+		}
+
+		// Save original viewport to restore later
 		GLint originalViewport[4];
 		glGetIntegerv(GL_VIEWPORT, originalViewport);
 
-		if (useFramebuffer)
-		{
-			// Use a framebuffer to read each cubemap face
-			GLuint fbo;
-			glGenFramebuffers(1, &fbo);
-			glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		// Save original pixel pack alignment
+		GLint originalPackAlignment = 4; // Default
+		glGetIntegerv(GL_PACK_ALIGNMENT, &originalPackAlignment);
+		// Set alignment to 1 for tightly packed reading (common practice)
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		GL_CHECK_ERROR();
 
-			for (int i = 0; i < 6; ++i)
+		// --- Reading Logic ---
+		try {
+			if (useFramebuffer) // Use Framebuffer + glReadPixels
 			{
-				imgData.at(i).width = width;
-				imgData.at(i).height = height;
-				imgData.at(i).channels = channels;
-				imgData.at(i).isHDR = hdr;
-				
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texId, 0);
-				glViewport(0, 0, width, height);
-				if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-				{
-					glDeleteFramebuffers(1, &fbo);
-					throw std::runtime_error("Framebuffer is incomplete for cubemap face: " + std::to_string(i));
-				}
-				glPixelStorei(GL_PACK_ALIGNMENT, 1);
-				if (imgData.at(i).isHDR)
-				{
-					std::vector<float> faceData(faceSize);
-					glReadPixels(0, 0, width, height, format, type, faceData.data());
-					imgData.at(i).hdrData = std::move(faceData);
-				}
-				else
-				{
-					std::vector<unsigned char> faceData(faceSize);
-					glReadPixels(0, 0, width, height, format, type, faceData.data());
-					imgData.at(i).data = std::move(faceData);
-				}
-				glPixelStorei(GL_PACK_ALIGNMENT, 4);
+				GLuint fbo = 0;
+				glCreateFramebuffers(1, &fbo);
+				if (fbo == 0) throw std::runtime_error("ReadCubemap: Failed to create FBO.");
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo); // Bind FBO for reading
 
-				GL_CHECK_ERROR();
+				for (int i = 0; i < 6; ++i) {
+					// Prepare ImageData struct
+					imgData.at(i).width = width;
+					imgData.at(i).height = height;
+					imgData.at(i).channels = channels;
+					imgData.at(i).isHDR = hdr;
+
+					// Attach the correct face and mip level (0) to the FBO
+					// glNamedFramebufferTextureLayer is better, but requires FBO ID from glCreate*
+					glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texId, 0);
+					GL_CHECK_ERROR();
+
+					// Check FBO completeness *after* attaching
+					GLenum status = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER);
+					if (status != GL_FRAMEBUFFER_COMPLETE) {
+						glDeleteFramebuffers(1, &fbo); // Clean up FBO
+						glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+						throw std::runtime_error("ReadCubemap: Framebuffer incomplete for face " + std::to_string(i) + ". Status: " + std::to_string(status));
+					}
+
+					// Set the source buffer for reading
+					glReadBuffer(GL_COLOR_ATTACHMENT0);
+					GL_CHECK_ERROR();
+
+					// Read pixels into the appropriate vector
+					if (hdr) {
+						std::vector<float> faceData(width * height * channels); // Allocate here
+						glReadPixels(0, 0, width, height, format, type, faceData.data());
+						imgData.at(i).hdrData = std::move(faceData);
+					}
+					else {
+						std::vector<unsigned char> faceData(width * height * channels); // Allocate here
+						glReadPixels(0, 0, width, height, format, type, faceData.data());
+						imgData.at(i).data = std::move(faceData);
+					}
+					GL_CHECK_ERROR(); // Check after glReadPixels
+				}
+				glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Unbind FBO
+				glDeleteFramebuffers(1, &fbo); // Delete FBO
 			}
-
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glDeleteFramebuffers(1, &fbo);
-		}
-		else
-		{
-			for (int i = 0; i < 6; ++i)
+			else // Use Direct Texture Access (glGetTextureSubImage)
 			{
-				auto internalFormat = GetInternalFormat(texId, GL_TEXTURE_CUBE_MAP, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
-				if (internalFormat == GL_RGB16F || internalFormat == GL_RGBA16F ||
-					internalFormat == GL_RGB32F || internalFormat == GL_RGBA32F)
-				{
-					if (type != GL_FLOAT)
-						throw std::runtime_error("Type mismatch for HDR cubemap face " + std::to_string(i));
-				}
+				// Determine required buffer size for one face
+				GLsizei bufferSize = static_cast<GLsizei>(faceSizeBytes);
 
-				imgData.at(i).width = width;
-				imgData.at(i).height = height;
-				imgData.at(i).channels = channels;
-				imgData.at(i).isHDR = hdr;
+				for (int i = 0; i < 6; ++i) {
+					// Prepare ImageData struct
+					imgData.at(i).width = width;
+					imgData.at(i).height = height;
+					imgData.at(i).channels = channels;
+					imgData.at(i).isHDR = hdr;
 
-				glBindTexture(GL_TEXTURE_CUBE_MAP, texId);
-				if (hdr)
-				{
-					std::vector<float> faceData(width * height * channels);
-					glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
-					imgData.at(i).hdrData = std::move(faceData);
-				}
-				else
-				{
-					std::vector<unsigned char> faceData(faceSize);
-					glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
-					imgData.at(i).data = std::move(faceData);
-				}
+					// Read directly from the texture object using DSA
+					if (hdr) {
+						std::vector<float> faceData(width * height * channels); // Allocate here
+						glGetTextureSubImage(texId, // Texture ID
+							0,     // Mip Level
+							0, 0, i, // x, y offset, z offset (z is face index for cube map array/layers) -> THIS IS WRONG FOR CUBEMAP
+							width, height, 1, // width, height, depth (depth=1 for single face)
+							format, type,
+							bufferSize,
+							faceData.data());
+						// ** CORRECTION for Cubemap Faces with glGetTextureSubImage **
+						// glGetTextureSubImage treats cubemaps like 3D textures or 2D Arrays.
+						// We need to get the whole layer (face). glGetTextureImage is simpler here.
+						// std::vector<float> faceData(width * height * channels); // Allocate here
+						// glGetTextureImage(texId, // Texture ID
+						//                   0,     // Mip Level
+						//                   format, type,
+						//                   bufferSize,
+						//                   faceData.data()); // Reads the *entire* texture - need per face!
 
-				GL_CHECK_ERROR();
+						// Let's stick to the non-DSA glGetTexImage for simplicity per face if DSA subimage is complex
+						glBindTexture(GL_TEXTURE_CUBE_MAP, texId); // Need to bind for non-DSA version
+						glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
+						glBindTexture(GL_TEXTURE_CUBE_MAP, 0); // Unbind
+						// *** END Correction ***
+
+						imgData.at(i).hdrData = std::move(faceData);
+					}
+					else {
+						// Similar logic for LDR data if needed, using glGetTexImage or corrected glGetTextureSubImage
+						std::vector<unsigned char> faceData(width * height * channels); // Allocate here
+						glBindTexture(GL_TEXTURE_CUBE_MAP, texId); // Bind for non-DSA version
+						glGetTexImage(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, type, faceData.data());
+						glBindTexture(GL_TEXTURE_CUBE_MAP, 0); // Unbind
+						imgData.at(i).data = std::move(faceData);
+					}
+					GL_CHECK_ERROR(); // Check after reading face
+				}
 			}
 		}
+		catch (const std::exception& e) {
+			// Restore state even if reading fails
+			glPixelStorei(GL_PACK_ALIGNMENT, originalPackAlignment);
+			glViewport(originalViewport[0], originalViewport[1], originalViewport[2], originalViewport[3]);
+			std::cerr << "ERROR during ReadCubemap data reading: " << e.what() << std::endl;
+			throw; // Re-throw exception
+		}
 
-		glViewport(originalViewport[0], originalViewport[1], originalViewport[2], originalViewport[3]);
-		std::cout << "Successfully read Cubemap with " << (imgData.at(0).isHDR ? "HDR" : "LDR") << " data." << std::endl;
+		// --- Restore State ---
+		glPixelStorei(GL_PACK_ALIGNMENT, originalPackAlignment); // Restore original alignment
+		glViewport(originalViewport[0], originalViewport[1], originalViewport[2], originalViewport[3]); // Restore viewport
+		GL_CHECK_ERROR();
+
+		std::cout << "Successfully read Cubemap with " << (imgData.at(0).isHDR ? "HDR" : "LDR") << " data (Method: " << (useFramebuffer ? "FBO/ReadPixels" : "Direct/GetTexImage") << ")." << std::endl;
 	}
 
 	void GraphicsAPI::CreateTextures(uint32_t target, uint32_t n, uint32_t* textures)
