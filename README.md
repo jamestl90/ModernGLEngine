@@ -2,7 +2,16 @@ Engine is based on Modern OpenGL 4.6 and utilises it's features such as DSA (Dir
 
 https://trello.com/b/9M6YkL0b/opengl-engine-jlengine
 
-Current feature in progress: Dynamic Diffuse Global Illumination
+Current feature in progress: Dynamic Diffuse Global Illumination 
+Generate a grid of probes to populate the space in the world, using AABB collision to determine valid probes. Red probes = skip processing
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/IrradianceProbeGrid.png'/>
+
+Cycle through each probe and visualize the rays it casts. White ray = hit, black ray = miss/sky 
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/Probe_ray_debug.png'/>
+
+AABB visualization of the world. For indoor lighting will need to refine this. 
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/AABB_Debug_draw.png'/>
+
 
 Rendering Setup:
 
