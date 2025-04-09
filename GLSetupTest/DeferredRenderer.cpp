@@ -150,7 +150,8 @@ namespace JLEngine
         m_hdriSky = new HDRISky(m_resourceLoader);
         m_hdriSky->Initialise(m_assetFolder, params);
         
-        m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
+        if (m_ddgi == nullptr)
+            m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
         m_ddgi->GenerateProbes(m_sceneManager.GetSubmeshes());
 
         // possible not needed now
@@ -164,7 +165,8 @@ namespace JLEngine
 
     void DeferredRenderer::LateInitialize()
     {
-        m_vgm = new VoxelGridManager(m_resourceLoader, m_assetFolder);
+        if (m_vgm == nullptr)
+            m_vgm = new VoxelGridManager(m_resourceLoader, m_assetFolder);
         m_vgm->Initialise();
         ExtractSceneTriangles();
         m_vgm->Render();
@@ -387,8 +389,6 @@ namespace JLEngine
         // update camera info
         Graphics::UploadToGPUBuffer(m_gShaderData.GetGPUBuffer(), gShaderData, 0);
 
-        DrawUI();
-
         // prepare the default framebuffer
         Graphics::API()->BindFrameBuffer(0);
         Graphics::API()->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
@@ -412,6 +412,7 @@ namespace JLEngine
                 static_cast<float>(dt), 
                 &m_gShaderData,                 // global shader data
                 glm::inverse(viewMatrix),       // inverse view matrix for normals -> world space
+                m_dirLightColor,
                 m_hdriSky->GetSkyGPUID(),
                 m_vgm->GetVoxelGrid().textureId);  // linear depth
 
@@ -419,6 +420,7 @@ namespace JLEngine
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
             CombinePass(viewMatrix, projMatrix);
 
+            DrawUI();
             // renders debug geometry/lines/points etc including imgui 
             RenderDebugTools(viewMatrix, projMatrix);
 
@@ -481,7 +483,7 @@ namespace JLEngine
 
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
-        m_lightingTestShader->SetUniform("u_LightColor", glm::vec3(1.0f, 1.0f, 1.0f)); 
+        m_lightingTestShader->SetUniform("u_LightColor", m_dirLightColor);
         m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
@@ -701,12 +703,12 @@ namespace JLEngine
     {
         for (const auto& probe : m_ddgi->GetProbeSSBO().GetDataImmutable())
         {
-            if (probe.Depth == 0.0f)
+            if (probe._padding.x > 0.5f)
                 Im3d::PushColor(Im3d::Color_Red);
             else
                 Im3d::PushColor(Im3d::Color_Green);
             const glm::vec3 center = glm::vec3(probe.WorldPosition);
-            Im3d::DrawSphere(Im3d::Vec3(center.x, center.y, center.z), 0.25f);
+            Im3d::DrawSphere(Im3d::Vec3(center.x, center.y, center.z), 0.15f);
             Im3d::PopColor();
         }       
     }
@@ -783,7 +785,7 @@ namespace JLEngine
 
     void DeferredRenderer::RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        if (ImGui::Begin("Debug Options"))
+        if (ImGui::Begin("Debug DDGI"))
         {
             ImGui::Checkbox("Show DDGI Probes", &m_showDDGI);
             ImGui::Checkbox("Show AABBs", &m_showAABB);
@@ -792,10 +794,16 @@ namespace JLEngine
             float& blendFac = m_ddgi->GetBlendFactorMutable();
             ImGui::SliderFloat("Blend Factor", &blendFac, 0.1f, 1.0f);
 
+            float& skyBlendFac = m_ddgi->GetSkyLightColBlendFacMutable();
+            ImGui::SliderFloat("Sky/LightColour Blend Factor", &skyBlendFac, 0.0f, 1.0f);
+
             int maxIndex = static_cast<int>(m_ddgi->GetProbeSSBO().GetDataImmutable().size()) - 1;
             int& probeIndex = m_ddgi->GetDebugProbeIndexMutable();
             ImGui::SliderInt("Debug Probe Index", &probeIndex, 0, std::max(0, maxIndex));
-            
+
+            float& rayLen = m_ddgi->GetRayLengthMutable();
+            ImGui::SliderFloat("Max Ray Distance", &rayLen, 1.0f, 10.0f);
+
             //int& raysPerProbe = m_ddgi->GetRaysPerProbeMutable();
             //ImGui::SliderInt("Rays Per Probe", &raysPerProbe, 16, 512);
         }
@@ -813,13 +821,12 @@ namespace JLEngine
         if (m_showDDGI) { DebugDDGI(); }
         if (m_showAABB) { DebugAABB(); }
         if (m_showDDGIRays) { DebugDDGIRays(); }
-        GL_CHECK_ERROR();
+
         // render im3d here
         if (m_im3dManager != nullptr)
         {
             m_im3dManager->EndFrameAndRender(projMatrix * viewMatrix);
         }
-        GL_CHECK_ERROR();
     }
 
     void DeferredRenderer::DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -930,6 +937,23 @@ namespace JLEngine
             m_debugModes = modes[1];
     }
 
+    DDGI* DeferredRenderer::GetDDGI()
+    {
+        if (m_ddgi == nullptr)
+        {
+            m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
+        }
+        return m_ddgi;
+    }
+
+    VoxelGridManager* DeferredRenderer::GetVoxelGridManager() {
+        if (m_vgm == nullptr)
+        {
+            m_vgm = new VoxelGridManager(m_resourceLoader, m_assetFolder);
+        }
+        return m_vgm;
+    }
+
     void DeferredRenderer::DrawUI()
     {
         static float lightAngle = 0.0f;  // Rotation angle in degrees
@@ -951,10 +975,20 @@ namespace JLEngine
         ImGui::SliderInt("PCF Kernel Size", &m_dlShadowMap->GetPCFKernelSize(), 0, 5);
         ImGui::End();
 
-        ImGui::Begin("HDRI Sky Settings");
+        ImGui::Begin("Light Settings");
         ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Direct Factor", &m_directFactor, 0.1f, 3.0f);
+
+        ImVec4 imColor = ImVec4(m_dirLightColor.x, m_dirLightColor.y, m_dirLightColor.z, 1.0f);
+        ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoAlpha |
+                                    ImGuiColorEditFlags_Float |
+                                    ImGuiColorEditFlags_PickerHueWheel;
+
+        if (ImGui::ColorEdit3("Light Colour", &imColor.x, flags))
+        {
+            m_dirLightColor = glm::vec3(imColor.x, imColor.y, imColor.z);
+        }
         ImGui::End();
     }
     

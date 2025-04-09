@@ -75,6 +75,9 @@ namespace JLEngine
 
         void SetDebugDrawer(IM3DManager* im3dMgr) { m_im3dManager = im3dMgr; }
 
+        DDGI* GetDDGI();
+        VoxelGridManager* GetVoxelGridManager();
+
     private:
         void DrawUI();        
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
@@ -166,6 +169,7 @@ namespace JLEngine
         DDGI* m_ddgi;
         VoxelGridManager* m_vgm;
         DirectionalLightShadowMap* m_dlShadowMap;
+        glm::vec3 m_dirLightColor = glm::vec3(1.0f);
         Light m_directionalLight;
         bool m_enableDLShadows;
 

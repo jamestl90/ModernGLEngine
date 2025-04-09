@@ -3,6 +3,7 @@
 #include "HDRISky.h"
 #include "ListCycler.h"
 #include "JLMath.h"
+#include "DDGI.h"
 
 JLEngine::FlyCamera* flyCamera;
 JLEngine::Input* input;
@@ -180,6 +181,62 @@ void DemoSkinning(JLEngine::JLEngineCore& engine, const std::string& assetFolder
     //skeletonNode->animController->SetPlaybackSpeed(0.25f);
 }
 
+void TestScene1(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
+{
+    //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
+    //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
+    //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, 0, 5));
+    //
+    //engine.LoadAndAttachToRoot(assetFolder + "archviz_2.glb");
+    //engine.LoadAndAttachToRoot(assetFolder + "Bistro_Godot2.glb");
+
+    auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
+    auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    planeMat->metallicFactor = 0.0f;
+    planeMat->roughnessFactor = 0.2f;
+    planeMat->castShadows = false;
+    planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
+
+    engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
+    //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
+    //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
+
+    //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
+
+    auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(5, 1, 5));
+
+    auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(0, 0, 0));
+    auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(4, 0, 0));
+    engine.MakeInstanceOf(tree1, glm::vec3(-4, 0, 0), true);
+
+    //auto boxHouse = engine.LoadAndAttachToRoot(assetFolder + "indoorTest.glb", glm::vec3(-10, 2, -10));
+
+    //DemoInstancing(engine, m_assetPath);
+    DemoSkinning(engine, m_assetPath);
+}
+
+void TestScene2(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
+{
+    auto* ddgi = renderer->GetDDGI();
+    ddgi->SetGridOrigin({ 0.0f, 0.0f, 0.0f });
+    ddgi->SetGridResolution({ 8.0f, 7.0f, 8.0f });
+    ddgi->SetProbeSpacing({ 0.7f, 0.7f, 0.7f });
+
+    auto* vgm = renderer->GetVoxelGridManager();
+    auto& vg = vgm->GetVoxelGrid();
+    vg.worldOrigin = glm::vec3({ 0.0f, 0.0f, 0.0f });
+    vg.resolution = glm::vec3({ 128, 128, 128 });
+    vg.worldSize = glm::vec3({ 5, 5, 5 });
+
+    auto indoor = engine.LoadAndAttachToRoot(assetFolder + "indoorTest.glb");
+
+    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, -1.8f, 0));
+    auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
+    auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
+    skeletonNode->animController->SetCurrentAnimation(anim.get());
+}
+
 int MainApp(std::string assetFolder)
 {
     m_assetPath = assetFolder;
@@ -194,6 +251,7 @@ int MainApp(std::string assetFolder)
     input->SetMouseMoveCallback(MouseMoveCallback);
     graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
     engine.InitIMGUI();
+    renderer = engine.GetRenderer();
 
     std::vector<std::string> skyTextures = {
     "kloofendal_48d_partly_cloudy_puresky_4k.hdr",
@@ -206,40 +264,9 @@ int MainApp(std::string assetFolder)
 
     flyCamera = engine.GetFlyCamera();
 
-    //engine.LoadAndAttachToRoot(assetFolder + "PotOfCoals.glb", glm::vec3(5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(15, 15, 15));
-    //engine.LoadAndAttachToRoot(assetFolder + "BarramundiFish.glb", glm::vec3(-5.0f, 0.0f, 0.0f), glm::quat(), glm::vec3(5, 5, 5));
-    //engine.LoadAndAttachToRoot(assetFolder + "bed_single_01.glb", glm::vec3(5, 0, 5));
-    //
-    //engine.LoadAndAttachToRoot(assetFolder + "archviz_2.glb");
-    //engine.LoadAndAttachToRoot(assetFolder + "Bistro_Godot2.glb");
-    
-    auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, 0, 0));
-    auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
-    planeMat->metallicFactor = 0.0f;
-    planeMat->roughnessFactor = 0.2f;
-    planeMat->castShadows = false;
-    planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
-    plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
-    
-    engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
-    //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
-    //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
-
-    //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
-
-    auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(5, 1, 5));
-    
-    auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(0, 0, 0));
-    auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(4, 0, 0));
-    engine.MakeInstanceOf(tree1, glm::vec3(-4, 0, 0), true);
-    
-    //auto boxHouse = engine.LoadAndAttachToRoot(assetFolder + "indoorTest.glb", glm::vec3(-10, 2, -10));
-
-    //DemoInstancing(engine, m_assetPath);
-    DemoSkinning(engine, m_assetPath);
+    TestScene2(engine, assetFolder);
 
     engine.FinalizeLoading();
-    renderer = engine.GetRenderer();
 
     engine.run(gameLogicUpdate, gameRender, fixedUpdate);
 

@@ -37,8 +37,8 @@ namespace JLEngine
 		uint32_t m_shadowMap;
 		uint32_t m_shadowFBO;
 		int m_shadowMapSize = 4096;
-		float m_bias = 0.0009f;
-		float m_size = 20.0f;
+		float m_bias = 0.00002f;
+		float m_size = 15.0f;
 		float m_dlShadowDistance;
 		int m_PCFKernelSize;
 

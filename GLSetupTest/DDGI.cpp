@@ -51,20 +51,22 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 					}
 				}
 
-				//if (intersects)
-				//{
-				//	probe.WorldPosition = glm::vec4(worldPos, 1.0f); // or maybe w=0 as a flag?
-				//	for (int i = 0; i < 9; ++i) probe.SHCoeffs[i] = glm::vec4(0.0f);
-				//	probe.Depth = 0.0f; // indicate no valid distance data
-				//	probe.DepthMoment2 = 0.0f;
-				//	continue;
-				//}
+				if (intersects)
+				{
+					probe.WorldPosition = glm::vec4(worldPos, 1.0f); // or maybe w=0 as a flag?
+					for (int i = 0; i < 9; ++i) probe.SHCoeffs[i] = glm::vec4(0.0f);
+					probe.Depth = 0.0f; // indicate no valid distance data
+					probe.DepthMoment2 = 0.0f;
+					probe._padding.x = 1.0f;
+					continue;
+				}
 
 				// Initialize normally
 				probe.WorldPosition = glm::vec4(worldPos, 1.0f);
 				for (int i = 0; i < 9; ++i) probe.SHCoeffs[i] = glm::vec4(0.0f); // Start black
 				probe.Depth = maxDistance; // initialize with max distance
 				probe.DepthMoment2 = maxDistance * maxDistance;
+				probe._padding = glm::vec2(0.0f);
 			}
 		}
 	}
@@ -81,7 +83,12 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	GL_CHECK_ERROR();
 }
 
-void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t skyTex, uint32_t voxtex)
+void JLEngine::DDGI::Update(float dt, 
+	UniformBuffer* shaderGlobaldata, 
+	const glm::mat4& inverseView, 
+	glm::vec3& dirLightCol,
+	uint32_t skyTex, 
+	uint32_t voxtex)
 {
     Graphics::API()->BindShader(m_updateProbesCompute->GetProgramId());
 
@@ -98,9 +105,12 @@ void JLEngine::DDGI::Update(float dt, UniformBuffer* shaderGlobaldata, const glm
 	m_updateProbesCompute->SetUniform("u_ProbeGridCenter", m_gridOrigin);
 	m_updateProbesCompute->SetUniform("u_ProbeSpacing", m_probeSpacing);
     m_updateProbesCompute->SetUniformi("u_RaysPerProbe", m_raysPerProbe);
+	m_updateProbesCompute->SetUniformf("u_MaxDistance", m_maxDistance);
     m_updateProbesCompute->SetUniformf("u_BlendFactor", m_blendFactor);
 	m_updateProbesCompute->SetUniformi("u_DebugRayCount", m_debugRayCount);
 	m_updateProbesCompute->SetUniformi("u_DebugProbeIndex", m_debugProbeIndex);
+	m_updateProbesCompute->SetUniform("u_DirLightCol", dirLightCol);
+	m_updateProbesCompute->SetUniformf("u_SkyLightColBlendFac", m_skyLightColBlendFac);
 
 	m_updateProbesCompute->SetUniform("u_VoxelGridCenter", m_voxelGrid->worldOrigin);
 	m_updateProbesCompute->SetUniform("u_VoxelGridWorldSize", m_voxelGrid->worldSize);

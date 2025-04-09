@@ -45,7 +45,8 @@ struct DDGIProbe
     vec4 WorldPosition;     
     vec4 SHCoeffs[9];       
     float Depth;            
-    float DepthMoment2;     
+    float DepthMoment2;    
+    vec2 padding; 
 };
 
 layout(std430, binding = 7) readonly buffer ProbeData 

@@ -13,6 +13,7 @@ struct DDGIProbe
     vec4 SHCoeffs[9];
     float Depth;
     float DepthMoment2;
+    vec2 padding;
 };
 
 // struct for storing debug ray info (ensure C++ struct matches alignment/padding)
@@ -61,13 +62,16 @@ uniform ivec3 u_VoxelGridResolution; // Resolution of the voxel grid
 // DDGI Update Params
 uniform int u_RaysPerProbe;
 uniform float u_BlendFactor;
+uniform float u_MaxDistance = 6.0; // Keep existing or adjust
+
+uniform vec3 u_DirLightCol;
+uniform float u_SkyLightColBlendFac;
 
 // Debug Params
 uniform int u_DebugRayCount;
 uniform int u_DebugProbeIndex; // Assume this is the FLAT index for simplicity
 
 // --- Constants ---
-const float maxDistance = 6.0; // Keep existing or adjust
 const float epsilon = 1.0e-5;  // Small epsilon
 const float PI = 3.14159265359;
 const vec3 AVERAGE_ALBEDO = vec3(0.5); // Average diffuse reflectance assumption for bounces
@@ -281,16 +285,16 @@ void main()
 
     DDGIProbe probe = probes[index]; // Read probe data
 
+    // This probe was inside an axis aligned box (collision)
+    if (probe.padding.x > 0.5)
+    {
+        return;
+    }
+
     // Reset Debug Rays (use flat index)
     if (index == u_DebugProbeIndex) 
     {
         ResetDebugRays(index);
-    }
-
-    // Skip probes inside geometry
-    if (abs(probe.Depth) < epsilon && abs(probe.DepthMoment2) < epsilon) 
-    {
-        return;
     }
 
     // Accumulators
@@ -305,10 +309,10 @@ void main()
         vec3 origin = probe.WorldPosition.xyz;
         vec3 dir = SampleFibonacciSphere(uint(i), uint(u_RaysPerProbe));
 
-        float currentRayHitDist = maxDistance;
+        float currentRayHitDist = u_MaxDistance;
         vec3 currentRaySampleColor = vec3(0.0);
 
-        vec3 debugHitPos = origin + dir * maxDistance;
+        vec3 debugHitPos = origin + dir * u_MaxDistance;
         vec3 debugRayColor = vec3(0.0);
 
         vec3 hitPos;
@@ -319,7 +323,7 @@ void main()
             origin, dir,
             u_VoxelGridSampler,
             u_VoxelGridCenter, u_VoxelGridWorldSize, u_VoxelGridResolution,
-            maxDistance,
+            u_MaxDistance,
             hitPos, hitDist
         );
 
@@ -340,10 +344,10 @@ void main()
         else
         {
             // Ray MISSED voxel grid - Sample Skybox
-            currentRaySampleColor = texture(u_SkyboxSampler, dir).rgb;
-            currentRayHitDist = maxDistance;
+            currentRaySampleColor = mix(u_DirLightCol, texture(u_SkyboxSampler, dir).rgb, u_SkyLightColBlendFac);
+            currentRayHitDist = u_MaxDistance;
 
-            debugHitPos = origin + dir * maxDistance;
+            debugHitPos = origin;// + dir * u_MaxDistance;;
             debugRayColor = currentRaySampleColor; // Sky color debug ray for miss
         }
         // --- End Color Determination ---

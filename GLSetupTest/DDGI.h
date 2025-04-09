@@ -54,9 +54,16 @@ namespace JLEngine
         int& GetDebugProbeIndexMutable() { return m_debugProbeIndex; }
         int& GetRaysPerProbeMutable() { return m_raysPerProbe; }
         float& GetBlendFactorMutable() { return m_blendFactor; }
+        float& GetSkyLightColBlendFacMutable() { return m_skyLightColBlendFac; }
+        float& GetRayLengthMutable() { return m_maxDistance; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
-        void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t skyTex, uint32_t voxtex);
+        void Update(float dt, 
+            UniformBuffer* shaderGlobaldata, 
+            const glm::mat4& inverseView, 
+            glm::vec3& dirLightCol,
+            uint32_t skyTex, 
+            uint32_t voxtex);
 
         ShaderStorageBuffer<DDGIProbe>& GetProbeSSBO() { return m_probeSSBO; }
         ShaderStorageBuffer<DebugRay>& GetDebugRays() { return m_debugRaysSSBO; }
@@ -73,10 +80,12 @@ namespace JLEngine
         glm::ivec3 m_gridResolution { 10, 7, 10 };
         glm::vec3 m_probeSpacing { 2.5f, 1.25f, 2.5f };
         
-        int m_debugRayCount = 64;
-        int m_raysPerProbe = 64;
+        int m_debugRayCount = 128;
+        int m_raysPerProbe = 128;
         int m_debugProbeIndex = 0;
         float m_blendFactor = 0.8f;
+        float m_maxDistance = 4.5f;    // sort of depends on probe spacing
+        float m_skyLightColBlendFac = 0.5f;
 
         ShaderStorageBuffer<DDGIProbe> m_probeSSBO;
         ShaderStorageBuffer<DebugRay> m_debugRaysSSBO;
