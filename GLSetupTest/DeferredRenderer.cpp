@@ -268,7 +268,9 @@ namespace JLEngine
             m_jointMatrices.insert(m_jointMatrices.end(), jointMatrices.begin(), jointMatrices.end());
         }
 
-        Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), m_jointMatrices);
+        if (skinnedMeshData.size() > 0 || instancedSkinnedMeshData.size() > 0)
+            Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), m_jointMatrices);
+        GL_CHECK_ERROR();
     }
 
     glm::mat4 DeferredRenderer::DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -444,7 +446,6 @@ namespace JLEngine
             m_frameCount = 0;
 
         Graphics::API()->BindFrameBuffer(0);
-
         GL_CHECK_ERROR();
     }
 
@@ -494,6 +495,7 @@ namespace JLEngine
 
         m_lightingTestShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
         m_lightingTestShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
+        m_lightingTestShader->SetUniformf("m_DirectFactor", m_directFactor);
 
         auto& gridRes = m_ddgi->GetGridResolution();
         auto& gridOrigin = m_ddgi->GetGridOrigin();
@@ -787,6 +789,9 @@ namespace JLEngine
             ImGui::Checkbox("Show AABBs", &m_showAABB);
             ImGui::Checkbox("Show Probe Rays", &m_showDDGIRays);
 
+            float& blendFac = m_ddgi->GetBlendFactorMutable();
+            ImGui::SliderFloat("Blend Factor", &blendFac, 0.1f, 1.0f);
+
             int maxIndex = static_cast<int>(m_ddgi->GetProbeSSBO().GetDataImmutable().size()) - 1;
             int& probeIndex = m_ddgi->GetDebugProbeIndexMutable();
             ImGui::SliderInt("Debug Probe Index", &probeIndex, 0, std::max(0, maxIndex));
@@ -808,12 +813,13 @@ namespace JLEngine
         if (m_showDDGI) { DebugDDGI(); }
         if (m_showAABB) { DebugAABB(); }
         if (m_showDDGIRays) { DebugDDGIRays(); }
-
+        GL_CHECK_ERROR();
         // render im3d here
         if (m_im3dManager != nullptr)
         {
             m_im3dManager->EndFrameAndRender(projMatrix * viewMatrix);
         }
+        GL_CHECK_ERROR();
     }
 
     void DeferredRenderer::DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -948,6 +954,7 @@ namespace JLEngine
         ImGui::Begin("HDRI Sky Settings");
         ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 3.0f);
+        ImGui::SliderFloat("Direct Factor", &m_directFactor, 0.1f, 3.0f);
         ImGui::End();
     }
     

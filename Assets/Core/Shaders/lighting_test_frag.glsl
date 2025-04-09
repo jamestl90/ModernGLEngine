@@ -24,6 +24,7 @@ uniform float u_Bias;
 
 uniform float u_SpecularIndirectFactor;
 uniform float u_DiffuseIndirectFactor;
+uniform float m_DirectFactor;
 
 uniform float u_Near;
 uniform float u_Far;
@@ -180,33 +181,6 @@ float geometrySmith(float NdotV, float NdotL, float roughness)
     return gV * gL;
 }
 
-vec3 CalculateDirectLighting(GBufferData gData, float shadow, vec3 lightDirVS, vec3 viewDirVS)
-{
-    vec3 normalVS = gData.normal; // already in view space
-    vec3 halfDir = normalize(lightDirVS + viewDirVS);
-
-    float NdotL = max(dot(normalVS, lightDirVS), 0.0);
-    float NdotV = max(dot(normalVS, viewDirVS), 0.0);
-    float NdotH = max(dot(normalVS, halfDir), 0.0);
-    float VdotH = max(dot(viewDirVS, halfDir), 0.0);
-
-    vec3 F = fresnelSchlickRoughness(VdotH, gData.F0, gData.roughness);
-    float NDF = ggxNDF(NdotH, gData.roughness);
-    float G = geometrySmith(NdotV, NdotL, gData.roughness);
-
-    vec3 specular = F * NDF * G / max(4.0 * NdotV * NdotL, 0.001);
-    vec3 diffuse = (1.0 - F) * gData.albedo / 3.14159265359;
-
-    return (diffuse + specular) * u_LightColor * NdotL * shadow;
-}
-
-// Diffuse IBL calculation
-vec3 CalculateDiffuseIBL(vec3 normal, vec3 albedo)
-{
-    vec3 irradiance = texture(gIrradianceMap, normal).rgb;
-    return irradiance * albedo * u_DiffuseIndirectFactor;
-}
-
 // Specular IBL calculation
 vec3 CalculateSpecularIBL(vec3 normal, vec3 viewDir, float roughness, vec3 F0)
 {
@@ -344,7 +318,7 @@ vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
                 ivec3 probeCoords = baseCoords + cornerOffset;
 
                 int probeIndex = GetProbeIndex(probeCoords, u_DDGI_GridResolution);
-                float visibility = 1.0;
+                float visibility = 1.0; // CalculateProbeVisibility(worldPos, probeIndex);
 
                 if (visibility > 1e-5)
                 {
@@ -431,7 +405,7 @@ void main()
 
     // --- Final Output Assignment (Option 1 Structure) ---
     // AO affects all lighting components
-    DirectLight     = (directLighting + gData.emissive) * gData.ao * 2.0;
+    DirectLight     = (directLighting + gData.emissive) * gData.ao * m_DirectFactor;
     IBL             = specularIBL * gData.ao;
     IndirectLight   = diffuseGI * gData.ao * 10;
 }

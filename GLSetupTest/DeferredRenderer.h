@@ -115,6 +115,7 @@ namespace JLEngine
 
         float m_specularIndirectFactor = 2.0f;
         float m_diffuseIndirectFactor = 2.0f;
+        float m_directFactor = 2.0f;
         glm::vec3 m_lastEyePos;
 
         IM3DManager* m_im3dManager;

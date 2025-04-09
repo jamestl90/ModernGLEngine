@@ -53,6 +53,7 @@ namespace JLEngine
         const int GetDebugProbeIndex() const { return m_debugProbeIndex; }
         int& GetDebugProbeIndexMutable() { return m_debugProbeIndex; }
         int& GetRaysPerProbeMutable() { return m_raysPerProbe; }
+        float& GetBlendFactorMutable() { return m_blendFactor; }
 
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
         void Update(float dt, UniformBuffer* shaderGlobaldata, const glm::mat4& inverseView, uint32_t skyTex, uint32_t voxtex);
@@ -69,8 +70,8 @@ namespace JLEngine
         std::string m_assetPath;
 
         glm::vec3 m_gridOrigin = glm::vec3(0,4.5,0);
-        glm::ivec3 m_gridResolution { 10, 5, 10 };
-        glm::vec3 m_probeSpacing { 2.5f, 1.5f, 2.5f };
+        glm::ivec3 m_gridResolution { 10, 7, 10 };
+        glm::vec3 m_probeSpacing { 2.5f, 1.25f, 2.5f };
         
         int m_debugRayCount = 64;
         int m_raysPerProbe = 64;

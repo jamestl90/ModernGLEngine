@@ -221,19 +221,19 @@ int MainApp(std::string assetFolder)
     planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
     plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
     
-    //engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
+    engine.LoadAndAttachToRoot(assetFolder + "Wood_Tower.glb", glm::vec3(10, 0, 10), glm::quat(), glm::vec3(0.15f, 0.15f, 0.15f));
     //engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
     //engine.LoadAndAttachToRoot(assetFolder + "boxesinstanced.glb", glm::vec3(15, 2.5, 5));
 
     //auto cubewithanim = engine.LoadAndAttachToRoot(assetFolder + "cubewithanim.glb", glm::vec3(10,0,0));
 
     auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(5, 1, 5));
-
+    
     auto building = engine.LoadAndAttachToRoot(assetFolder + "talesfromtheloop.glb", glm::vec3(0, 0, 0));
     auto tree1 = engine.LoadAndAttachToRoot(assetFolder + "Tree1.glb", glm::vec3(4, 0, 0));
     engine.MakeInstanceOf(tree1, glm::vec3(-4, 0, 0), true);
-
-    auto depthTestCube = engine.LoadAndAttachToRoot(assetFolder + "depthTest.glb", glm::vec3(-6, 1, 6));
+    
+    //auto boxHouse = engine.LoadAndAttachToRoot(assetFolder + "indoorTest.glb", glm::vec3(-10, 2, -10));
 
     //DemoInstancing(engine, m_assetPath);
     DemoSkinning(engine, m_assetPath);

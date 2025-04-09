@@ -106,7 +106,7 @@ void JLEngine::IM3DManager::SetupBuffers()
 	glCreateVertexArrays(1, &m_vao);
 	glCreateBuffers(1, &m_vbo);
 
-	glNamedBufferStorage(m_vbo, 1024 * 1024, nullptr, GL_DYNAMIC_STORAGE_BIT);
+	glNamedBufferStorage(m_vbo, 2048 * 2048, nullptr, GL_DYNAMIC_STORAGE_BIT);
 	glVertexArrayVertexBuffer(m_vao, 0, m_vbo, 0, sizeof(Im3d::VertexData));
 
 	// Position: vec3 from Vec4
