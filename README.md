@@ -2,7 +2,17 @@ Engine is based on Modern OpenGL 4.6 and utilises it's features such as DSA (Dir
 
 https://trello.com/b/9M6YkL0b/opengl-engine-jlengine
 
-Current feature in progress: Dynamic Diffuse Global Illumination
+Current feature in progress: Dynamic Diffuse Global Illumination 
+
+Generate a grid of irradiance probes to populate the space in the world, using AABB collision to determine valid probes. Red probes = skip processing
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/IrradianceProbeGrid.png'/>
+
+Cycle through each probe and visualize the rays it casts. White ray = hit, black ray = miss/sky 
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/Probe_ray_debug.png'/>
+
+AABB visualization of the world. For indoor lighting will need to refine this. 
+<img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/AABB_Debug_draw.png'/>
+
 
 Rendering Setup:
 
@@ -20,10 +30,15 @@ tiny_gltf - for loading GLB and GLTF files
 stb_image - for loading images
 Dear IMGUI - for debug UI rendering
 
+HDRI Sky reflections and PBR workflow
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections2.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections3.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections4.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_sky_debug.png'/>
+
+GBuffer debug view
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_gbuffer_debug.png'/>
+
+Instanced Animated/Skinned mesh rendering:
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/instancedSkinnedMeshes.png'/>
