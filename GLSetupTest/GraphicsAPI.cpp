@@ -741,6 +741,16 @@ namespace JLEngine
 		glBindImageTexture(unit, texture, level, layered, layer, access, format);
 	}
 
+	void GraphicsAPI::TextureStorage2D(uint32_t tex, int levels, uint32_t format, uint32_t width, uint32_t height, uint32_t depth)
+	{
+		glTextureStorage2D(tex, levels, format, width, height);
+	}
+
+	void GraphicsAPI::TextureStorage3D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height, uint32_t depth)
+	{
+		glTextureStorage3D(tex, levels, internalformat, width, height, depth);
+	}
+
 	void GraphicsAPI::TextureParameter(uint32_t texture, uint32_t pname, uint32_t value)
 	{
 		glTextureParameteri(texture, pname, value);

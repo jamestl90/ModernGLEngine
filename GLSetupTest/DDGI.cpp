@@ -85,16 +85,22 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 
 void JLEngine::DDGI::Update(float dt, 
 	UniformBuffer* shaderGlobaldata, 
-	const glm::mat4& inverseView, 
 	glm::vec3& dirLightCol,
 	uint32_t skyTex, 
-	uint32_t voxtex)
+	VoxelGrid& grid)
 {
     Graphics::API()->BindShader(m_updateProbesCompute->GetProgramId());
 
     // bind textures
-    GLuint textures[] = { skyTex, voxtex };
-    Graphics::API()->BindTextures(0, 2, textures);
+    GLuint textures[] = 
+	{ 
+		skyTex, 
+		grid.occupancyTexId, 
+		grid.emissionTexIds[0], 
+		grid.emissionTexIds[1], 
+		grid.emissionTexIds[2] 
+	};
+    Graphics::API()->BindTextures(0, 5, textures);
 
     // bind probe data
     Graphics::BindGPUBuffer(m_probeSSBO.GetGPUBuffer(), 7);
@@ -112,9 +118,9 @@ void JLEngine::DDGI::Update(float dt,
 	m_updateProbesCompute->SetUniform("u_DirLightCol", dirLightCol);
 	m_updateProbesCompute->SetUniformf("u_SkyLightColBlendFac", m_skyLightColBlendFac);
 
-	m_updateProbesCompute->SetUniform("u_VoxelGridCenter", m_voxelGrid->worldOrigin);
-	m_updateProbesCompute->SetUniform("u_VoxelGridWorldSize", m_voxelGrid->worldSize);
-	m_updateProbesCompute->SetUniform("u_VoxelGridResolution", m_voxelGrid->resolution);
+	m_updateProbesCompute->SetUniform("u_VoxelGridCenter", grid.worldOrigin);
+	m_updateProbesCompute->SetUniform("u_VoxelGridWorldSize", grid.worldSize);
+	m_updateProbesCompute->SetUniform("u_VoxelGridResolution", grid.resolution);
 
 	GLuint totalProbesX = this->m_gridResolution.x;
 	GLuint totalProbesY = this->m_gridResolution.y;

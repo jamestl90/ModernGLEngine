@@ -407,14 +407,12 @@ namespace JLEngine
         else
         {
             // update GI probes 
-            m_ddgi->SetVoxelGridInfo(&m_vgm->GetVoxelGrid());
             m_ddgi->Update(
                 static_cast<float>(dt), 
-                &m_gShaderData,                 // global shader data
-                glm::inverse(viewMatrix),       // inverse view matrix for normals -> world space
-                m_dirLightColor,
-                m_hdriSky->GetSkyGPUID(),
-                m_vgm->GetVoxelGrid().textureId);  // linear depth
+                &m_gShaderData,                     
+                m_dirLightColor,                    // directional light color
+                m_hdriSky->GetSkyGPUID(),           // sky cubemap
+                m_vgm->GetVoxelGrid());    
 
             // do lighting pass
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
@@ -484,7 +482,6 @@ namespace JLEngine
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
         m_lightingTestShader->SetUniform("u_LightColor", m_dirLightColor);
-        m_lightingTestShader->SetUniform("u_CameraPos", eyePos);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
 
@@ -802,7 +799,7 @@ namespace JLEngine
             ImGui::SliderInt("Debug Probe Index", &probeIndex, 0, std::max(0, maxIndex));
 
             float& rayLen = m_ddgi->GetRayLengthMutable();
-            ImGui::SliderFloat("Max Ray Distance", &rayLen, 1.0f, 10.0f);
+            ImGui::SliderFloat("Max Ray Distance", &rayLen, 0.5f, 10.0f);
 
             //int& raysPerProbe = m_ddgi->GetRaysPerProbeMutable();
             //ImGui::SliderInt("Rays Per Probe", &raysPerProbe, 16, 512);
@@ -1225,9 +1222,8 @@ namespace JLEngine
 
     void DeferredRenderer::ExtractSceneTriangles()
     {
-        std::cout << "PrepareTriangleSSBO: Starting triangle extraction (Base Instances Only)..." << std::endl;
-
-        std::vector<glm::vec3> allVerticesForSSBO;
+        std::cout << "PrepareTriangleSSBO: Starting triangle extraction (with Emission)..." << std::endl;
+        std::vector<TriWithEmisison> trianglesForSSBO;
         // Optional: Reserve space based on previous frame's count if available
         // allVerticesForSSBO.reserve(m_vgm->GetTriangleCountEstimate() * 3);
         uint32_t totalTrianglesExtracted = 0;
@@ -1251,122 +1247,90 @@ namespace JLEngine
 
         // Lambda to process a list of SubMesh/Node pairs
         auto processNodeList =
-            [&](const auto& nodeList)
+            [&](const auto& nodeList, ResourceManager<Material>& materialManager)
             {
-                for (const auto& item : nodeList) {
-                    // Correctly determine if we are iterating a vector or a map
-                    // using the type of 'item' itself within the loop.
+                for (const auto& item : nodeList) 
+                {
                     const SubMesh* pSubmesh = nullptr;
                     Node* pNode = nullptr;
+                    
+                    pSubmesh = &item.first;
+                    pNode = item.second;
 
-                    if constexpr (std::is_same_v<typename std::decay_t<decltype(nodeList)>::value_type, std::pair<const std::string, std::pair<SubMesh, Node*>>>)
-                    {
-                        // We are iterating the map: item is pair<const string, pair<SubMesh, Node*>>
-                        pSubmesh = &item.second.first;  // Access SubMesh from map's value pair
-                        pNode = item.second.second;     // Access Node* from map's value pair
-                    }
-                    else if constexpr (std::is_same_v<typename std::decay_t<decltype(nodeList)>::value_type, std::pair<SubMesh, Node*>>)
-                    {
-                        // We are iterating the vector: item is pair<SubMesh, Node*>
-                        pSubmesh = &item.first;        // Access SubMesh from vector's pair
-                        pNode = item.second;           // Access Node* from vector's pair
+                    if (!pSubmesh || !pNode) continue; // Safety check
+
+                    const SubMesh& submesh = *pSubmesh;
+                    Node* node = pNode;
+
+                    // *** GET MATERIAL EMISSION ***
+                    glm::vec3 emissiveColor = glm::vec3(0.0f); // Default to black
+                    Material* pMaterial = materialManager.Get(submesh.materialHandle).get();
+                    if (pMaterial) {
+                        // Use the material's emissive factor.
+                        // Ignore emissive texture for simplicity in voxel grid for now.
+                        emissiveColor = pMaterial->emissiveFactor;
                     }
                     else {
-                        // Should not happen if SceneManager returns expected types
-                        std::cerr << "Error: Unexpected container type in processNodeList!" << std::endl;
-                        continue;
+                        std::cerr << "Warning: Could not find material with handle "
+                            << submesh.materialHandle << " for submesh on node "
+                            << node->name << std::endl;
                     }
+                    // *** END GET MATERIAL EMISSION ***
 
-                    // Now use pSubmesh and pNode safely
-                    if (!pSubmesh || !pNode) { // Safety check
-                        std::cerr << "Error: Null submesh or node pointer during processing!" << std::endl;
-                        continue;
-                    }
-
-                    const SubMesh& submesh = *pSubmesh; // Dereference the pointer
-                    Node* node = pNode;                 // Use the node pointer
-
-
-                    // --- The rest of the processing logic using 'submesh' and 'node' ---
 
                     bool isSkinnedVAO = HasVertexAttribKey(submesh.attribKey, AttributeType::JOINT_0);
                     bool isTransparent = (submesh.flags & SubmeshFlags::USES_TRANSPARENCY) != 0;
 
+                    // Skip transparent materials for voxelization (usually desired)
+                    if (isTransparent) {
+                        continue;
+                    }
+
                     VAOResource* vaoResourcePtr = findVAOResource(submesh.attribKey, isSkinnedVAO, isTransparent);
-                    if (!vaoResourcePtr || !vaoResourcePtr->vao) { // Check only for VAO pointer validity now
-                        std::cerr << "Warning: Could not find VAOResource or VAO for submesh with key "
-                            << submesh.attribKey << " on node " << node->name << std::endl;
-                        continue;
-                    }
+                    if (!vaoResourcePtr || !vaoResourcePtr->vao) continue; // Skip if no VAO
 
-                    // Get references to VAO and its buffers using your class methods
                     VertexArrayObject& vao = *vaoResourcePtr->vao;
-                    VertexBuffer& vbo = vao.GetVBO(); // Get reference to VBO member
-                    IndexBuffer& ibo = vao.GetIBO();   // Get reference to IBO member
+                    VertexBuffer& vbo = vao.GetVBO();
+                    IndexBuffer& ibo = vao.GetIBO();
+                    if (vao.GetStride() == 0) vao.CalcStride();
+                    size_t vertexStride = vao.GetStride(); // Ensure stride is calculated
+                    size_t positionOffset = 0; // Assuming position is attribute 0
 
-                    // Get stride (ensure vao.CalcStride() was called sometime after attributes were set)
-                    size_t vertexStride = vao.GetStride();
-                    size_t positionOffset = 0; // Position is always first
+                    if (vertexStride == 0) continue; // Skip if bad stride
 
-                    if (vertexStride == 0)
-                        vao.CalcStride();
-                    vertexStride = vao.GetStride();
-
-                    if (vertexStride == 0) {
-                        std::cerr << "Warning: Vertex stride is zero for VAO key " << vao.GetAttribKey() << std::endl;
-                        continue;
-                    }
-
-                    // Get const refs to internal data vectors using your methods
                     const std::vector<std::byte>& vertexDataBytes = vbo.GetDataImmutable();
-                    const std::vector<uint32_t>& indexData = ibo.GetDataImmutable(); // Assuming uint32_t indices
+                    const std::vector<uint32_t>& indexData = ibo.GetDataImmutable();
                     const DrawIndirectCommand& command = submesh.command;
 
-                    if (vertexDataBytes.empty() || indexData.empty()) {
-                        // Don't treat empty index buffer as warning if count is 0, otherwise it is.
-                        if (command.count > 0) {
-                            std::cerr << "Warning: Vertex or Index data is empty for VAO key "
-                                << vao.GetAttribKey() << " but command count is " << command.count << std::endl;
-                        }
-                        continue; // Skip if no data or no indices to draw
-                    }
+                    if (vertexDataBytes.empty() || (indexData.empty() && command.count > 0)) continue; // Skip if no data
 
                     const std::byte* vertexDataPtr = vertexDataBytes.data();
                     const size_t vertexDataSize = vertexDataBytes.size();
                     const size_t indexDataSize = indexData.size();
-
-                    // Process ONLY THE BASE INSTANCE for this submesh/node pair
                     glm::mat4 worldTransform = node->GetGlobalTransform();
 
+                    // Iterate through triangles for this submesh draw command
                     for (uint32_t i = 0; i < command.count; i += 3) {
                         uint32_t index0_ibo = command.firstIndex + i;
                         uint32_t index1_ibo = command.firstIndex + i + 1;
                         uint32_t index2_ibo = command.firstIndex + i + 2;
 
-                        if (index0_ibo >= indexDataSize || index1_ibo >= indexDataSize || index2_ibo >= indexDataSize) {
-                            std::cerr << "Error: Index out of bounds (" << index0_ibo << "/" << index1_ibo << "/" << index2_ibo << " >= " << indexDataSize << ") for VAO key " << vao.GetAttribKey() << "!" << std::endl;
-                            break;
-                        }
+                        // Bounds check indices
+                        if (index0_ibo >= indexDataSize || index1_ibo >= indexDataSize || index2_ibo >= indexDataSize) break;
 
-                        // Final vertex index within the VBO
                         uint32_t index0 = indexData[index0_ibo] + command.baseVertex;
                         uint32_t index1 = indexData[index1_ibo] + command.baseVertex;
                         uint32_t index2 = indexData[index2_ibo] + command.baseVertex;
 
-                        // Calculate byte offsets
                         size_t byteOffset0 = (size_t)index0 * vertexStride + positionOffset;
                         size_t byteOffset1 = (size_t)index1 * vertexStride + positionOffset;
                         size_t byteOffset2 = (size_t)index2 * vertexStride + positionOffset;
 
-                        // Bounds check for vertex data access
+                        // Bounds check vertex data access
                         if (byteOffset0 + sizeof(glm::vec3) > vertexDataSize ||
                             byteOffset1 + sizeof(glm::vec3) > vertexDataSize ||
-                            byteOffset2 + sizeof(glm::vec3) > vertexDataSize) {
-                            std::cerr << "Error: Vertex data pointer out of bounds for VAO key " << vao.GetAttribKey() << "! Offset=" << byteOffset0 << "/" << byteOffset1 << "/" << byteOffset2 << ", VBO Size=" << vertexDataSize << std::endl;
-                            break;
-                        }
+                            byteOffset2 + sizeof(glm::vec3) > vertexDataSize) break;
 
-                        // Get pointers and cast to vec3
                         const std::byte* posPtr0 = vertexDataPtr + byteOffset0;
                         const std::byte* posPtr1 = vertexDataPtr + byteOffset1;
                         const std::byte* posPtr2 = vertexDataPtr + byteOffset2;
@@ -1375,48 +1339,44 @@ namespace JLEngine
                         glm::vec3 v1_local = *reinterpret_cast<const glm::vec3*>(posPtr1);
                         glm::vec3 v2_local = *reinterpret_cast<const glm::vec3*>(posPtr2);
 
-                        // Apply world transform
                         glm::vec3 v0_world = glm::vec3(worldTransform * glm::vec4(v0_local, 1.0f));
                         glm::vec3 v1_world = glm::vec3(worldTransform * glm::vec4(v1_local, 1.0f));
                         glm::vec3 v2_world = glm::vec3(worldTransform * glm::vec4(v2_local, 1.0f));
 
-                        // Add to the final list for the SSBO
-                        allVerticesForSSBO.push_back(v0_world);
-                        allVerticesForSSBO.push_back(v1_world);
-                        allVerticesForSSBO.push_back(v2_world);
+                        // *** CREATE AND ADD TriWithEmisison struct ***
+                        TriWithEmisison triangle;
+                        triangle.v0 = v0_world;
+                        triangle.v1 = v1_world;
+                        triangle.v2 = v2_world;
+                        triangle.emission = emissiveColor; // Assign fetched emission
+                        // Padding fields (pad1, pad2, pad3, pad4) are automatically handled by struct alignment
+
+                        trianglesForSSBO.push_back(triangle); // Add the complete struct
                         totalTrianglesExtracted++;
                     }
                 } // End loop over node list items
             }; // End lambda
 
+        auto materialManager = m_resourceLoader->GetMaterialManager();
+
         // Process the relevant lists from SceneManager
         std::cout << "Processing NonInstancedStatic..." << std::endl;
-        processNodeList(m_sceneManager.GetNonInstancedStatic());
+        processNodeList(m_sceneManager.GetNonInstancedStatic(), *materialManager);
         std::cout << "Processing RigidAnimated..." << std::endl;
-        processNodeList(m_sceneManager.GetRigidAnimated());
+        processNodeList(m_sceneManager.GetRigidAnimated(), *materialManager);
         std::cout << "Processing NonInstancedDynamic..." << std::endl;
-        processNodeList(m_sceneManager.GetNonInstancedDynamic());
+        processNodeList(m_sceneManager.GetNonInstancedDynamic(), *materialManager);
         std::cout << "Processing Transparent..." << std::endl;
-        processNodeList(m_sceneManager.GetTransparent());
-        std::cout << "Processing InstancedStatic (Base Only)..." << std::endl;
-        processNodeList(m_sceneManager.GetInstancedStatic());
-        std::cout << "Processing InstancedDynamic (Base Only)..." << std::endl;
-        processNodeList(m_sceneManager.GetInstancedDynamic());
+        processNodeList(m_sceneManager.GetTransparent(), *materialManager);
+        //std::cout << "Processing InstancedStatic (Base Only)..." << std::endl;
+        //processNodeList(m_sceneManager.GetInstancedStatic(), *materialManager);
+        //std::cout << "Processing InstancedDynamic (Base Only)..." << std::endl;
+        //processNodeList(m_sceneManager.GetInstancedDynamic(), *materialManager);
 
-        std::cout << "PrepareTriangleSSBO: Extracted " << totalTrianglesExtracted << " triangles (" << allVerticesForSSBO.size() << " vertices)." << std::endl;
+        std::cout << "PrepareTriangleSSBO: Extracted " << totalTrianglesExtracted << " triangles." << std::endl;
 
-        std::vector<glm::vec4> verticesForSSBO;
-        verticesForSSBO.reserve(allVerticesForSSBO.size());
-
-        for (const auto& v3 : allVerticesForSSBO) 
-        {
-            verticesForSSBO.emplace_back(v3.x, v3.y, v3.z, 0.0f); // Copy xyz, add w padding
-        }
-
-        // --- Update VoxelGridManager's SSBO ---
-        // Use the VoxelGridManager::UpdateTriangleData method you provided
         GL_CHECK_ERROR();
-        m_vgm->UpdateTriangleData(std::move(verticesForSSBO));
+        m_vgm->UpdateTriangleData(std::move(trianglesForSSBO));
         GL_CHECK_ERROR();
     }
 

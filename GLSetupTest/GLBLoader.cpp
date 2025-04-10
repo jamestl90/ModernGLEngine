@@ -716,6 +716,17 @@ namespace JLEngine
 			material->emissiveFactor = glm::vec3(0.0f);
 		}
 
+		constexpr const char* KHR_materials_emissive_strength = "KHR_materials_emissive_strength";
+		if (gltfMaterial.extensions.find(KHR_materials_emissive_strength) != gltfMaterial.extensions.end())
+		{
+			const tinygltf::Value& emissionStr = gltfMaterial.extensions.at(KHR_materials_emissive_strength);
+			if (emissionStr.Has("emissiveStrength"))
+			{
+				auto emissiveStrength = static_cast<float>(emissionStr.Get("emissiveStrength").GetNumberAsDouble());
+				material->emissiveFactor *= emissiveStrength;
+			}
+		}
+
 		// Parse KHR_materials_transmission
 		constexpr const char* KHR_MATERIALS_TRANSMISSION = "KHR_materials_transmission";
 		if (gltfMaterial.extensions.find(KHR_MATERIALS_TRANSMISSION) != gltfMaterial.extensions.end())

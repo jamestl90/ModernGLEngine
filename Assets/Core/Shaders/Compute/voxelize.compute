@@ -1,7 +1,10 @@
 #version 460 core
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
-layout (binding = 0, r32ui) uniform uimage3D u_VoxelGrid;
+layout (binding = 0, r32ui) uniform uimage3D u_OccupancyGrid; 
+layout (binding = 1, r32ui) uniform uimage3D u_EmissionR;     
+layout (binding = 2, r32ui) uniform uimage3D u_EmissionG;     
+layout (binding = 3, r32ui) uniform uimage3D u_EmissionB; 
 
 struct DebugVoxelInfo 
 {
@@ -10,9 +13,17 @@ struct DebugVoxelInfo
     ivec4 centerVoxel_data;
 };
 
+struct TriangleWithEmission
+{
+    vec4 v0;
+    vec4 v1;
+    vec4 v2;
+    vec4 emission;
+};
+
 layout(std430, binding = 1) readonly buffer TriangleVertices 
 {
-    vec3 vertices[];
+    TriangleWithEmission triangles[];
 };
 
 layout(std430, binding = 2) buffer DebugOutput 
@@ -23,6 +34,9 @@ layout(std430, binding = 2) buffer DebugOutput
 uniform vec3 u_GridWorldSize;
 uniform vec3 u_GridCenter;
 uniform ivec3 u_GridResolution;
+
+const float UINT16_MAX_F = 65535.0;
+const float epsilon = 1e-6;
 
 vec2 projectAABB(vec3 axis, vec3 aabbMin, vec3 aabbMax) 
 {
@@ -86,17 +100,16 @@ void main()
 {
     uint triangleIndex = gl_GlobalInvocationID.x;
 
-    uint numVerticesInBuffer = vertices.length();
-    uint vertexIndexBase = triangleIndex * 3;
-
-    if ((vertexIndexBase + 2) >= numVerticesInBuffer) {
+    if (triangleIndex >= triangles.length()) 
+    {
         return;
     }
 
-    // Read vertices
-    vec3 v_0 = vertices[vertexIndexBase + 0];
-    vec3 v_1 = vertices[vertexIndexBase + 1];
-    vec3 v_2 = vertices[vertexIndexBase + 2];
+    TriangleWithEmission tri = triangles[triangleIndex];
+    vec3 v_0 = tri.v0.xyz;
+    vec3 v_1 = tri.v1.xyz;
+    vec3 v_2 = tri.v2.xyz;
+    vec3 emission = tri.emission.rgb;
 
     // Calculate triangle's world-space AABB
     vec3 triMin = min(min(v_0, v_1), v_2);
@@ -113,6 +126,13 @@ void main()
 
     vec3 voxelWorldSize = u_GridWorldSize / vec3(u_GridResolution);
 
+    bool hasEmission = (dot(emission, emission) > epsilon * epsilon);
+    uvec3 encodedEmission = uvec3(0u); 
+    if (hasEmission)
+    {
+        encodedEmission = uvec3(clamp(emission * UINT16_MAX_F, 0.0, UINT16_MAX_F));
+    }
+
     // Iterate over potentially overlapping voxels
     for (int z = minVoxelCoord.z; z <= maxVoxelCoord.z; ++z) 
     {
@@ -125,13 +145,18 @@ void main()
                 vec3 normVoxelMin_0_to_1 = vec3(currentVoxelCoord) / vec3(u_GridResolution);
                 vec3 normVoxelMin_NegHalf = normVoxelMin_0_to_1 - 0.5;
                 vec3 voxelMin_World = normVoxelMin_NegHalf * u_GridWorldSize + u_GridCenter;
-
                 vec3 voxelMax_World = voxelMin_World + voxelWorldSize;
 
-                // SAT test
                 if (TriangleIntersectsAABB(v_0, v_1, v_2, voxelMin_World, voxelMax_World)) 
                 {
-                    imageAtomicOr(u_VoxelGrid, currentVoxelCoord, 1u);
+                    imageAtomicOr(u_OccupancyGrid, currentVoxelCoord, 1u); // Set Alpha to 1u
+
+                    if (hasEmission) 
+                    {
+                        imageAtomicAdd(u_EmissionR, currentVoxelCoord, encodedEmission.r);
+                        imageAtomicAdd(u_EmissionG, currentVoxelCoord, encodedEmission.g);
+                        imageAtomicAdd(u_EmissionB, currentVoxelCoord, encodedEmission.b);
+                    }
                 }
             }
         }

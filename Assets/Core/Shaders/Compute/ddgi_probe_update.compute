@@ -4,7 +4,10 @@
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in; // e.g., 64 threads
 
 layout (binding = 0) uniform samplerCube u_SkyboxSampler;
-layout (binding = 1) uniform usampler3D u_VoxelGridSampler;
+layout (binding = 1) uniform usampler3D u_OccupancySampler;
+layout (binding = 2) uniform usampler3D u_EmissionRSampler;   // Reads r32ui
+layout (binding = 3) uniform usampler3D u_EmissionGSampler;
+layout (binding = 4) uniform usampler3D u_EmissionBSampler;
 
 // probe data (struct definition remains the same)
 struct DDGIProbe 
@@ -49,12 +52,12 @@ layout(std140, binding = 5) uniform ShaderGlobalData
 };
 
 // --- Uniforms ---
-// Probe Grid Params (Make sure C++ sets these!)
+// Probe Grid Params 
 uniform ivec3 u_ProbeGridResolution; // Resolution of the probe grid
 uniform vec3  u_ProbeGridCenter;     // World-space center of the probe grid volume
 uniform vec3  u_ProbeSpacing;        // Spacing between probes
 
-// Voxel Grid Params (Make sure C++ sets these!)
+// Voxel Grid Params 
 uniform vec3  u_VoxelGridCenter;     // World-space center of the voxel grid volume
 uniform vec3  u_VoxelGridWorldSize;  // Total world size (width, height, depth) of voxel grid
 uniform ivec3 u_VoxelGridResolution; // Resolution of the voxel grid
@@ -75,6 +78,7 @@ uniform int u_DebugProbeIndex; // Assume this is the FLAT index for simplicity
 const float epsilon = 1.0e-5;  // Small epsilon
 const float PI = 3.14159265359;
 const vec3 AVERAGE_ALBEDO = vec3(0.5); // Average diffuse reflectance assumption for bounces
+const float EMISSION_READ_SCALE = 1.0 / 65535.0;
 
 // --- Helper Functions ---
 
@@ -118,6 +122,20 @@ vec3 SampleFibonacciSphere(uint i, uint total)
     // return normalize(vec3(cos(phi) * sinTheta, cosTheta, sin(phi) * sinTheta));
 }
 
+bool WorldPosToUV(vec3 worldPos, mat4 viewProj, out vec2 screenUV)
+{
+    vec4 clip = (viewProj * vec4(worldPos, 1.0));
+
+    if (clip.w <= 0.001) return false;
+
+    vec3 ndc = clip.xyz / clip.w;
+    screenUV = ndc.xy * 0.5 + 0.5;
+
+    if (screenUV.x < 0.0 || screenUV.x > 1.0 || screenUV.y < 0.0 || screenUV.y > 1.0) return false;
+
+    return true;
+}
+
 // Evaluate SH (Same as in lighting shader)
 vec3 EvaluateSH9(vec4 shCoeffs[9], vec3 direction) 
 {
@@ -158,11 +176,12 @@ int GetProbeIndex(ivec3 coords, ivec3 gridResolution)
 
 // Raymarch Voxel Grid (Keep existing working version using Center Origin)
 bool RaymarchVoxelGrid(
-    vec3 origin, vec3 dir, usampler3D voxelGrid,
+    vec3 origin, vec3 dir, 
     vec3 gridCenter, vec3 gridWorldSize, ivec3 gridResolution,
-    float maxDist, out vec3 hitPos, out float hitDist
+    float maxDist, out vec3 hitPos, out float hitDist, out vec3 emission
 ) 
 {
+    emission = vec3(0.0);
     float t = 0.0;
     vec3 voxelWorldSize = gridWorldSize / vec3(max(gridResolution, ivec3(1))); // Avoid div by zero
     float minVoxelDim = max(epsilon, min(min(voxelWorldSize.x, voxelWorldSize.y), voxelWorldSize.z));
@@ -180,11 +199,18 @@ bool RaymarchVoxelGrid(
         {
              break;
         }
-        uint occupancy = texelFetch(voxelGrid, voxelCoord, 0).r;
-        if (occupancy > 0u) 
+
+        uint occupancyValue = texelFetch(u_OccupancySampler, voxelCoord, 0).r;
+
+        if (occupancyValue > 0u) 
         {
+            uint r = texelFetch(u_EmissionRSampler, voxelCoord, 0).r;
+            uint g = texelFetch(u_EmissionGSampler, voxelCoord, 0).r;
+            uint b = texelFetch(u_EmissionBSampler, voxelCoord, 0).r;
+
             hitPos = samplePosWorld;
             hitDist = t;
+            emission = vec3(r, g, b) * EMISSION_READ_SCALE;
             return true;
         }
         t += stepSize;
@@ -255,10 +281,9 @@ vec3 SampleNeighborProbes(vec3 samplePosWS, vec3 normalWS)
                  for(int sh_i=0; sh_i<9; ++sh_i) currentProbeSH[sh_i] = probes[probeIndex].SHCoeffs[sh_i];
 
                 // Calculate trilinear weight
-                vec3 weight3D = vec3(cornerOffset);
-                float weight = mix(1.0 - lerpFactors.x, lerpFactors.x, weight3D.x) *
-                               mix(1.0 - lerpFactors.y, lerpFactors.y, weight3D.y) *
-                               mix(1.0 - lerpFactors.z, lerpFactors.z, weight3D.z);
+                float weight = mix(1.0 - lerpFactors.x, lerpFactors.x, float(x)) * // Use float(x/y/z) for mix factor
+                                mix(1.0 - lerpFactors.y, lerpFactors.y, float(y)) *
+                                mix(1.0 - lerpFactors.z, lerpFactors.z, float(z));
 
                 // Accumulate weighted SH coefficients
                  for(int sh_i=0; sh_i<9; ++sh_i) 
@@ -302,6 +327,7 @@ void main()
     for (int i = 0; i < 9; i++) accumulatedSH[i] = vec3(0.0);
     float accumulatedDistance = 0.0;
     float accumulatedDistanceSq = 0.0;
+    vec3 emissive = vec3(0.0);
 
     // --- Ray Loop ---
     for (int i = 0; i < u_RaysPerProbe; i++)
@@ -317,25 +343,24 @@ void main()
 
         vec3 hitPos;
         float hitDist;
+        vec3 emission;
 
         // Raymarch against Voxel Grid
         bool didHit = RaymarchVoxelGrid(
             origin, dir,
-            u_VoxelGridSampler,
             u_VoxelGridCenter, u_VoxelGridWorldSize, u_VoxelGridResolution,
             u_MaxDistance,
-            hitPos, hitDist
+            hitPos, hitDist, emission
         );
 
-        // --- Determine Sample Color (Sky or Bounce) ---
         if (didHit)
         {
             // Ray HIT voxel grid - Calculate Bounce Light
             vec3 hitNormalApprox = normalize(-dir); // Simple normal approximation
             vec3 irradianceAtHit = SampleNeighborProbes(hitPos, hitNormalApprox);
             vec3 bouncedRadiance = irradianceAtHit * AVERAGE_ALBEDO / PI;
-
-            currentRaySampleColor = bouncedRadiance; // Use bounced light color
+            
+            currentRaySampleColor = bouncedRadiance + (emission * 1.0); // Use bounced light color
             currentRayHitDist = hitDist;
 
             debugHitPos = hitPos;
@@ -350,7 +375,6 @@ void main()
             debugHitPos = origin;// + dir * u_MaxDistance;;
             debugRayColor = currentRaySampleColor; // Sky color debug ray for miss
         }
-        // --- End Color Determination ---
 
         // Accumulate SH / Distance
         vec3[9] shContrib = ProjectOntoSH9(currentRaySampleColor, dir);

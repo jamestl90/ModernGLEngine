@@ -172,6 +172,7 @@ void DemoInstancing(JLEngine::JLEngineCore& engine, const std::string& assetFold
         }
     }
 }
+
 void DemoSkinning(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
 {
     auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(-6, 0, 0));
@@ -223,18 +224,47 @@ void TestScene2(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
     ddgi->SetGridResolution({ 8.0f, 7.0f, 8.0f });
     ddgi->SetProbeSpacing({ 0.7f, 0.7f, 0.7f });
 
+    ddgi->SetRaysPerProbe(128);
+    ddgi->SetDebugRayCount(128);
+
     auto* vgm = renderer->GetVoxelGridManager();
     auto& vg = vgm->GetVoxelGrid();
     vg.worldOrigin = glm::vec3({ 0.0f, 0.0f, 0.0f });
-    vg.resolution = glm::vec3({ 128, 128, 128 });
+    vg.resolution = glm::vec3({ 256, 256, 256 });
     vg.worldSize = glm::vec3({ 5, 5, 5 });
 
     auto indoor = engine.LoadAndAttachToRoot(assetFolder + "indoorTest.glb");
 
-    auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, -1.8f, 0));
-    auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
-    auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
-    skeletonNode->animController->SetCurrentAnimation(anim.get());
+    //auto runningGuy = engine.LoadAndAttachToRoot(assetFolder + "CesiumMan.glb", glm::vec3(0, -1.8f, 0));
+    //auto anim = engine.GetResourceLoader()->Get<JLEngine::Animation>("Anim_Skeleton_torso_joint_1_idx:0");
+    //auto skeletonNode = JLEngine::Node::FindSkeletonNode(runningGuy);
+    //skeletonNode->animController->SetCurrentAnimation(anim.get());
+
+    //auto helmet = engine.LoadAndAttachToRoot(assetFolder + "DamagedHelmet.glb", glm::vec3(0, 0, 0));
+
+    auto glowCube = engine.LoadAndAttachToRoot(assetFolder + "glowingSphere.glb", glm::vec3(-1, 0.0f, 0));
+}
+
+void TestScene3(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
+{
+    auto* ddgi = renderer->GetDDGI();
+    ddgi->SetGridOrigin({ 0.0f, 0.0f, 0.0f });
+    ddgi->SetGridResolution({ 18.0f, 8.0f, 12.0f });
+    ddgi->SetProbeSpacing({ 1.0f, 0.7f, 1.1f });
+
+    ddgi->SetRaysPerProbe(128);
+    ddgi->SetDebugRayCount(128);
+
+    auto* vgm = renderer->GetVoxelGridManager();
+    auto& vg = vgm->GetVoxelGrid();
+    vg.worldOrigin = glm::vec3({ 0.0f, 0.0f, 0.0f });
+    vg.resolution = glm::vec3({ 256, 256, 256 });
+    vg.worldSize = glm::vec3({ 15, 7, 10 });
+
+    auto house = engine.LoadAndAttachToRoot(assetFolder + "gihousetest.glb", glm::vec3(0.0f, 0.0f, 0.0f));
+
+    auto glowCube = engine.LoadAndAttachToRoot(assetFolder + "glowingCube.glb", glm::vec3(-5, -0.25f, -3.5));
+    auto glowSphere = engine.LoadAndAttachToRoot(assetFolder + "glowingSpheres.glb", glm::vec3(-1, 0.0f, 2));
 }
 
 int MainApp(std::string assetFolder)
@@ -264,7 +294,7 @@ int MainApp(std::string assetFolder)
 
     flyCamera = engine.GetFlyCamera();
 
-    TestScene2(engine, assetFolder);
+    TestScene3(engine, assetFolder);
 
     engine.FinalizeLoading();
 

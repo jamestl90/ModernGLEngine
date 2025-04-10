@@ -60,15 +60,14 @@ namespace JLEngine
         void GenerateProbes(const std::vector<std::pair<JLEngine::SubMesh, Node*>>& aabbs);
         void Update(float dt, 
             UniformBuffer* shaderGlobaldata, 
-            const glm::mat4& inverseView, 
             glm::vec3& dirLightCol,
             uint32_t skyTex, 
-            uint32_t voxtex);
+            VoxelGrid& grid);
 
         ShaderStorageBuffer<DDGIProbe>& GetProbeSSBO() { return m_probeSSBO; }
         ShaderStorageBuffer<DebugRay>& GetDebugRays() { return m_debugRaysSSBO; }
 
-        void SetVoxelGridInfo(VoxelGrid* voxelGrid) { m_voxelGrid = voxelGrid; }
+        //void SetVoxelGridInfo(VoxelGrid* voxelGrid) { m_voxelGrid = voxelGrid; }
 
     private:
 
@@ -84,7 +83,7 @@ namespace JLEngine
         int m_raysPerProbe = 128;
         int m_debugProbeIndex = 0;
         float m_blendFactor = 0.8f;
-        float m_maxDistance = 4.5f;    // sort of depends on probe spacing
+        float m_maxDistance = 2.5f;    // sort of depends on probe spacing
         float m_skyLightColBlendFac = 0.5f;
 
         ShaderStorageBuffer<DDGIProbe> m_probeSSBO;
@@ -92,7 +91,7 @@ namespace JLEngine
 
         ShaderProgram* m_updateProbesCompute;
 
-        VoxelGrid* m_voxelGrid;
+        //VoxelGrid* m_voxelGrid;
     };
 }
 

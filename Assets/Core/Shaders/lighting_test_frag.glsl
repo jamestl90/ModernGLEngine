@@ -319,7 +319,11 @@ vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
                 ivec3 probeCoords = baseCoords + cornerOffset;
 
                 int probeIndex = GetProbeIndex(probeCoords, u_DDGI_GridResolution);
-                float visibility = 1.0; // CalculateProbeVisibility(worldPos, probeIndex);
+
+                if (probeIndex < 0 || probeIndex >= probes.length()) continue;
+                if (probes[probeIndex].padding.x > 0.5) continue; 
+
+                float visibility = 1;//CalculateProbeVisibility(worldPos, probeIndex);
 
                 if (visibility > 1e-5)
                 {
@@ -340,7 +344,8 @@ vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
     if (totalVisibilityWeight > 1e-5) 
     {
         return totalIrradiance / totalVisibilityWeight;
-    } else 
+    } 
+    else 
     {
         return vec3(0.0);
     }
@@ -356,7 +361,7 @@ void main()
         vec3 viewDirWS_Sky = normalize(gData.worldPosFromDepth - camPos.xyz);
         DirectLight = texture(gSkyTexture, viewDirWS_Sky).rgb; 
         IBL = vec3(0.0);
-        IndirectLight   = vec3(0.0);
+        IndirectLight = vec3(0.0);
         return;
     }
 
