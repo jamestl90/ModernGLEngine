@@ -323,17 +323,15 @@ vec3 SampleDDGI(vec3 worldPos, vec3 normalWS)
                 if (probeIndex < 0 || probeIndex >= probes.length()) continue;
                 if (probes[probeIndex].padding.x > 0.5) continue; 
 
-                float visibility = 1;//CalculateProbeVisibility(worldPos, probeIndex);
+                float visibility = CalculateProbeVisibility(worldPos, probeIndex);
 
                 if (visibility > 1e-5)
                 {
                     vec3 probeIrradiance = EvaluateSH9(probes[probeIndex].SHCoeffs, normalWS);
 
-                    vec3 weight3D = vec3(cornerOffset);
-                    float weight = mix(1.0 - lerpFactors.x, lerpFactors.x, weight3D.x) *
-                                   mix(1.0 - lerpFactors.y, lerpFactors.y, weight3D.y) *
-                                   mix(1.0 - lerpFactors.z, lerpFactors.z, weight3D.z);
-
+                    float weight = mix(1.0 - lerpFactors.x, lerpFactors.x, float(x)) *
+                                   mix(1.0 - lerpFactors.y, lerpFactors.y, float(y)) *
+                                   mix(1.0 - lerpFactors.z, lerpFactors.z, float(z));
                     totalIrradiance += probeIrradiance * visibility * weight;
                     totalVisibilityWeight += visibility * weight;
                 }
