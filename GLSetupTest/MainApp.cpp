@@ -219,6 +219,14 @@ void TestScene1(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
 
 void TestScene2(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
 {
+    auto plane = engine.LoadAndAttachToRoot(assetFolder + "Plane.glb", glm::vec3(0, -1.0f, 0));
+    auto planeMat = engine.GetResourceLoader()->CreateMaterial("planeMat");
+    planeMat->metallicFactor = 0.0f;
+    planeMat->roughnessFactor = 0.2f;
+    planeMat->castShadows = false;
+    planeMat->baseColorTexture = engine.GetResourceLoader()->CreateTexture("PlaneTexture", assetFolder + "floor_default_grid.png");
+    plane->mesh->GetSubmeshes()[0].materialHandle = planeMat.get()->GetHandle();
+
     auto* ddgi = renderer->GetDDGI();
     ddgi->SetGridOrigin({ 0.0f, 0.0f, 0.0f });
     ddgi->SetGridResolution({ 8.0f, 7.0f, 8.0f });

@@ -289,7 +289,7 @@ namespace JLEngine
         glm::mat4 lightSpaceMatrix = GetDirectionalLightSpaceMatrix(currentSunDir,
                                                                     eyePos, 
                                                                     m_dlShadowMap->GetSize(), 
-                                                                    0.01f, 
+                                                                    1.0f, 
                                                                     m_dlShadowMap->GetShadowDistance());
 
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
@@ -1113,7 +1113,7 @@ namespace JLEngine
         //     );
         //     m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
         // }
-        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00020f, 0.0009f, "%.6f");
+        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00020f, 0.002f, "%.6f");
         ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
         ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
         ImGui::SliderInt("PCF Kernel Size", &m_dlShadowMap->GetPCFKernelSize(), 0, 5);
@@ -1534,33 +1534,42 @@ namespace JLEngine
     glm::mat4 DeferredRenderer::GetDirectionalLightSpaceMatrix(
         const glm::vec3& lightDir_normalized, 
         const glm::vec3& focusPoint,          
-        float orthoSize,                      
+        float orthoSizeFromCenter,            
         float shadowNearPlane,                
         float shadowFarPlane)                 
     {
+        // 1. Create the orthographic projection matrix (using original convention)
+        // Total width/height is 2 * orthoSizeFromCenter
         glm::mat4 lightProjection = glm::ortho(
-            -orthoSize / 2.0f, orthoSize / 2.0f, // Left, Right
-            -orthoSize / 2.0f, orthoSize / 2.0f, // Bottom, Top
-            shadowNearPlane, shadowFarPlane       // Near, Far -> Note: Near/Far are distances *along the look direction*
+            -orthoSizeFromCenter, orthoSizeFromCenter, // Left, Right
+            -orthoSizeFromCenter, orthoSizeFromCenter, // Bottom, Top
+            shadowNearPlane, shadowFarPlane
         );
 
-        glm::vec3 lightEyePos = focusPoint - (lightDir_normalized * (shadowFarPlane / 2.0f));
+        glm::vec3 virtualLightPos = focusPoint + lightDir_normalized * (shadowFarPlane / 2.0f);
+
+        // The point the light camera looks AT is the focus point.
+        glm::vec3 lightTarget = focusPoint;
+
+        glm::vec3 lightLookActualDir = glm::normalize(lightTarget - virtualLightPos); // Should be -lightDir_normalized
 
         glm::vec3 lightUp;
-        if (glm::abs(glm::dot(lightDir_normalized, glm::vec3(0.0f, 1.0f, 0.0f))) > 0.999f)
+
+        if (glm::abs(glm::dot(lightLookActualDir, glm::vec3(0.0f, 1.0f, 0.0f))) > 0.999f)
         {
-            glm::vec3 tempUp = glm::vec3(0.0f, 0.0f, -1.0f); // Or +1.0f, depends on convention
-            glm::vec3 lightRight = glm::normalize(glm::cross(tempUp, lightDir_normalized));
-            lightUp = glm::normalize(glm::cross(lightDir_normalized, lightRight));
+            glm::vec3 tempRef = glm::vec3(0.0f, 0.0f, -1.0f);
+            glm::vec3 lightRight = glm::normalize(glm::cross(tempRef, lightLookActualDir));
+            lightUp = glm::normalize(glm::cross(lightLookActualDir, lightRight));
         }
         else
         {
-            glm::vec3 tempUp = glm::vec3(0.0f, 1.0f, 0.0f);
-            glm::vec3 lightRight = glm::normalize(glm::cross(tempUp, lightDir_normalized));
-            lightUp = glm::normalize(glm::cross(lightDir_normalized, lightRight));
+            // Use world up as reference
+            glm::vec3 tempRef = glm::vec3(0.0f, 1.0f, 0.0f);
+            glm::vec3 lightRight = glm::normalize(glm::cross(tempRef, lightLookActualDir));
+            lightUp = glm::normalize(glm::cross(lightLookActualDir, lightRight));
         }
 
-        glm::mat4 lightView = glm::lookAt(lightEyePos, focusPoint, lightUp);
+        glm::mat4 lightView = glm::lookAt(virtualLightPos, lightTarget, lightUp);
 
         return lightProjection * lightView;
     }

@@ -107,7 +107,7 @@ namespace JLEngine
         glm::mat4 GetDirectionalLightSpaceMatrix(
             const glm::vec3& lightDir_normalized,
             const glm::vec3& focusPoint,
-            float orthoSize,
+            float orthoSizeFromCenter,
             float shadowNearPlane,
             float shadowFarPlane);
         void GenerateMaterialAndTextureBuffers(
@@ -181,7 +181,6 @@ namespace JLEngine
         AtmosphereParams m_atmosphereParams = {};
         float m_uiSunAzimuthDegrees = 180.0f; // Or initialize based on initial sunDir
         float m_uiSunElevationDegrees = 15.0f;
-        // --------------- // 
 
         DDGI* m_ddgi;
         VoxelGridManager* m_vgm;
