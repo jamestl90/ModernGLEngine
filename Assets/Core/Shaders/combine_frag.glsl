@@ -29,5 +29,5 @@ void main()
     // combinedLight = ApplyToneMapping(combinedLight);
     // combinedLight = ApplyGammaCorrection(combinedLight);
 
-    FragColor = vec4(combinedLight, 1.0);
+    FragColor = vec4(directLighting, 1.0);
 }

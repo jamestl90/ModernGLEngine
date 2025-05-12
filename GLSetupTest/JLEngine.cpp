@@ -28,7 +28,7 @@ namespace JLEngine
 
         m_resourceLoader->SetHotReloading(true);
         m_input->SetRawMouseMotion(true);
-        setVsync(false);
+        setVsync(true);
 
         Graphics::API()->DumpInfo();
 

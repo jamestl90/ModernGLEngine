@@ -170,7 +170,7 @@ namespace JLEngine
 		void BindTextureUnit(uint32_t unit, uint32_t texture);
 		void BindImageTexture(uint32_t unit, uint32_t texture, uint32_t level, bool layered, uint32_t layer, GLenum access, GLenum format);
 
-		void TextureStorage2D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height, uint32_t depth);
+		void TextureStorage2D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height);
 		void TextureStorage3D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height, uint32_t depth);
 		void TextureParameter(uint32_t texture, uint32_t pname, uint32_t value);
 

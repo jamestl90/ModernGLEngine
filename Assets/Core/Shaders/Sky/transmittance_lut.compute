@@ -1,0 +1,73 @@
+#version 460 core
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Include shared functions and UBO definition
+#include "common.glsl" 
+
+layout(rgba16f, binding = 0) uniform writeonly image2D transmittanceLUT;
+
+const int NUM_OPTICAL_DEPTH_SAMPLES_TRANSMI_LUT = 50; // Quality for LUT generation
+
+void main() 
+{
+    ivec2 tex_dims = imageSize(transmittanceLUT);
+    if (gl_GlobalInvocationID.x >= tex_dims.x || gl_GlobalInvocationID.y >= tex_dims.y) 
+    {
+        return;
+    }
+
+    vec2 uv = vec2(gl_GlobalInvocationID.xy) / vec2(tex_dims - 1);
+
+    float atmosphere_thickness_km = params.topRadiusKM - params.bottomRadiusKM;
+    
+    // uv.x maps to altitude, uv.y maps to cos(view_zenith_angle)
+    vec2 alt_cos_angle = UVToAltitudeCosAngle(uv, atmosphere_thickness_km);
+    float altitude_km = alt_cos_angle.x;
+    float view_zenith_mu = alt_cos_angle.y; // cos(angle from local zenith), range [-1,1]
+
+    // Canonical ray setup: origin on Y axis, view direction in XY plane based on zenith angle
+    vec3 p_start_world = vec3(0.0, params.bottomRadiusKM + altitude_km, 0.0);
+    vec3 up_dir_at_p = normalize(p_start_world);
+
+    float sin_theta_v = sqrt(max(0.0, 1.0 - view_zenith_mu * view_zenith_mu));
+    // Use a consistent tangent direction (e.g., X-axis) to form the view direction
+    vec3 view_dir = normalize(vec3(sin_theta_v, view_zenith_mu, 0.0)); // In frame where Y is up
+
+    // Find intersection of ray P_start + t * view_dir with atmosphere top & planet
+    vec2 t_to_atmosphere_top = IntersectSphere(p_start_world, view_dir, params.topRadiusKM);
+    vec2 t_to_planet_surface = IntersectSphere(p_start_world, view_dir, params.bottomRadiusKM);
+
+    // If ray starts above atmosphere top, transmittance is 1
+    if (altitude_km > atmosphere_thickness_km + 1e-3f) 
+    {
+        imageStore(transmittanceLUT, ivec2(gl_GlobalInvocationID.xy), vec4(1.0));
+        return;
+    }
+    // If ray starts below surface (should not happen with uv.x mapping), transmittance is 0
+    if (altitude_km < -1e-3f) 
+    {
+        imageStore(transmittanceLUT, ivec2(gl_GlobalInvocationID.xy), vec4(0.0));
+        return;
+    }
+
+    float t_max_integration_dist = t_to_atmosphere_top.y; 
+
+    // Check planet intersection if ray points downwards
+    if (view_zenith_mu < 0.0 && t_to_planet_surface.y > 1e-4f) 
+    {
+        if (t_to_planet_surface.y < t_max_integration_dist) 
+        {
+            t_max_integration_dist = t_to_planet_surface.y;
+        }
+    }
+    
+    vec3 transmittance = vec3(1.0);
+    if (t_max_integration_dist > 1e-4f) 
+    {
+        vec3 p_end_world = p_start_world + view_dir * t_max_integration_dist;
+        vec3 optical_depth_val = OpticalDepth(p_start_world, p_end_world, NUM_OPTICAL_DEPTH_SAMPLES_TRANSMI_LUT);
+        transmittance = exp(-optical_depth_val);
+    }
+    
+    imageStore(transmittanceLUT, ivec2(gl_GlobalInvocationID.xy), vec4(transmittance, 1.0));
+}

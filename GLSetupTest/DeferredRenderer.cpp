@@ -14,6 +14,7 @@
 #include "AnimHelpers.h"
 #include "ShaderGlobalData.h"
 #include "DDGI.h"
+#include "PhysicallyBasedSky.h"
 #include "JLMath.h"
 
 namespace JLEngine
@@ -29,6 +30,7 @@ namespace JLEngine
         m_debugModes(DebugModes::None),
         m_im3dManager(nullptr),
         m_ddgi(nullptr),
+        m_pbSky(nullptr),
 
         // Initialize scene manager
         m_sceneManager(SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader)),
@@ -54,7 +56,6 @@ namespace JLEngine
 
         m_hdriSky(nullptr),        
         m_dlShadowMap(nullptr),
-        m_directionalLight(),
         m_lastEyePos()
 
     {
@@ -91,9 +92,6 @@ namespace JLEngine
     void DeferredRenderer::EarlyInitialize()
     {
         m_sceneManager.ForceUpdate();
-
-        m_directionalLight.position = glm::vec3(0, 30.0f, 30.0f);
-        m_directionalLight.direction = -glm::normalize(m_directionalLight.position - glm::vec3(0.0f));
 
         auto sizeOfCamInfo = sizeof(ShaderGlobalData);
         m_gShaderData.GetGPUBuffer().SetSizeInBytes(sizeOfCamInfo);
@@ -140,15 +138,25 @@ namespace JLEngine
         m_jointTransformCompute = m_resourceLoader->CreateComputeFromFile("AnimJointTransforms", "joint_transform.compute", shaderAssetPath + "Compute/").get();
 
         // --- HDR SKY ---
-        HdriSkyInitParams params;
-        params.fileName = "kloofendal_48d_partly_cloudy_puresky_4k.hdr";
-        params.irradianceMapSize = 32;
-        params.prefilteredMapSize = 128;
-        params.prefilteredSamples = 2048;
-        params.compressionThreshold = 3.0f;
-        params.maxValue = 10000.0f;
-        m_hdriSky = new HDRISky(m_resourceLoader);
-        m_hdriSky->Initialise(m_assetFolder, params);
+        //HdriSkyInitParams params;
+        //params.fileName = "kloofendal_48d_partly_cloudy_puresky_4k.hdr";
+        //params.irradianceMapSize = 32;
+        //params.prefilteredMapSize = 128;
+        //params.prefilteredSamples = 2048;
+        //params.compressionThreshold = 3.0f;
+        //params.maxValue = 10000.0f;
+        //m_hdriSky = new HDRISky(m_resourceLoader);
+        //m_hdriSky->Initialise(m_assetFolder, params);
+
+        // --- PB SKY ---
+        AtmosphereParams m_atmosphereParams{};
+        m_atmosphereParams.sunDir = glm::normalize(glm::vec3(0.0f, 0.1f, -1.0f));
+        m_pbSky = new PhysicallyBasedSky(m_resourceLoader, m_assetFolder);
+        m_pbSky->Initialise(m_atmosphereParams);
+
+        RTParams skyRTParams;
+        skyRTParams.internalFormat = GL_RGB16F;
+        m_skyTarget = m_resourceLoader->CreateRenderTarget("SkyOutputTarget", m_width, m_height, skyRTParams, DepthType::None, 1).get();
         
         if (m_ddgi == nullptr)
             m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
@@ -275,10 +283,14 @@ namespace JLEngine
         GL_CHECK_ERROR();
     }
 
-    glm::mat4 DeferredRenderer::DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    glm::mat4 DeferredRenderer::DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos)
     {
-        glm::mat4 lightSpaceMatrix = GetLightMatrix(m_directionalLight.position,
-            m_directionalLight.direction, m_dlShadowMap->GetSize(), 0.01f, m_dlShadowMap->GetShadowDistance());
+        glm::vec3 currentSunDir = m_atmosphereParams.sunDir;
+        glm::mat4 lightSpaceMatrix = GetDirectionalLightSpaceMatrix(currentSunDir,
+                                                                    eyePos, 
+                                                                    m_dlShadowMap->GetSize(), 
+                                                                    0.01f, 
+                                                                    m_dlShadowMap->GetShadowDistance());
 
         m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
 
@@ -397,8 +409,9 @@ namespace JLEngine
         UpdateRigidAnimations();
         UpdateSkinnedAnimations();
 
-        auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix);
+        auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix, eyePos);
         GBufferPass(viewMatrix, projMatrix);
+        DrawSky(eyePos, viewMatrix, projMatrix);
 
         if (m_debugModes != DebugModes::None) // specialized debug views
         {
@@ -407,12 +420,12 @@ namespace JLEngine
         else
         {
             // update GI probes 
-            m_ddgi->Update(
-                static_cast<float>(dt), 
-                &m_gShaderData,                     
-                m_dirLightColor,                    // directional light color
-                m_hdriSky->GetSkyGPUID(),           // sky cubemap
-                m_vgm->GetVoxelGrid());    
+            //m_ddgi->Update(
+            //    static_cast<float>(dt), 
+            //    &m_gShaderData,                     
+            //    m_dirLightColor,                    // directional light color
+            //    m_hdriSky->GetSkyGPUID(),           // sky cubemap
+            //    m_vgm->GetVoxelGrid());    
 
             // do lighting pass
             LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
@@ -449,6 +462,16 @@ namespace JLEngine
         GL_CHECK_ERROR();
     }
 
+    void DeferredRenderer::DrawSky(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    {
+        Graphics::API()->SetViewport(0, 0, m_width, m_height);
+        Graphics::API()->BindFrameBuffer(m_skyTarget->GetGPUID());
+        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
+
+        m_pbSky->RenderSky(viewMatrix, projMatrix, eyePos);
+        Graphics::API()->BindFrameBuffer(0);
+    }
+
     void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
     {
         Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
@@ -469,18 +492,16 @@ namespace JLEngine
             m_gBufferTarget->GetTexId(3),           // gEmissive
             m_gBufferTarget->GetDepthBufferId(),    // gDepth
             m_dlShadowMap->GetShadowMapID(),        // gDLShadowMap
-            m_hdriSky->GetSkyGPUID(),               // gSkyTexture
-            m_hdriSky->GetIrradianceGPUID(),        // gIrradianceMap
-            m_hdriSky->GetPrefilteredGPUID(),       // gPrefilteredMap
-            m_hdriSky->GetBRDFLutGPUID(),           // gBRDFLUT
             m_gBufferTarget->GetTexId(4),           // world pos
             m_gBufferTarget->GetTexId(5),           // linear depth 
+            m_skyTarget->GetTexId(0)                // pbSky
         };
 
-        Graphics::API()->BindTextures(0, 12, textures);
+        Graphics::API()->BindTextures(0, 9, textures);
 
+        glm::vec3 currentSunDir = m_atmosphereParams.sunDir;
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
-        m_lightingTestShader->SetUniform("u_LightDirection", m_directionalLight.direction);
+        m_lightingTestShader->SetUniform("u_LightDirection", currentSunDir);
         m_lightingTestShader->SetUniform("u_LightColor", m_dirLightColor);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
@@ -559,12 +580,13 @@ namespace JLEngine
 
         GLuint textures[] =
         {
-            m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
-            m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
-            m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
+            m_skyTarget->GetTexId(0)
+            //m_hdriSky->GetIrradianceGPUID(),         // gIrradianceMap
+            //m_hdriSky->GetPrefilteredGPUID(),        // gPrefilteredMap
+            //m_hdriSky->GetBRDFLutGPUID()             // gBRDFLUT
         };
 
-        Graphics::API()->BindTextures(0, 3, textures);
+        Graphics::API()->BindTextures(0, 1, textures);
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
         auto& vaoRes = m_transparentResources.begin()->second;
@@ -710,6 +732,129 @@ namespace JLEngine
         }       
     }
 
+    void DeferredRenderer::DebugPbrSky() // Or maybe name it UpdateAndRenderAtmosphereUI
+    {
+        if (!m_pbSky) return; // Ensure sky object exists
+
+        ImGui::Begin("Atmosphere Settings");
+
+        bool paramsChanged = false; // Track if any parameter was changed this frame
+
+        // Temporary storage for atmosphere height
+        static float atmosphereHeightKM = m_atmosphereParams.topRadiusKM - m_atmosphereParams.bottomRadiusKM;
+
+        // --- Sun ---
+        if (ImGui::CollapsingHeader("Sun Settings", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (ImGui::ColorEdit3("Solar Irradiance", &m_atmosphereParams.solarIrradiance[0], ImGuiColorEditFlags_Float)) 
+            {
+                paramsChanged = true;
+            }
+
+            if (ImGui::DragFloat("Sun Angular Radius", &m_atmosphereParams.sunAngularRadius, 0.0001f, 0.0f, 0.1f, "%.6f")) 
+            {
+                paramsChanged = true;
+            }
+
+            // Control Sun Direction via Azimuth/Elevation
+            ImGui::Text("Sun Direction:");
+            bool sunAngleChanged = false;
+            if (ImGui::SliderFloat("Azimuth (Deg)", &m_uiSunAzimuthDegrees, 0.0f, 360.0f)) sunAngleChanged = true;
+            if (ImGui::SliderFloat("Elevation (Deg)", &m_uiSunElevationDegrees, -90.0f, 90.0f)) sunAngleChanged = true;
+
+            if (sunAngleChanged) 
+            {
+                paramsChanged = true;
+                float azimuthRad = glm::radians(m_uiSunAzimuthDegrees);
+                float elevationRad = glm::radians(m_uiSunElevationDegrees);
+                m_atmosphereParams.sunDir.x = cos(elevationRad) * sin(azimuthRad);
+                m_atmosphereParams.sunDir.y = sin(elevationRad);
+                m_atmosphereParams.sunDir.z = cos(elevationRad) * cos(azimuthRad);
+                m_atmosphereParams.sunDir = glm::normalize(m_atmosphereParams.sunDir);
+            }
+            ImGui::Text(" -> Vec3: (%.3f, %.3f, %.3f)", m_atmosphereParams.sunDir.x, m_atmosphereParams.sunDir.y, m_atmosphereParams.sunDir.z);
+
+            if (ImGui::DragFloat("Exposure", &m_atmosphereParams.exposure, 0.1f, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic)) 
+            {
+                paramsChanged = true;
+            }
+        }
+
+        // --- Earth / Planet ---
+        if (ImGui::CollapsingHeader("Planet Settings", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if (ImGui::DragFloat("Bottom Radius (km)", &m_atmosphereParams.bottomRadiusKM, 1.0f, 1.0f, 10000.0f, "%.1f")) 
+            {
+                paramsChanged = true;
+                m_atmosphereParams.topRadiusKM = m_atmosphereParams.bottomRadiusKM + atmosphereHeightKM;
+            }
+
+            if (ImGui::DragFloat("Atmosphere Height (km)", &atmosphereHeightKM, 1.0f, 1.0f, 500.0f, "%.1f")) 
+            {
+                paramsChanged = true;
+                m_atmosphereParams.topRadiusKM = m_atmosphereParams.bottomRadiusKM + atmosphereHeightKM;
+            }
+            ImGui::Text(" -> Top Radius: %.1f km", m_atmosphereParams.topRadiusKM);
+
+
+            if (ImGui::ColorEdit3("Ground Albedo", &m_atmosphereParams.groundAlbedo[0], ImGuiColorEditFlags_Float)) {
+                paramsChanged = true;
+            }
+        }
+
+        // --- Rayleigh Scattering ---
+        if (ImGui::CollapsingHeader("Rayleigh Scattering"))
+        {
+            if (ImGui::ColorEdit3("Scattering Coeff", &m_atmosphereParams.rayleighScatteringCoeff[0], ImGuiColorEditFlags_Float)) {
+                paramsChanged = true;
+            }
+
+            if (ImGui::DragFloat("Density Height Scale", &m_atmosphereParams.rayleighDensityHeightScale, 0.1f, 0.1f, 20.0f, "%.1f km")) {
+                paramsChanged = true;
+            }
+        }
+
+        // --- Mie Scattering ---
+        if (ImGui::CollapsingHeader("Mie Scattering"))
+        {
+            if (ImGui::DragFloat3("Scattering Coeff", &m_atmosphereParams.mieScatteringCoeff[0], 0.0001f, 0.0f, 0.1f, "%.6f")) {
+                paramsChanged = true;
+            }
+
+            if (ImGui::DragFloat3("Extinction Coeff", &m_atmosphereParams.mieExtinctionCoeff[0], 0.0001f, 0.0f, 0.1f, "%.6f")) {
+                paramsChanged = true;
+            }
+
+            if (ImGui::DragFloat("Density Height Scale", &m_atmosphereParams.mieDensityHeightScale, 0.1f, 0.1f, 5.0f, "%.1f km")) {
+                paramsChanged = true;
+            }
+
+            if (ImGui::SliderFloat("Phase Func 'g'", &m_atmosphereParams.miePhaseG, -0.99f, 0.99f, "%.2f")) {
+                paramsChanged = true;
+            }
+        }
+
+        // --- Absorption (Ozone) ---
+        if (ImGui::CollapsingHeader("Absorption (Ozone)"))
+        {
+            if (ImGui::ColorEdit3("Absorption Extinction", &m_atmosphereParams.absorptionExtinction[0], ImGuiColorEditFlags_Float)) {
+                paramsChanged = true;
+            }
+
+            if (ImGui::DragFloat("Absorption Density Scale", &m_atmosphereParams.absorptionDensityHeightScale, 0.1f, 0.1f, 50.0f, "%.1f km")) {
+                paramsChanged = true;
+            }
+        }
+
+        // --- Update GPU ---
+        if (paramsChanged)
+        {
+            m_pbSky->UpdateParams(m_atmosphereParams);
+        }
+
+        ImGui::End();
+    }
+
     // draws probe rays
     void DeferredRenderer::DebugDDGIRays()
     {
@@ -782,6 +927,7 @@ namespace JLEngine
 
     void DeferredRenderer::RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
+        DebugPbrSky();
         if (ImGui::Begin("Debug DDGI"))
         {
             ImGui::Checkbox("Show DDGI Probes", &m_showDDGI);
@@ -920,7 +1066,8 @@ namespace JLEngine
         { 
             DebugModes::GBuffer, 
             DebugModes::DirectionalLightShadows, 
-            DebugModes::HDRISkyTextures,
+            //DebugModes::HDRISkyTextures,
+            DebugModes::PbrSky,
             DebugModes::None
         };
 
@@ -956,16 +1103,16 @@ namespace JLEngine
         static float lightAngle = 0.0f;  // Rotation angle in degrees
         static float lightRadius = 30.0f; // Distance from the center
         ImGui::Begin("Shadow Controls");
-        if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees"))
-        {
-            float radians = glm::radians(lightAngle);
-            m_directionalLight.position = glm::vec3(
-                lightRadius * cos(radians),
-                30.0f,
-                lightRadius * sin(radians)
-            );
-            m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
-        }
+        // if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees"))
+        // {
+        //     float radians = glm::radians(lightAngle);
+        //     m_directionalLight.position = glm::vec3(
+        //         lightRadius * cos(radians),
+        //         30.0f,
+        //         lightRadius * sin(radians)
+        //     );
+        //     m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
+        // }
         ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00020f, 0.0009f, "%.6f");
         ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
         ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
@@ -1014,10 +1161,14 @@ namespace JLEngine
             debugString = "Bottom Left to Top Right:\nDirectional Shadowmap Depth, Camera Depth";
             DebugDirectionalLightShadows();
         }
-        else if (m_debugModes == DebugModes::HDRISkyTextures)
+        //else if (m_debugModes == DebugModes::HDRISkyTextures)
+        //{
+        //    debugString = "Bottom Left to Top Right:\nBRDF, HDR Sky, Irradiance, Prefiltered";
+        //    DebugHDRISky(viewMatrix, projMatrix);
+        //}
+        else if (m_debugModes == DebugModes::PbrSky)
         {
-            debugString = "Bottom Left to Top Right:\nBRDF, HDR Sky, Irradiance, Prefiltered";
-            DebugHDRISky(viewMatrix, projMatrix);
+
         }
         ImGui::Begin("Debug Views");
         ImGui::Text(debugString.c_str());
@@ -1380,18 +1531,36 @@ namespace JLEngine
         GL_CHECK_ERROR();
     }
 
-    glm::mat4 DeferredRenderer::GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float nearPlane, float farPlane)
+    glm::mat4 DeferredRenderer::GetDirectionalLightSpaceMatrix(
+        const glm::vec3& lightDir_normalized, 
+        const glm::vec3& focusPoint,          
+        float orthoSize,                      
+        float shadowNearPlane,                
+        float shadowFarPlane)                 
     {
-        float orthoSize = size;
-
         glm::mat4 lightProjection = glm::ortho(
-            -orthoSize, orthoSize,  // Left, Right
-            -orthoSize, orthoSize,  // Bottom, Top
-            nearPlane, farPlane       // Near, Far
+            -orthoSize / 2.0f, orthoSize / 2.0f, // Left, Right
+            -orthoSize / 2.0f, orthoSize / 2.0f, // Bottom, Top
+            shadowNearPlane, shadowFarPlane       // Near, Far -> Note: Near/Far are distances *along the look direction*
         );
 
-        glm::vec3 lightTarget = glm::normalize(lightPos + (lightDir * 2.0f));
-        glm::mat4 lightView = glm::lookAt(lightPos, lightTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec3 lightEyePos = focusPoint - (lightDir_normalized * (shadowFarPlane / 2.0f));
+
+        glm::vec3 lightUp;
+        if (glm::abs(glm::dot(lightDir_normalized, glm::vec3(0.0f, 1.0f, 0.0f))) > 0.999f)
+        {
+            glm::vec3 tempUp = glm::vec3(0.0f, 0.0f, -1.0f); // Or +1.0f, depends on convention
+            glm::vec3 lightRight = glm::normalize(glm::cross(tempUp, lightDir_normalized));
+            lightUp = glm::normalize(glm::cross(lightDir_normalized, lightRight));
+        }
+        else
+        {
+            glm::vec3 tempUp = glm::vec3(0.0f, 1.0f, 0.0f);
+            glm::vec3 lightRight = glm::normalize(glm::cross(tempUp, lightDir_normalized));
+            lightUp = glm::normalize(glm::cross(lightDir_normalized, lightRight));
+        }
+
+        glm::mat4 lightView = glm::lookAt(lightEyePos, focusPoint, lightUp);
 
         return lightProjection * lightView;
     }
@@ -1458,6 +1627,7 @@ namespace JLEngine
         m_gBufferTarget->ResizeTextures(m_width, m_height);
         m_lightOutputTarget->ResizeTextures(m_width, m_height);
         m_finalOutputTarget->ResizeTextures(m_width, m_height);
+        m_skyTarget->ResizeTextures(m_width, m_height);
 
         // Recreate the G-buffer to match the new dimensions
         //m_assetLoader->GetRenderTargetManager()->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer

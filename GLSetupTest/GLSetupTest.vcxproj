@@ -147,6 +147,7 @@
       <SubType>
       </SubType>
     </ClCompile>
+    <ClCompile Include="PhysicallyBasedSky.cpp" />
     <ClCompile Include="ResourceLoader.cpp">
       <SubType>
       </SubType>
@@ -241,8 +242,10 @@
     <ClInclude Include="AnimationFactory.h" />
     <ClInclude Include="AnimData.h" />
     <ClInclude Include="AnimHelpers.h" />
+    <ClInclude Include="AtmosphereParameters.h" />
     <ClInclude Include="DDGI.h" />
     <ClInclude Include="Im3dManager.h" />
+    <ClInclude Include="PhysicallyBasedSky.h" />
     <ClInclude Include="ShaderGlobalData.h" />
     <ClInclude Include="Cubemap.h">
       <SubType>

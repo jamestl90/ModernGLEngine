@@ -294,7 +294,7 @@ int MainApp(std::string assetFolder)
 
     flyCamera = engine.GetFlyCamera();
 
-    TestScene3(engine, assetFolder);
+    TestScene2(engine, assetFolder);
 
     engine.FinalizeLoading();
 

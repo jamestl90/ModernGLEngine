@@ -204,6 +204,9 @@
     <ClCompile Include="im3d\im3d.cpp">
       <Filter>Source Files\Im3d</Filter>
     </ClCompile>
+    <ClCompile Include="PhysicallyBasedSky.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainApp.h">
@@ -412,6 +415,12 @@
     </ClInclude>
     <ClInclude Include="VoxelGrid.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AtmosphereParameters.h">
+      <Filter>Header Files\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicallyBasedSky.h">
+      <Filter>Header Files\Graphics\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

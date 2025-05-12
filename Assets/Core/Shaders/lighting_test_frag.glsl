@@ -8,12 +8,9 @@ layout(binding = 2) uniform sampler2D gMetallicRoughness;
 layout(binding = 3) uniform sampler2D gEmissive;
 layout(binding = 4) uniform sampler2D gDepth;
 layout(binding = 5) uniform sampler2D gDLShadowMap;
-layout(binding = 6) uniform samplerCube gSkyTexture;
-layout(binding = 7) uniform samplerCube gIrradianceMap;
-layout(binding = 8) uniform samplerCube gPrefilteredMap;
-layout(binding = 9) uniform sampler2D gBRDFLUT;
-layout(binding = 10) uniform sampler2D gPositions;
-layout(binding = 11) uniform sampler2D gLinearDepth;
+layout(binding = 6) uniform sampler2D gPositions;
+layout(binding = 7) uniform sampler2D gLinearDepth;
+layout(binding = 8) uniform sampler2D pbSky;
 
 uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
@@ -37,7 +34,7 @@ uniform vec3 u_DDGI_ProbeSpacing;
 uniform ivec3 u_DDGI_GridResolution;
 
 // change these to uniforms later
-const float u_DDGIVisibilityBias = 0.01;
+const float u_DDGIVisibilityBias = 5.01;
 const float u_DDGIVisibilitySharpness = 40.0;
 
 struct DDGIProbe
@@ -180,17 +177,6 @@ float geometrySmith(float NdotV, float NdotL, float roughness)
     float gV = NdotV / (NdotV * (1.0 - k) + k);
     float gL = NdotL / (NdotL * (1.0 - k) + k);
     return gV * gL;
-}
-
-// Specular IBL calculation
-vec3 CalculateSpecularIBL(vec3 normal, vec3 viewDir, float roughness, vec3 F0)
-{
-    vec3 reflection = reflect(-viewDir, normal);
-    vec3 prefilteredColor = textureLod(gPrefilteredMap, reflection, roughness * 4.0).rgb;
-    float NdotV = max(dot(normal, viewDir), 0.0);
-    vec2 brdf = texture(gBRDFLUT, vec2(NdotV, roughness)).rg;
-
-    return prefilteredColor * (F0 * brdf.x + brdf.y) * u_SpecularIndirectFactor;
 }
 
 GBufferData ExtractGBufferData(vec2 texCoords)
@@ -357,7 +343,7 @@ void main()
     if (gData.depth >= 0.9999) 
     {
         vec3 viewDirWS_Sky = normalize(gData.worldPosFromDepth - camPos.xyz);
-        DirectLight = texture(gSkyTexture, viewDirWS_Sky).rgb; 
+        DirectLight = texture(pbSky, v_TexCoords).rgb; 
         IBL = vec3(0.0);
         IndirectLight = vec3(0.0);
         return;
@@ -365,7 +351,7 @@ void main()
 
     // Calculate necessary vectors in world space
     vec3 viewDirWS  = normalize(camPos.xyz - gData.worldPos);
-    vec3 lightDirWS = normalize(-u_LightDirection);
+    vec3 lightDirWS = normalize(u_LightDirection);
     vec3 normalWS   = normalize((u_ViewInverse * vec4(gData.normal, 0.0)).xyz);
 
     // --- Shadows ---
@@ -395,21 +381,17 @@ void main()
 
     // Specular IBL (Still use global prefiltered map)
     vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
-    vec3 prefilteredColor = textureLod(gPrefilteredMap, reflectionWS, gData.roughness * 4.0).rgb;
-    vec2 brdf             = texture(gBRDFLUT, vec2(NdotV_WS, gData.roughness)).rg;
-    // Use same Fresnel as direct lighting for consistency
-    vec3 specularIBL      = prefilteredColor * (F * brdf.x + brdf.y); // F = Fresnel calculated earlier
+    
     // Diffuse GI (Use DDGI result exclusively)
-    vec3 ddgiIrradiance   = SampleDDGI(gData.worldPos, normalWS);
+    vec3 ddgiIrradiance   = vec3(0.01); // SampleDDGI(gData.worldPos, normalWS);
     vec3 diffuseGI        = ddgiIrradiance * kD * gData.albedo / 3.14159;
 
     // Apply scaling factors (optional, can be done in combine pass too)
     diffuseGI            *= u_DiffuseIndirectFactor;
-    specularIBL          *= u_SpecularIndirectFactor;
 
     // --- Final Output Assignment (Option 1 Structure) ---
     // AO affects all lighting components
     DirectLight     = (directLighting + gData.emissive) * gData.ao * m_DirectFactor;
-    IBL             = specularIBL * gData.ao;
+
     IndirectLight   = diffuseGI * gData.ao * 10;
 }

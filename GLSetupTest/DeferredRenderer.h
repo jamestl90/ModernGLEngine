@@ -17,6 +17,7 @@
 #include "TexturePool.h"
 #include "SceneManager.h"
 #include "Im3dManager.h"
+#include "AtmosphereParameters.h"
 #include "VoxelGrid.h"
 
 namespace JLEngine
@@ -25,7 +26,8 @@ namespace JLEngine
     {
         GBuffer,
         DirectionalLightShadows,
-        HDRISkyTextures,
+        PbrSky,
+        //HDRISkyTextures,
         None
     };
 
@@ -40,6 +42,7 @@ namespace JLEngine
     class DirectionalLightShadowMap;
     class HDRISky;
     class DDGI;
+    class PhysicallyBasedSky;
 
     class DeferredRenderer 
     {
@@ -54,7 +57,6 @@ namespace JLEngine
         
         void Render(const glm::vec3& eyePos, const glm::vec3& camDir, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, double dt);
 
-        const Light& GetDirectionalLight() const { return m_directionalLight; }
         bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
 
@@ -80,6 +82,7 @@ namespace JLEngine
 
     private:
         void DrawUI();        
+        void DrawSky(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
         void CombinePass(const glm::mat4& viewMat, const glm::mat4& projMatrix);
         void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
@@ -94,13 +97,19 @@ namespace JLEngine
         void DebugAABB();
         void RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void DebugPbrSky();
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         void UpdateRigidAnimations();
         void UpdateSkinnedAnimations();
-        glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos);
         void RenderScreenSpaceTriangle();
-        glm::mat4 GetLightMatrix(glm::vec3& lightPos, glm::vec3& lightDir, float size, float near, float far);
+        glm::mat4 GetDirectionalLightSpaceMatrix(
+            const glm::vec3& lightDir_normalized,
+            const glm::vec3& focusPoint,
+            float orthoSize,
+            float shadowNearPlane,
+            float shadowFarPlane);
         void GenerateMaterialAndTextureBuffers(
             ResourceManager<JLEngine::Material>& materialManager,
             ResourceManager<JLEngine::Texture>& textureManager,
@@ -127,6 +136,7 @@ namespace JLEngine
         RenderTargetPool m_rtPool;
         RenderTarget* m_gBufferTarget;
         RenderTarget* m_lightOutputTarget;
+        RenderTarget* m_skyTarget;
         RenderTarget* m_finalOutputTarget;
 
         // raster shaders
@@ -166,11 +176,17 @@ namespace JLEngine
 
         SceneManager m_sceneManager;
 
+        // --- PBR SKY --- // 
+        PhysicallyBasedSky* m_pbSky;
+        AtmosphereParams m_atmosphereParams = {};
+        float m_uiSunAzimuthDegrees = 180.0f; // Or initialize based on initial sunDir
+        float m_uiSunElevationDegrees = 15.0f;
+        // --------------- // 
+
         DDGI* m_ddgi;
         VoxelGridManager* m_vgm;
         DirectionalLightShadowMap* m_dlShadowMap;
         glm::vec3 m_dirLightColor = glm::vec3(1.0f);
-        Light m_directionalLight;
         bool m_enableDLShadows;
 
         bool m_showDDGI = false;
