@@ -19,9 +19,9 @@ Rendering Setup:
 Supports a basic deferred PBR pipeline with ALBEDO(AO), NORMALS, METALLIC/ROUGHNESS and EMISSIVE being stored in the gbuffer. 
 All geometry with the same vertex layout are batched in a single vertex array object and can be drawn with a single call to glMultiDrawElementsIndirect. 
 
-The old HDRi sky cubemap texture has been replaced with a Physically based sky model based on these two documents:
-https://cpp-rendering.io/sky-and-atmosphere-rendering/
-https://sebh.github.io/publications/egsr2020.pdf
+The old HDRi sky cubemap texture has been replaced with a Physically based sky model based on these two documents:  
+https://cpp-rendering.io/sky-and-atmosphere-rendering/  
+https://sebh.github.io/publications/egsr2020.pdf  
 With this I've added a Sky Probe which "snapshots" the pb sky into a low res cubemap/prefiltered map. The lighting shader now samples the prefiltered map for sky reflections. 
 
 ~~The lighting is still a work in progress. Currently there is a single directional light and some ambient and specular indirect lighting from the HDRi Sky textures. These maps are generated at program launch - Cubemap, Irradiance Map, Prefiltered Environment Map and BRDF (bi-directional reflectance distribution function).~~ 
