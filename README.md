@@ -26,8 +26,6 @@ With this I've added a Sky Probe which "snapshots" the pb sky into a low res cub
 
 ~~The lighting is still a work in progress. Currently there is a single directional light and some ambient and specular indirect lighting from the HDRi Sky textures. These maps are generated at program launch - Cubemap, Irradiance Map, Prefiltered Environment Map and BRDF (bi-directional reflectance distribution function).~~ 
 
-Real-time debugging of the GBuffer, directional shadow-map and sky textures is implemented. 
-
 Libraries Used:
 GLFW - for window creation and management 
 glad - for opengl bindings
@@ -35,18 +33,22 @@ tiny_gltf - for loading GLB and GLTF files
 stb_image - for loading images
 Dear IMGUI - for debug UI rendering
 
-**NEW SKY METHOD** Physically based sky and reflection sky probe
+**NEW SKY METHOD** 
+Physically based sky and reflection sky probe:
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pb_sky_1.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pb_sky_2.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pb_sky_3.png'/>
 
-GBuffer debug view
+Real-time debugging of the GBuffer, directional shadow-map and sky textures is implemented. 
+
+GBuffer debug view:
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_gbuffer_debug.png'/>
 
 Instanced Animated/Skinned mesh rendering:
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/instancedSkinnedMeshes.png'/>
 
-**OLD METHOD** HDRI Sky reflections and PBR workflow
+**OLD METHOD** 
+HDRI Sky reflections and PBR workflow
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections2.png'/>
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/pbr_hdri_reflections3.png'/>
