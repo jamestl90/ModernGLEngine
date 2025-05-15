@@ -4,16 +4,16 @@ layout(location = 0) out vec4 FragColor;
 
 in VS_OUT 
 {
-    vec3 viewDir_world;
+    vec3 viewDir_world; 
 } fs_in;
 
-#include "common.glsl" 
+#include "common.glsl"
 
-uniform vec3 cameraPos_world_km; 
+uniform vec3 cameraPos_world_km; // world position 
 layout(binding = 0) uniform sampler2D transmittanceLUT_sampler;
 
-const int NUM_VIEW_RAY_SAMPLES = 16; // Reduced for dynamic version, adjust for quality/perf
-const int NUM_VIEW_PATH_OPTICAL_DEPTH_SAMPLES = 8;
+const int NUM_VIEW_RAY_SAMPLES_BAKE = 32; // Can use higher quality for baking
+const int NUM_VIEW_PATH_OPTICAL_DEPTH_SAMPLES_BAKE = 16;
 
 vec3 SampleTransmittanceLUT(float altitude_km, float view_zenith_mu) 
 {
@@ -32,7 +32,7 @@ vec3 IntegrateSingleScattering(vec3 ray_origin_world, vec3 ray_dir_world_norm, v
     float ray_end_dist;
 
     if (length(ray_origin_world) > params.topRadiusKM) 
-    { 
+    {
         if (t_atmosphere_intersect.x > 0.0 && t_atmosphere_intersect.y > t_atmosphere_intersect.x) 
         {
             ray_start_offset = t_atmosphere_intersect.x;
@@ -45,8 +45,8 @@ vec3 IntegrateSingleScattering(vec3 ray_origin_world, vec3 ray_dir_world_norm, v
     } 
     else 
     { 
-        ray_start_offset = 0.0; 
-        ray_end_dist = t_atmosphere_intersect.y; 
+        ray_start_offset = 0.0;
+        ray_end_dist = t_atmosphere_intersect.y;
     }
 
     if (t_planet_intersect.x > ray_start_offset && t_planet_intersect.x < ray_end_dist) 
@@ -57,9 +57,9 @@ vec3 IntegrateSingleScattering(vec3 ray_origin_world, vec3 ray_dir_world_norm, v
     float segment_length = ray_end_dist - ray_start_offset;
     if (segment_length <= 1e-3f) return vec3(0.0);
 
-    float step_size = segment_length / float(NUM_VIEW_RAY_SAMPLES);
+    float step_size = segment_length / float(NUM_VIEW_RAY_SAMPLES_BAKE);
 
-    for (int i = 0; i < NUM_VIEW_RAY_SAMPLES; ++i) 
+    for (int i = 0; i < NUM_VIEW_RAY_SAMPLES_BAKE; ++i) 
     {
         float t_sample = ray_start_offset + (float(i) + 0.5) * step_size;
         vec3 p_sample_world = ray_origin_world + ray_dir_world_norm * t_sample; 
@@ -69,12 +69,12 @@ vec3 IntegrateSingleScattering(vec3 ray_origin_world, vec3 ray_dir_world_norm, v
         {
             continue; 
         }
-
-        vec3 transmittance_viewer_to_sample = exp(-OpticalDepth(ray_origin_world, p_sample_world, NUM_VIEW_PATH_OPTICAL_DEPTH_SAMPLES));
-
+        
+        vec3 transmittance_viewer_to_sample = exp(-OpticalDepth(ray_origin_world, p_sample_world, NUM_VIEW_PATH_OPTICAL_DEPTH_SAMPLES_BAKE));
+        
         vec3 p_sample_up_dir = normalize(p_sample_world);
         float sun_zenith_mu_at_sample = dot(p_sample_up_dir, sun_dir_world_norm);
-        vec3 transmittance_sun_to_sample = SampleTransmittanceLUT(p_sample_altitude_km, sun_zenith_mu_at_sample); // <-- LUT USED HERE
+        vec3 transmittance_sun_to_sample = SampleTransmittanceLUT(p_sample_altitude_km, sun_zenith_mu_at_sample);
         
         float cos_scatter_angle = dot(ray_dir_world_norm, sun_dir_world_norm);
         vec3 rayleigh_contrib = GetScatteringCoeffRayleigh(p_sample_altitude_km) * RayleighPhase(cos_scatter_angle);
@@ -88,7 +88,6 @@ vec3 IntegrateSingleScattering(vec3 ray_origin_world, vec3 ray_dir_world_norm, v
     return L_s;
 }
 
-// Renders sun disk
 float SunDisk(vec3 view_dir_world_norm, vec3 sun_dir_world_norm, float sun_angular_radius_rad) 
 {
     float cos_alpha = dot(view_dir_world_norm, sun_dir_world_norm);
@@ -107,15 +106,14 @@ void main()
     float cam_altitude_km = length(cameraPos_world_km) - params.bottomRadiusKM;
     vec3 cam_up_dir = normalize(cameraPos_world_km);
     float sun_zenith_mu_at_cam = dot(cam_up_dir, sun_dir_norm);
-
-    vec3 sun_transmittance_to_cam = SampleTransmittanceLUT(cam_altitude_km, sun_zenith_mu_at_cam); 
+    
+    vec3 sun_transmittance_to_cam = SampleTransmittanceLUT(cam_altitude_km, sun_zenith_mu_at_cam);
     
     float sun_disk_intensity = SunDisk(view_dir_norm, sun_dir_norm, params.sunAngularRadius);
     final_sky_color += sun_disk_intensity * sun_transmittance_to_cam * params.solarIrradiance;
 
     final_sky_color *= params.exposure;
-    //final_sky_color = final_sky_color / (final_sky_color + vec3(1.0)); // Reinhard
-    //final_sky_color = pow(final_sky_color, vec3(1.0/2.2)); // Gamma correction
+    // If I dont end up tonemapping/gamma correction here then I can just replace this shader with physicallyBasedSky_frag.glsl completely
 
     FragColor = vec4(final_sky_color, 1.0);
 }

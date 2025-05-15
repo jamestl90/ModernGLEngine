@@ -63,7 +63,7 @@ namespace JLEngine
         }
     }
 
-    void JLEngineCore::run(std::function<void(double deltaTime)> logicUpdate,
+    void JLEngineCore::Run(std::function<void(double deltaTime)> logicUpdate,
         std::function<void(GraphicsAPI& graphics, double interpolationFactor)> render,
         std::function<void(double fixedDeltaTime)> fixedUpdate)
     {

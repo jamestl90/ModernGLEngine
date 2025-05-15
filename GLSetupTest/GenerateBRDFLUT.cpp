@@ -95,7 +95,7 @@ int GenerateBRDFLUT(const std::string& assetFolder)
     input->SetMouseMoveCallback(mouseMove);
     input->SetKeyboardCallback(keyboardCallback);
 
-    engine.run(logicUpdate, renderFunc, [](double dt) {});
+    engine.Run(logicUpdate, renderFunc, [](double dt) {});
 
     return 0;
 }

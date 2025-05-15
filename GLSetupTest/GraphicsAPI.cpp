@@ -339,9 +339,14 @@ namespace JLEngine
 			srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
 	}
 
-	void GraphicsAPI::CreateFrameBuffer(uint32_t count, uint32_t& id )
+	void GraphicsAPI::CreateFrameBuffer(uint32_t count, uint32_t* id )
 	{
-		glCreateFramebuffers(count, &id);
+		glCreateFramebuffers(count, id);
+	}
+
+	void GraphicsAPI::CreateRenderBuffer(uint32_t count, uint32_t* id)
+	{
+		glCreateRenderbuffers(count, id);
 	}
 
 	void GraphicsAPI::BindVertexArray( uint32_t vaoID )
@@ -741,6 +746,11 @@ namespace JLEngine
 		glBindImageTexture(unit, texture, level, layered, layer, access, format);
 	}
 
+	void GraphicsAPI::GenerateTextureMipmap(uint32_t texture)
+	{
+		glGenerateTextureMipmap(texture);
+	}
+
 	void GraphicsAPI::TextureStorage2D(uint32_t tex, int levels, uint32_t format, uint32_t width, uint32_t height)
 	{
 		glTextureStorage2D(tex, levels, format, width, height);
@@ -837,6 +847,11 @@ namespace JLEngine
 	void GraphicsAPI::NamedFramebufferTexture(uint32_t target, uint32_t attachment, uint32_t texture, uint32_t level)
 	{
 		glNamedFramebufferTexture(target, attachment, texture, level);
+	}
+
+	void GraphicsAPI::NamedFramebufferTextureLayer(uint32_t fbo, GLenum attachment, GLuint texture, GLint level, GLint layer)
+	{
+		glNamedFramebufferTextureLayer(fbo, attachment, texture, level, layer);
 	}
 
 	void GraphicsAPI::GeneratePrimitives()

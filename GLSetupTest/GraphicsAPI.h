@@ -169,6 +169,7 @@ namespace JLEngine
 		void BindTextures(uint32_t first, uint32_t count, const uint32_t* textures);
 		void BindTextureUnit(uint32_t unit, uint32_t texture);
 		void BindImageTexture(uint32_t unit, uint32_t texture, uint32_t level, bool layered, uint32_t layer, GLenum access, GLenum format);
+		void GenerateTextureMipmap(uint32_t texture);
 
 		void TextureStorage2D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height);
 		void TextureStorage3D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height, uint32_t depth);
@@ -184,11 +185,13 @@ namespace JLEngine
 			uint32_t dstX0, uint32_t dstY0,
 			uint32_t dstX1, uint32_t dstY1,
 			GLbitfield mask, uint32_t filter);
-		void CreateFrameBuffer(uint32_t count, uint32_t& id);
+		void CreateFrameBuffer(uint32_t count, uint32_t* id);
+		void CreateRenderBuffer(uint32_t count, uint32_t* id);
 		void BindFrameBuffer(uint32_t id);
 		void BindDrawBuffer(uint32_t id);
 		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
 		void NamedFramebufferTexture(uint32_t target, uint32_t attachment, uint32_t texture, uint32_t level);
+		void NamedFramebufferTextureLayer(uint32_t fbo, GLenum attachment, GLuint texture, GLint level, GLint layer);
 		bool FramebufferComplete(uint32_t fboID);
 		// RBO
 		void CreateRenderBuffer(uint32_t count, uint32_t& id);

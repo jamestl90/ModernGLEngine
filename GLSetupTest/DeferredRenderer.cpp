@@ -15,6 +15,7 @@
 #include "ShaderGlobalData.h"
 #include "DDGI.h"
 #include "PhysicallyBasedSky.h"
+#include "SkyProbe.h"
 #include "JLMath.h"
 
 namespace JLEngine
@@ -30,7 +31,9 @@ namespace JLEngine
         m_debugModes(DebugModes::None),
         m_im3dManager(nullptr),
         m_ddgi(nullptr),
+        m_vgm(nullptr),
         m_pbSky(nullptr),
+        m_skyProbe(nullptr),
 
         // Initialize scene manager
         m_sceneManager(SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader)),
@@ -53,6 +56,7 @@ namespace JLEngine
         m_lightOutputTarget(nullptr),
         m_gBufferTarget(nullptr),
         m_finalOutputTarget(nullptr),
+        m_skyTarget(nullptr),
 
         m_hdriSky(nullptr),        
         m_dlShadowMap(nullptr),
@@ -86,13 +90,18 @@ namespace JLEngine
         Graphics::DisposeGPUBuffer(&m_ssboJointMatrices.GetGPUBuffer());
         Graphics::DisposeGPUBuffer(&m_ssboGlobalTransforms.GetGPUBuffer());
 
+        delete m_pbSky;
+        delete m_skyProbe;  
+        delete m_vgm;       
         delete m_ddgi;
     }
     
+    // early renderer init, before any vertex arrays have been setup 
     void DeferredRenderer::EarlyInitialize()
     {
         m_sceneManager.ForceUpdate();
 
+        // --- UNIFORM BUFFERS --- 
         auto sizeOfCamInfo = sizeof(ShaderGlobalData);
         m_gShaderData.GetGPUBuffer().SetSizeInBytes(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_gShaderData.GetGPUBuffer());
@@ -132,23 +141,22 @@ namespace JLEngine
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
         m_combineShader = m_resourceLoader->CreateShaderFromFile("CombineStages", "screenspacetriangle.glsl", "combine_frag.glsl", shaderAssetPath).get();
+        m_debugSkyboxShader = m_resourceLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", shaderAssetPath).get();
 
         // --- COMPUTE --- 
         m_simpleBlurCompute = m_resourceLoader->CreateComputeFromFile("SimpleBlur", "gaussianblur.compute", shaderAssetPath + "Compute/").get();
         m_jointTransformCompute = m_resourceLoader->CreateComputeFromFile("AnimJointTransforms", "joint_transform.compute", shaderAssetPath + "Compute/").get();
 
-        // --- HDR SKY ---
-        //HdriSkyInitParams params;
-        //params.fileName = "kloofendal_48d_partly_cloudy_puresky_4k.hdr";
-        //params.irradianceMapSize = 32;
-        //params.prefilteredMapSize = 128;
-        //params.prefilteredSamples = 2048;
-        //params.compressionThreshold = 3.0f;
-        //params.maxValue = 10000.0f;
-        //m_hdriSky = new HDRISky(m_resourceLoader);
-        //m_hdriSky->Initialise(m_assetFolder, params);
-
         // --- PB SKY ---
+        auto bakingPath = shaderAssetPath + "Baking/";
+        auto brdfShader = m_resourceLoader->CreateShaderFromFile(
+            "BRDFLUTShader",
+            "generate_brdf_lut_vert.glsl",
+            "generate_brdf_lut_frag.glsl",
+            bakingPath);
+        m_brdfLUT = CubemapBaker::CreateBRDFLUT(brdfShader.get(), 512, 1024);
+        m_resourceLoader->DeleteShader("BRDFLUTShader");
+
         AtmosphereParams m_atmosphereParams{};
         m_atmosphereParams.sunDir = glm::normalize(glm::vec3(0.0f, 0.1f, -1.0f));
         m_pbSky = new PhysicallyBasedSky(m_resourceLoader, m_assetFolder);
@@ -158,6 +166,11 @@ namespace JLEngine
         skyRTParams.internalFormat = GL_RGB16F;
         m_skyTarget = m_resourceLoader->CreateRenderTarget("SkyOutputTarget", m_width, m_height, skyRTParams, DepthType::None, 1).get();
         
+        std::string skyShaders = shaderAssetPath + "/Sky/";
+        m_skyProbe = new SkyProbe(m_resourceLoader, skyShaders);
+        m_skyProbe->StartNewBake(glm::vec3(0.0f), m_atmosphereParams, m_pbSky->GetAtmosphereUBO(), m_pbSky->GetTransmittanceLUT());
+
+        // --- GLOBAL ILLUMINATION ---
         if (m_ddgi == nullptr)
             m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
         m_ddgi->GenerateProbes(m_sceneManager.GetSubmeshes());
@@ -171,6 +184,7 @@ namespace JLEngine
         GL_CHECK_ERROR();
     }
 
+    // once vao's have been created, setup the voxel grid / voxel texture for DDGI
     void DeferredRenderer::LateInitialize()
     {
         if (m_vgm == nullptr)
@@ -413,6 +427,12 @@ namespace JLEngine
         GBufferPass(viewMatrix, projMatrix);
         DrawSky(eyePos, viewMatrix, projMatrix);
 
+        m_skyProbe->ProcessBake();
+        //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        //glViewport(0, 0, m_width, m_height);
+        //m_skyProbe->DebugDrawSkybox(m_debugSkyboxShader, viewMatrix, projMatrix);
+        //return;
+
         if (m_debugModes != DebugModes::None) // specialized debug views
         {
             DebugPass(viewMatrix, projMatrix);
@@ -433,7 +453,7 @@ namespace JLEngine
 
             DrawUI();
             // renders debug geometry/lines/points etc including imgui 
-            RenderDebugTools(viewMatrix, projMatrix);
+            RenderDebugTools(eyePos, viewMatrix, projMatrix);
 
             if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
             {
@@ -494,15 +514,17 @@ namespace JLEngine
             m_dlShadowMap->GetShadowMapID(),        // gDLShadowMap
             m_gBufferTarget->GetTexId(4),           // world pos
             m_gBufferTarget->GetTexId(5),           // linear depth 
-            m_skyTarget->GetTexId(0)                // pbSky
+            m_skyTarget->GetTexId(0),               // pbSky
+            m_skyProbe->prefilteredTex,             // prefiltered environment map
+            m_brdfLUT                               // brdf lut
         };
 
-        Graphics::API()->BindTextures(0, 9, textures);
+        Graphics::API()->BindTextures(0, 11, textures);
 
         glm::vec3 currentSunDir = m_atmosphereParams.sunDir;
         m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
         m_lightingTestShader->SetUniform("u_LightDirection", currentSunDir);
-        m_lightingTestShader->SetUniform("u_LightColor", m_dirLightColor);
+        m_lightingTestShader->SetUniform("u_LightColor", m_atmosphereParams.solarIrradiance);
         m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
         m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
 
@@ -732,7 +754,7 @@ namespace JLEngine
         }       
     }
 
-    void DeferredRenderer::DebugPbrSky() // Or maybe name it UpdateAndRenderAtmosphereUI
+    void DeferredRenderer::DebugPbrSky(const glm::vec3& eyePos) // Or maybe name it UpdateAndRenderAtmosphereUI
     {
         if (!m_pbSky) return; // Ensure sky object exists
 
@@ -850,6 +872,7 @@ namespace JLEngine
         if (paramsChanged)
         {
             m_pbSky->UpdateParams(m_atmosphereParams);
+            m_skyProbe->StartNewBake(eyePos, m_atmosphereParams, m_pbSky->GetAtmosphereUBO(), m_pbSky->GetTransmittanceLUT());
         }
 
         ImGui::End();
@@ -925,9 +948,9 @@ namespace JLEngine
         Im3d::PopColor();
     }
 
-    void DeferredRenderer::RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    void DeferredRenderer::RenderDebugTools(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
     {
-        DebugPbrSky();
+        DebugPbrSky(eyePos);
         if (ImGui::Begin("Debug DDGI"))
         {
             ImGui::Checkbox("Show DDGI Probes", &m_showDDGI);

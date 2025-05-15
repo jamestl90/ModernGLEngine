@@ -22,6 +22,7 @@ namespace JLEngine
 		uint32_t GenerateIrradianceCubemap(uint32_t hdrCubeMapID, unsigned int irradianceMapSize);
 		uint32_t GeneratePrefilteredEnvMap(uint32_t hdrCubeMapID, unsigned int prefEnvMapSize, int numSamples = 1024);
 		uint32_t GenerateBRDFLUT(int lutSize = 512, int numSamples = 1024);
+		static uint32_t CreateBRDFLUT(ShaderProgram* brdfShader, int lutSize = 512, int numSamples = 1024);
 
 		void CleanupInternals();
 

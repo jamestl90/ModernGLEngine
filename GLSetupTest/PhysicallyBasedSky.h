@@ -23,6 +23,9 @@ namespace JLEngine
 
 		void RenderSky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos);
 
+		int GetTransmittanceLUT() const { return m_transmittanceLUT; }
+		int GetAtmosphereUBO() { return m_paramsUBO.GetGPUBuffer().GetGPUID(); }
+
 	private:
 		void ComputeLUT();
 

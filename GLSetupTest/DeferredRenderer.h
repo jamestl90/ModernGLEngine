@@ -43,6 +43,7 @@ namespace JLEngine
     class HDRISky;
     class DDGI;
     class PhysicallyBasedSky;
+    class SkyProbe;
 
     class DeferredRenderer 
     {
@@ -95,9 +96,9 @@ namespace JLEngine
         void DebugDDGI();
         void DebugDDGIRays();
         void DebugAABB();
-        void RenderDebugTools(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void RenderDebugTools(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void DebugPbrSky();
+        void DebugPbrSky(const glm::vec3& eyePos);
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         void UpdateRigidAnimations();
@@ -150,6 +151,7 @@ namespace JLEngine
         ShaderProgram* m_transmissionShader;
         ShaderProgram* m_skinningGBufferShader;
         ShaderProgram* m_combineShader;
+        ShaderProgram* m_debugSkyboxShader;
 
         // compute shaders
         ShaderProgram* m_simpleBlurCompute;
@@ -178,9 +180,11 @@ namespace JLEngine
 
         // --- PBR SKY --- // 
         PhysicallyBasedSky* m_pbSky;
+        SkyProbe* m_skyProbe;
         AtmosphereParams m_atmosphereParams = {};
         float m_uiSunAzimuthDegrees = 180.0f; // Or initialize based on initial sunDir
         float m_uiSunElevationDegrees = 15.0f;
+        GLuint m_brdfLUT; // brdf look up texture
 
         DDGI* m_ddgi;
         VoxelGridManager* m_vgm;

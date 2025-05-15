@@ -95,7 +95,7 @@ namespace JLEngine
 
     void Geometry::CreateBox(VertexArrayObject& vao)
     {
-        const float skyboxVertices[] =
+        const float boxVertices[] =
         {
             // Positions          
             -1.0f,  1.0f, -1.0f,
@@ -142,7 +142,7 @@ namespace JLEngine
         };
 
         std::vector<float> verts;
-        verts.insert(verts.end(), std::begin(skyboxVertices), std::end(skyboxVertices));
+        verts.insert(verts.end(), std::begin(boxVertices), std::end(boxVertices));
 
         VertexBuffer vbo;
         vbo.Set(std::move(verts));

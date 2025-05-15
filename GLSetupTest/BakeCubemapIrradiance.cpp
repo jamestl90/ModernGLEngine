@@ -173,7 +173,7 @@ int BakeCubemapIrradiance(std::string assetFolder)
             g.BindVertexArray(0);
         };*/
 
-    engine.run(logicUpdateFn, renderFunc, [](double dt) {});
+    engine.Run(logicUpdateFn, renderFunc, [](double dt) {});
 
     return 0;
 }

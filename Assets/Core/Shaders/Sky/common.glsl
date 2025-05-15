@@ -120,7 +120,6 @@ vec3 OpticalDepth(vec3 p1_world, vec3 p2_world, int num_steps)
     return totalOpticalDepth;
 }
 
-// These LUT helper functions are currently unused if LUTs are removed.
 vec2 AltitudeCosAngleToUV(float altitude_km, float cos_angle_from_zenith, float atmosphere_thickness_km) 
 {
     // Ensure altitude is clamped for safe division and UV range

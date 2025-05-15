@@ -243,6 +243,7 @@
     <ClInclude Include="AnimData.h" />
     <ClInclude Include="AnimHelpers.h" />
     <ClInclude Include="AtmosphereParameters.h" />
+    <ClInclude Include="SkyProbe.h" />
     <ClInclude Include="DDGI.h" />
     <ClInclude Include="Im3dManager.h" />
     <ClInclude Include="PhysicallyBasedSky.h" />

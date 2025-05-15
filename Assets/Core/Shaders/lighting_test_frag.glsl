@@ -11,6 +11,8 @@ layout(binding = 5) uniform sampler2D gDLShadowMap;
 layout(binding = 6) uniform sampler2D gPositions;
 layout(binding = 7) uniform sampler2D gLinearDepth;
 layout(binding = 8) uniform sampler2D pbSky;
+layout(binding = 9) uniform samplerCube skyPrefiltered; // low res cubemap for reflections
+layout(binding = 10) uniform sampler2D brdfLUT;
 
 uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
@@ -63,7 +65,7 @@ layout(std140, binding = 4) uniform ShaderGlobalData
 };
 
 layout(location = 0) out vec3 DirectLight;
-layout(location = 1) out vec3 IBL;
+layout(location = 1) out vec3 SpecularIBL;
 layout(location = 2) out vec3 IndirectLight;
 
 struct GBufferData 
@@ -344,7 +346,7 @@ void main()
     {
         vec3 viewDirWS_Sky = normalize(gData.worldPosFromDepth - camPos.xyz);
         DirectLight = texture(pbSky, v_TexCoords).rgb; 
-        IBL = vec3(0.0);
+        SpecularIBL = vec3(0.0);
         IndirectLight = vec3(0.0);
         return;
     }
@@ -377,13 +379,14 @@ void main()
     vec3 diffuseDirect  = kD * gData.albedo / 3.14159;
     vec3 directLighting = (diffuseDirect + specularDirect) * u_LightColor * NdotL_WS * shadow;
 
-    // --- Indirect Lighting ---
-
-    // Specular IBL (Still use global prefiltered map)
+    // Specular IBL 
     vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
+    vec3 prefilteredColor = textureLod(skyPrefiltered, reflectionWS, gData.roughness * 4.0).rgb; // 5 mip levels
+    vec2 brdfVal          = texture(brdfLUT, vec2(NdotV_WS, gData.roughness)).rg;
+    SpecularIBL           = prefilteredColor * (gData.F0 * brdfVal.x + brdfVal.y) * u_SpecularIndirectFactor;
     
     // Diffuse GI (Use DDGI result exclusively)
-    vec3 ddgiIrradiance   = vec3(0.01); // SampleDDGI(gData.worldPos, normalWS);
+    vec3 ddgiIrradiance   = vec3(0.03); // SampleDDGI(gData.worldPos, normalWS);
     vec3 diffuseGI        = ddgiIrradiance * kD * gData.albedo / 3.14159;
 
     // Apply scaling factors (optional, can be done in combine pass too)
@@ -393,5 +396,5 @@ void main()
     // AO affects all lighting components
     DirectLight     = (directLighting + gData.emissive) * gData.ao * m_DirectFactor;
 
-    IndirectLight   = diffuseGI * gData.ao * 10;
+    IndirectLight   = diffuseGI * gData.ao;
 }

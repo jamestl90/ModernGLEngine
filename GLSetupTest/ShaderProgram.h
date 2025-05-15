@@ -35,6 +35,7 @@ namespace JLEngine
 		int GetUniformLocation(const std::string& name);
 
 		void SetUniform(const std::string& name, const glm::mat4& matrix);
+		void SetUniform(const std::string& name, const glm::mat3& matrix);
 		void SetUniform(const std::string& name, const glm::vec4& vector);
 		void SetUniform(const std::string& name, const glm::vec3& vector);
 		void SetUniform(const std::string& name, const glm::ivec3& vector);

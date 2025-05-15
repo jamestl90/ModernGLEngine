@@ -102,6 +102,25 @@ namespace JLEngine
                 });
         }
 
+        //static ShaderProgram* CreateShaderFromFile(const std::string& vert, const std::string& frag, std::string folderPath)
+        //{
+        //    auto program = new ShaderProgram("", "");
+        //
+        //    Shader vertProgram(GL_VERTEX_SHADER, vert);
+        //    Shader fragProgram(GL_FRAGMENT_SHADER, frag);
+        //
+        //    std::string vertShaderFile = PreprocessShaderIncludes(program->GetFilePath() + vertProgram.GetName());
+        //    vertProgram.SetSource(vertShaderFile);
+        //    program->AddShader(vertProgram);
+        //
+        //    std::string fragShaderFile = PreprocessShaderIncludes(program->GetFilePath() + fragProgram.GetName());;
+        //    fragProgram.SetSource(fragShaderFile);
+        //    program->AddShader(fragProgram);
+        //
+        //    Graphics::CreateShader(program);
+        //    return program;
+        //}
+
         void PollForChanges(float deltaTime)
         {
             m_accumTime += deltaTime;
@@ -166,13 +185,13 @@ namespace JLEngine
             GL_CHECK_ERROR();
         }
 
-        std::string PreprocessShaderIncludes(const std::string& shaderPath)
+        static std::string PreprocessShaderIncludes(const std::string& shaderPath)
         {
             std::unordered_set<std::string> includedFiles;
             return ProcessIncludesRecursive(shaderPath, includedFiles);
         }
 
-        std::string ProcessIncludesRecursive(const std::string& path, std::unordered_set<std::string>& includedFiles)
+        static std::string ProcessIncludesRecursive(const std::string& path, std::unordered_set<std::string>& includedFiles)
         {
             if (includedFiles.count(path)) return ""; // avoid recursive inclusion
 

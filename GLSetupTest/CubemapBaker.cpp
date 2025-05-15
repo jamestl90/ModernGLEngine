@@ -401,6 +401,44 @@ namespace JLEngine
         return brdfLUTTexture;
     }
 
+    uint32_t CubemapBaker::CreateBRDFLUT(ShaderProgram* brdfShader, int lutSize, int numSamples)
+    {
+        VertexArrayObject vao;
+        JLEngine::Geometry::CreateScreenSpaceQuad(vao);
+        JLEngine::Graphics::CreateVertexArray(&vao);
+        auto& vbo = vao.GetVBO();
+        auto& ibo = vao.GetIBO();
+
+        GLuint captureFBO;
+        Graphics::API()->CreateFrameBuffer(1, &captureFBO);
+
+        unsigned int brdfLUTTexture;
+        Graphics::API()->CreateTextures(GL_TEXTURE_2D, 1, &brdfLUTTexture);
+        Graphics::API()->TextureStorage2D(brdfLUTTexture, 1, GL_RG16F, lutSize, lutSize);
+        Graphics::API()->TextureParameter(brdfLUTTexture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        Graphics::API()->TextureParameter(brdfLUTTexture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        Graphics::API()->TextureParameter(brdfLUTTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        Graphics::API()->TextureParameter(brdfLUTTexture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        Graphics::API()->BindFrameBuffer(captureFBO);
+        Graphics::API()->NamedFramebufferTexture(captureFBO, GL_COLOR_ATTACHMENT0, brdfLUTTexture, 0);
+
+        Graphics::API()->SetViewport(0, 0, lutSize, lutSize);
+        Graphics::API()->BindShader(brdfShader->GetProgramId());
+        brdfShader->SetUniformi("u_NumSamples", numSamples);
+        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        Graphics::API()->BindVertexArray(vao.GetGPUID());
+        Graphics::API()->DrawElementBuffer(GL_TRIANGLES, (uint32_t)ibo.GetDataImmutable().size(), GL_UNSIGNED_INT, nullptr);
+
+        Graphics::API()->BindFrameBuffer(0);
+        Graphics::DisposeVertexArray(&vao);
+
+        Graphics::API()->DisposeFrameBuffer(1, &captureFBO);
+
+        return brdfLUTTexture;
+    }
+
     uint32_t CubemapBaker::CreateEmptyCubemap(int cubeMapSize)
     {
         GLuint cubemapID;

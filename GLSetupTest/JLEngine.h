@@ -21,7 +21,7 @@ namespace JLEngine
     public:
         JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder);
         ~JLEngineCore();
-        void run(std::function<void(double deltaTime)> logicUpdate,
+        void Run(std::function<void(double deltaTime)> logicUpdate,
             std::function<void(GraphicsAPI& graphics, double interpolationFactor)> render,
             std::function<void(double fixedDeltaTime)> fixedUpdate);
 
