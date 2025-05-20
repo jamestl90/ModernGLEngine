@@ -208,6 +208,7 @@ namespace JLEngine
         DirectionalLightShadowMap* m_dlShadowMap;
         glm::vec3 m_dirLightColor = glm::vec3(1.0f);
         bool m_enableDLShadows;
+        bool m_enableLights = true;
 
         bool m_showDDGI = false;
         bool m_showAABB = false;

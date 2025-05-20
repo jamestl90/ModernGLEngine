@@ -102,13 +102,12 @@ namespace JLEngine
     // early renderer init, before any vertex arrays have been setup 
     void DeferredRenderer::EarlyInitialize()
     {
-        m_sceneManager.ForceUpdate();
+        m_sceneManager.ForceUpdate();        
 
         // --- UNIFORM BUFFERS --- 
         auto sizeOfCamInfo = sizeof(ShaderGlobalData);
         m_gShaderData.GetGPUBuffer().SetSizeInBytes(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_gShaderData.GetGPUBuffer());
-        
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -158,8 +157,7 @@ namespace JLEngine
         m_brdfLUT = CubemapBaker::CreateBRDFLUT(brdfShader.get(), 512, 1024);
         m_resourceLoader->DeleteShader("BRDFLUTShader");
 
-        AtmosphereParams m_atmosphereParams{};
-        m_atmosphereParams.sunDir = glm::normalize(glm::vec3(0.0f, 0.3f, 1.0f));
+        m_atmosphereParams = AtmosphereParams::DayTime();
         m_pbSky = new PhysicallyBasedSky(m_resourceLoader, m_assetFolder);
         m_pbSky->Initialise(m_atmosphereParams);
 
@@ -183,8 +181,6 @@ namespace JLEngine
 
         Graphics::API()->DebugLabelObject(GL_FRAMEBUFFER, m_gBufferTarget->GetGPUID(), "gBuffer");
         Graphics::API()->DebugLabelObject(GL_FRAMEBUFFER, m_lightOutputTarget->GetGPUID(), "lightingTarget");
-
-        
     }
 
     // once vao's have been created, setup the voxel grid / voxel texture for DDGI
@@ -793,7 +789,7 @@ namespace JLEngine
         // --- Sun ---
         if (ImGui::CollapsingHeader("Sun Settings", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            if (ImGui::ColorEdit3("Solar Irradiance", &m_atmosphereParams.solarIrradiance[0], ImGuiColorEditFlags_Float)) 
+            if (ImGui::DragFloat3("Solar Irradiance", &m_atmosphereParams.solarIrradiance[0], 0.1f, 0.0f, 0.0f, "%.3f"))
             {
                 paramsChanged = true;
             }
@@ -1169,15 +1165,15 @@ namespace JLEngine
         ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Direct Factor", &m_directFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Tonemap Exposure", &m_tonemappingExposure, 0.1f, 3.0f);
-
-        ImVec4 imColor = ImVec4(m_dirLightColor.x, m_dirLightColor.y, m_dirLightColor.z, 1.0f);
-        ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoAlpha |
-                                    ImGuiColorEditFlags_Float |
-                                    ImGuiColorEditFlags_PickerHueWheel;
-
-        if (ImGui::ColorEdit3("Light Colour", &imColor.x, flags))
+        if (ImGui::Button("Toggle Lights"))
         {
-            m_dirLightColor = glm::vec3(imColor.x, imColor.y, imColor.z);
+            m_enableLights = !m_enableLights;
+
+            for (auto& item : m_lights.GetDataMutable())
+            {
+                item.enabled = m_enableLights;
+            }
+            Graphics::UploadToGPUBuffer(m_lights.GetGPUBuffer(), m_lights.GetDataImmutable());
         }
         ImGui::End();
     }

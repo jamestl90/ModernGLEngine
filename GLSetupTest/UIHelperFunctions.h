@@ -60,6 +60,11 @@ namespace JLEngine
                         nodeLabel += " [SubmeshFlags: " + flagsText + "]";
                     }
                 }
+                if (currentNode->tag == NodeTag::Light)
+                {
+                    std::string lightType = currentNode->light.type == 0 ? "POINT" : currentNode->light.type == 1 ? "SPOT" : "DIRECTIONAL";
+                    nodeLabel += " [" + lightType + " LIGHT]";
+                }
 
                 bool nodeOpen = ImGui::TreeNodeEx(nodeLabel.c_str(), flags);
 

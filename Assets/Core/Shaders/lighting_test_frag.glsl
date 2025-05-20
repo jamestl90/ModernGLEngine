@@ -43,6 +43,10 @@ uniform ivec3 u_DDGI_GridResolution;
 const float u_DDGIVisibilityBias = 5.01;
 const float u_DDGIVisibilitySharpness = 40.0;
 
+const float PI = 3.14159265359;
+const int POINT_LIGHT = 0;
+const int SPOT_LIGHT = 2;
+
 struct DDGIProbe
 {
     vec4 WorldPosition;     
@@ -139,6 +143,32 @@ vec3 ReconstructViewPosFromDepth(vec2 texCoords, float depth)
     viewSpacePos /= viewSpacePos.w;
     
     return viewSpacePos.xyz;
+}
+
+float calculateAttenuation(float distanceToLight, float lightRadius) 
+{
+    if (lightRadius <= 0.0) 
+    {
+        return 1.0; 
+    }
+
+    float falloff = distanceToLight / lightRadius;
+    falloff = clamp(falloff, 0.0, 1.0); 
+    return (1.0 - falloff) * (1.0 - falloff);
+}
+
+float calculateSpotFactor(vec3 dirToPixelFromLight, vec3 spotDirection, float spotCosOuter, float spotCosInner) 
+{
+    float currentCosAngle = dot(dirToPixelFromLight, spotDirection);
+    if (currentCosAngle < spotCosOuter)
+     {
+        return 0.0; 
+    }
+    if (currentCosAngle >= spotCosInner)
+     { 
+        return 1.0; 
+    }
+    return smoothstep(spotCosOuter, spotCosInner, currentCosAngle);
 }
 
 // Shadow calculation function
@@ -407,47 +437,104 @@ void main()
         return;
     }
 
-    // Calculate necessary vectors in world space
     vec3 viewDirWS  = normalize(camPos.xyz - gData.worldPos);
-    vec3 lightDirWS = normalize(u_LightDirection);
     vec3 normalWS   = normalize((u_ViewInverse * vec4(gData.normal, 0.0)).xyz);
 
-    // --- Shadows ---
-    vec3 shadowMapDebugCol = vec3(0.0);
-    float shadow = 1.0;
-    if (gData.receiveShadows > 0.0) 
+    vec3 accumulatedDirectLighting = vec3(0.0);
+
+    vec3 sunLightDirWS = normalize(u_LightDirection); 
+    float sunNdotL_WS  = max(dot(normalWS, sunLightDirWS), 0.0);
+
+    if (sunNdotL_WS > 0.0) 
     {
-        vec4 viewPos = viewMatrix * vec4(gData.worldPos, 1.0);
-        float viewDepth = abs(viewPos.z);
-        shadow = ShadowCalculation(gData.worldPos, normalWS, -lightDirWS, viewDepth, shadowMapDebugCol);
+        float sunShadow = 1.0;
+        if (gData.receiveShadows > 0.0) 
+        {
+            vec4 viewPos = viewMatrix * vec4(gData.worldPos, 1.0);
+            float viewDepth = abs(viewPos.z);
+            vec3 shadowMapDebugCol = vec3(0.0); 
+            sunShadow = ShadowCalculation(gData.worldPos, normalWS, -u_LightDirection, viewDepth, shadowMapDebugCol);
+        }
+
+        vec3 sunHalfDirWS      = normalize(sunLightDirWS + viewDirWS);
+        float sunNdotV_WS      = max(dot(normalWS, viewDirWS), 0.001); 
+        float sunNdotH_WS      = max(dot(normalWS, sunHalfDirWS), 0.0);
+        float sunVdotH_WS      = max(dot(viewDirWS, sunHalfDirWS), 0.0);
+      
+        vec3 sunF              = fresnelSchlickRoughness(sunVdotH_WS, gData.F0, gData.roughness);
+        float sunNDF           = ggxNDF(sunNdotH_WS, gData.roughness);
+        float sunG             = geometrySmith(sunNdotV_WS, sunNdotL_WS, gData.roughness); 
+        vec3 sunSpecularDirect = sunF * sunNDF * sunG / max(4.0 * sunNdotV_WS * sunNdotL_WS, 0.001);
+        vec3 sunKD             = (vec3(1.0) - sunF) * (1.0 - gData.metallic);
+        vec3 sunDiffuseDirect  = sunKD * gData.albedo / PI; 
+        
+        vec3 sunDirectContribution = (sunDiffuseDirect + sunSpecularDirect) * u_LightColor * sunNdotL_WS * sunShadow;
+        accumulatedDirectLighting += sunDirectContribution;
     }
 
-    // --- Direct Lighting ---
-    vec3 halfDirWS      = normalize(lightDirWS + viewDirWS);
-    float NdotL_WS      = max(dot(normalWS, lightDirWS), 0.0);
-    float NdotV_WS      = max(dot(normalWS, viewDirWS), 0.0);
-    float NdotH_WS      = max(dot(normalWS, halfDirWS), 0.0);
-    float VdotH_WS      = max(dot(viewDirWS, halfDirWS), 0.0);
-  
-    vec3 F              = fresnelSchlickRoughness(VdotH_WS, gData.F0, gData.roughness);
-    float NDF           = ggxNDF(NdotH_WS, gData.roughness);
-    float G             = geometrySmith(NdotV_WS, NdotL_WS, gData.roughness);
-    vec3 specularDirect = F * NDF * G / max(4.0 * NdotV_WS * NdotL_WS, 0.001);
-    vec3 kD             = (vec3(1.0) - F) * (1.0 - gData.metallic);
-    vec3 diffuseDirect  = kD * gData.albedo / 3.14159;
-    vec3 directLighting = (diffuseDirect + specularDirect) * u_LightColor * NdotL_WS * shadow;
+    for (int i = 0; i < m_NumLights; ++i) {
+        Light currentLight = lights[i]; 
+        if (!currentLight.enabled) continue;
 
-    // Specular IBL 
-    vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
-    vec3 prefilteredColor = textureLod(skyPrefiltered, reflectionWS, gData.roughness * 4.0).rgb ; // 5 mip levels
-    vec2 brdfVal          = texture(brdfLUT, vec2(NdotV_WS, gData.roughness)).rg;
-    SpecularIBL           = prefilteredColor * (gData.F0 * brdfVal.x + brdfVal.y) * u_SpecularIndirectFactor;
+        vec3 currentLightDirWS;    
+        float currentAttenuation = 1.0;
+        vec3 currentLightColorIntensity = currentLight.color * currentLight.intensity;
+        float currentNdotL_WS = 0.0;
+        float currentShadow = 1.0; 
+
+        if (currentLight.type == POINT_LIGHT) {
+            vec3 toLightVector = currentLight.position - gData.worldPos;
+            float distanceToLight = length(toLightVector);
+            if (currentLight.radius > 0.0 && distanceToLight > currentLight.radius) continue;
+            currentLightDirWS = normalize(toLightVector);
+            currentNdotL_WS = max(dot(normalWS, currentLightDirWS), 0.0);
+            if (currentNdotL_WS <= 0.0) continue;
+            currentAttenuation = calculateAttenuation(distanceToLight, currentLight.radius);
+        } else if (currentLight.type == SPOT_LIGHT) {
+            vec3 toLightVector = currentLight.position - gData.worldPos;
+            float distanceToLight = length(toLightVector);
+            if (currentLight.radius > 0.0 && distanceToLight > currentLight.radius) continue;
+            currentLightDirWS = normalize(toLightVector);
+            currentNdotL_WS = max(dot(normalWS, currentLightDirWS), 0.0);
+            if (currentNdotL_WS <= 0.0) continue;
+            currentAttenuation = calculateAttenuation(distanceToLight, currentLight.radius);
+            float spotFactor = calculateSpotFactor(-currentLightDirWS, currentLight.direction, currentLight.spotAngleOuter, currentLight.spotAngleInner);
+            if (spotFactor <= 0.0) continue;
+            currentAttenuation *= spotFactor;
+        } else { 
+            continue; 
+        }
+
+        if (currentAttenuation <= 0.001) continue;
+
+        vec3 currentHalfDirWS = normalize(currentLightDirWS + viewDirWS);
+        float currentNdotV_WS = max(dot(normalWS, viewDirWS), 0.001); 
+        float currentNdotH_WS = max(dot(normalWS, currentHalfDirWS), 0.0);
+        float currentVdotH_WS = max(dot(viewDirWS, currentHalfDirWS), 0.0);
+
+        vec3 currentF         = fresnelSchlickRoughness(currentVdotH_WS, gData.F0, gData.roughness);
+        float currentNDF      = ggxNDF(currentNdotH_WS, gData.roughness);
+        float currentG        = geometrySmith(currentNdotV_WS, currentNdotL_WS, gData.roughness); 
+        vec3 currentSpecular  = currentF * currentNDF * currentG / max(4.0 * currentNdotV_WS * currentNdotL_WS, 0.001);
+        vec3 currentKD        = (vec3(1.0) - currentF) * (1.0 - gData.metallic);
+        vec3 currentDiffuse   = currentKD * gData.albedo / PI;
+
+        accumulatedDirectLighting += (currentDiffuse + currentSpecular) * currentLightColorIntensity * currentNdotL_WS * currentAttenuation * currentShadow;
+    }
     
-    // Diffuse GI 
-    vec3 ddgiIrradiance   = vec3(0.15); // SampleDDGI(gData.worldPos, normalWS);
-    vec3 diffuseGI        = ddgiIrradiance * kD * gData.albedo / 3.14159;
+    float NdotV_WS_forIBL = max(dot(normalWS, viewDirWS), 0.001); 
+    vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
+    int maxMipLevel = textureQueryLevels(skyPrefiltered) - 1; 
+    vec3 prefilteredColor = textureLod(skyPrefiltered, reflectionWS, gData.roughness * float(maxMipLevel)).rgb;
+    vec2 brdfVal          = texture(brdfLUT, vec2(NdotV_WS_forIBL, gData.roughness)).rg; 
+    SpecularIBL           = prefilteredColor * (gData.F0 * brdfVal.x + brdfVal.y) * u_SpecularIndirectFactor * gData.ao; 
+    
+    vec3 F_for_GI         = fresnelSchlickRoughness(NdotV_WS_forIBL, gData.F0, gData.roughness); 
+    vec3 kD_for_GI        = (vec3(1.0) - F_for_GI) * (1.0 - gData.metallic);
+    vec3 ddgiIrradiance   = vec3(0.15); 
+    vec3 diffuseGI        = ddgiIrradiance * kD_for_GI * gData.albedo / PI;
     diffuseGI            *= u_DiffuseIndirectFactor;
 
-    DirectLight     = (directLighting + gData.emissive) * gData.ao * u_DirectFactor;
+    DirectLight     = (accumulatedDirectLighting + gData.emissive) * gData.ao * u_DirectFactor;
     IndirectLight   = diffuseGI * gData.ao;
 }

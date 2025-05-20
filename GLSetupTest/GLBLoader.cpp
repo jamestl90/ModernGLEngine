@@ -1350,7 +1350,7 @@ namespace JLEngine
 		else
 			gpuLight.type = (int32_t)LightType::Spot;
 
-		gpuLight.intensity = static_cast<float>(lightValue.intensity);
+		gpuLight.intensity = static_cast<float>(lightValue.intensity) * 0.25f;
 		gpuLight.spotAngleInner = static_cast<float>(glm::cos(lightValue.spot.innerConeAngle));
 		gpuLight.spotAngleOuter = static_cast<float>(glm::cos(lightValue.spot.outerConeAngle));
 		gpuLight.radius = glm::max(static_cast<float>(lightValue.range), 5.0f);
