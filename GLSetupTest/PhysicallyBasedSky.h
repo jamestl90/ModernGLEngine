@@ -19,7 +19,6 @@ namespace JLEngine
 		bool Initialise(const AtmosphereParams& params);
 		
 		void UpdateParams(const AtmosphereParams& params);
-		void PrecomputeLUTs();
 
 		void RenderSky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos);
 

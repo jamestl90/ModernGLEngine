@@ -19,9 +19,24 @@
 #include "Im3dManager.h"
 #include "AtmosphereParameters.h"
 #include "VoxelGrid.h"
+#include "FlyCamera.h"
 
 namespace JLEngine
 {
+    struct FrameRenderData
+    {
+        glm::mat4 viewMatrix;
+        glm::mat4 projMatrix;
+        glm::mat4 invViewMatrix;
+        glm::mat4 invProjMatrix;
+        glm::vec3 eyePos;
+        glm::vec3 eyeDir;
+        float fovRad;
+        float aspect;
+        float nearClip;
+        float farClip;
+    };
+
     enum DebugModes
     {
         GBuffer,
@@ -56,7 +71,7 @@ namespace JLEngine
         void LateInitialize();
         void Resize(int width, int height);
         
-        void Render(const glm::vec3& eyePos, const glm::vec3& camDir, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, double dt);
+        void Render(FlyCamera& camera, double dt);
 
         bool GetDLShadowsEnabled() const { return m_enableDLShadows; }
         void SetDirectionalShadowDistance(bool value) { m_enableDLShadows = value; }
@@ -83,27 +98,27 @@ namespace JLEngine
 
     private:
         void DrawUI();        
-        void DrawSky(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void DrawSky(FrameRenderData& frd);
         void DrawGeometry(const VAOResource& vaoResource, uint32_t stride);
-        void CombinePass(const glm::mat4& viewMat, const glm::mat4& projMatrix);
-        void LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix);
-        void TransparencyPass(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
-        void RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
-        void RenderTransmissive(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix);
-        void DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
-        void DebugGBuffer(int debugMode);
-        void DebugDirectionalLightShadows();
+        void CombinePass(FrameRenderData& frd);
+        void LightPass(FrameRenderData& frd);
+        void TransparencyPass(FrameRenderData& frd);
+        void RenderBlended(FrameRenderData& frd);
+        void RenderTransmissive(FrameRenderData& frd);
+        void DebugPass(FrameRenderData& frd);
+        void DebugGBuffer(int debugMode, float nearVal, float farVal);
+        void DebugDirectionalLightShadows(float nearVal, float farVal);
         void DebugDDGI();
         void DebugDDGIRays();
         void DebugAABB();
-        void RenderDebugTools(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+        void RenderDebugTools(FrameRenderData& frd);
         void DebugHDRISky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void DebugPbrSky(const glm::vec3& eyePos);
         void GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
         void SetupGBuffer();
         void UpdateRigidAnimations();
         void UpdateSkinnedAnimations();
-        glm::mat4 DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos);
+        void DirectionalShadowMapPass(FrameRenderData& frd);
         void RenderScreenSpaceTriangle();
         glm::mat4 GetDirectionalLightSpaceMatrix(
             const glm::vec3& lightDir_normalized,
@@ -126,9 +141,10 @@ namespace JLEngine
         int m_width, m_height;
         std::string m_assetFolder;
 
-        float m_specularIndirectFactor = 2.0f;
-        float m_diffuseIndirectFactor = 2.0f;
-        float m_directFactor = 2.0f;
+        float m_specularIndirectFactor = 1.0f;
+        float m_diffuseIndirectFactor = 1.0f;
+        float m_directFactor = 1.0f;
+        float m_tonemappingExposure = 1.0f;
         glm::vec3 m_lastEyePos;
 
         IM3DManager* m_im3dManager;
@@ -167,6 +183,7 @@ namespace JLEngine
         ShaderStorageBuffer<MaterialGPU> m_ssboMaterials;
         ShaderStorageBuffer<Skeleton::Joint> m_ssboJointMatrices;
         ShaderStorageBuffer<glm::mat4> m_ssboGlobalTransforms;
+        ShaderStorageBuffer<LightGPU> m_lights;
 
         int m_staticRigidAnimationIndex = -1;
         std::unordered_map<VertexAttribKey, VAOResource> m_staticResources;
@@ -182,7 +199,7 @@ namespace JLEngine
         PhysicallyBasedSky* m_pbSky;
         SkyProbe* m_skyProbe;
         AtmosphereParams m_atmosphereParams = {};
-        float m_uiSunAzimuthDegrees = 180.0f; // Or initialize based on initial sunDir
+        float m_uiSunAzimuthDegrees = 360.0f; // Or initialize based on initial sunDir
         float m_uiSunElevationDegrees = 15.0f;
         GLuint m_brdfLUT; // brdf look up texture
 

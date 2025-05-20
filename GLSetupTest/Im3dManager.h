@@ -35,8 +35,8 @@ namespace JLEngine
 		void LoadShader(const std::string& assetFolder);
 
 		Window* m_window = nullptr;
-		GLuint m_vao;
-		GLuint m_vbo;
+		unsigned int m_vao;
+		unsigned int m_vbo;
 		ShaderProgram* m_shader;
 
 		ResourceLoader* m_resourceLoader;

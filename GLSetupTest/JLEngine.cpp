@@ -9,6 +9,9 @@
 
 #include <glm/gtx/matrix_decompose.hpp>
 #include "UIHelperFunctions.h"
+
+#include <GLFW/glfw3.h>
+
 namespace JLEngine
 {
     JLEngineCore::JLEngineCore(int windowWidth, int windowHeight, const char* windowTitle, int fixedUpdates, int maxFrameRate, const std::string& assetFolder) :
@@ -72,7 +75,7 @@ namespace JLEngine
         double frameTimeAccumulator = 0.0;
 
         SceneManager& sceneManager = m_renderer->GetSceneManager();
-        ViewFrustum* frustum = Graphics::API()->GetViewFrustum();
+        auto frustum = m_flyCamera->GetViewFrustum();
 
         // The main game loop
         while (!m_window->ShouldClose()) 
@@ -84,7 +87,7 @@ namespace JLEngine
             m_accumulatedTime += m_deltaTime;
             frameTimeAccumulator += m_deltaTime;
 
-            m_im3dManager.BeginFrame(m_input.get(), m_flyCamera, frustum->GetProjectionMatrix(), frustum->GetFov(), (float)m_deltaTime);
+            m_im3dManager.BeginFrame(m_input.get(), m_flyCamera, frustum.GetProjectionMatrix(), frustum.GetFov(), (float)m_deltaTime);
             m_imguiManager.BeginFrame();           
 
             logicUpdate(m_deltaTime);
@@ -121,7 +124,7 @@ namespace JLEngine
             m_frameCount++;
 
             auto view = m_flyCamera->GetViewMatrix();
-            auto proj = frustum->GetProjectionMatrix();
+            auto proj = frustum.GetProjectionMatrix();
 
             ImGui::Begin("Info");
             ImGui::Text("FPS: %.1f", fps);

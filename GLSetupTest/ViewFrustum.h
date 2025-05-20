@@ -19,33 +19,36 @@ namespace JLEngine
 	class ViewFrustum
 	{
 	public:
-		 ViewFrustum(float fov, float aspect, float near, float far);
-		 ~ViewFrustum();
-
-		 void UpdatePerspective(const glm::mat4& transform, float fov, float near, float far, float aspect);
-		 void UpdatePerspective(const glm::mat4& transform);
-
-		 bool Contains(AABB box);
-
-		 void SetNear(float nearPlane) { m_near = nearPlane; }
-		 float GetNear() { return m_near; }
-
-		 void SetFar(float farPlane) { m_far = farPlane; }
-		 float GetFar() { return m_far; }
-
-		 void SetFov(float fov) { m_fov = fov; }
-		 float GetFov() { return m_fov; }
-
-		 float SetAspect(float aspect) { m_aspect = aspect; };
-
-		 glm::mat4 GetProjectionMatrix() 
-		 {
+		ViewFrustum() 
+			: m_fov(45.0f), m_aspect(16.0f / 9.0f), m_near(1.0f), m_far(150.0f), m_projMatrix(glm::mat4(1.0f)), m_corners{}
+		{
+			m_projMatrix = glm::perspective(glm::radians(m_fov), m_aspect, m_near, m_far);
+		}
+		ViewFrustum(float fovDegrees, float aspect, float near, float far);
+		~ViewFrustum();
+		
+		void UpdatePerspective(const glm::mat4& transform, float fov, float near, float far, float aspect);
+		void UpdatePerspective(const glm::mat4& transform);
+		
+		bool Contains(AABB box);
+		
+		void SetNear(float nearPlane) { m_near = nearPlane; }
+		float GetNear() { return m_near; }
+		
+		void SetFar(float farPlane) { m_far = farPlane; }
+		float GetFar() { return m_far; }
+		
+		void SetFov(float fov) { m_fov = fov; }
+		float GetFov() { return m_fov; }
+		
+		float SetAspect(float aspect) { m_aspect = aspect; };
+		
+		glm::mat4 GetProjectionMatrix() 
+		{
 			 return m_projMatrix;
-		 }
+		}
 
 	private:
-
-		Window* m_window;
 
 		float m_near;
 		float m_far;

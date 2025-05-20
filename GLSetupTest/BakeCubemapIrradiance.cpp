@@ -2,6 +2,9 @@
 #include "GlobalVars.h"
 #include "FlyCamera.h"
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>  
+
 int BakeCubemapIrradiance(std::string assetFolder)
 {
     JLEngine::JLEngineCore engine(SCREEN_WIDTH, SCREEN_HEIGHT, "JL Engine", 60, 120, assetFolder);
@@ -40,9 +43,9 @@ int BakeCubemapIrradiance(std::string assetFolder)
     int cubemapSize = hdriImage.width / 4;
     
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-    GL_CHECK_ERROR();
+
     uint32_t cmId = baker->HDRtoCubemap(hdriImage, cubemapSize, true);
-    GL_CHECK_ERROR();
+
     if (writeOutHdri)
     {
         std::array<JLEngine::ImageData, 6> faceData;
@@ -57,9 +60,9 @@ int BakeCubemapIrradiance(std::string assetFolder)
             JLEngine::TextureWriter::WriteTexture(facePath, faceData.at(i));
         }
     }
-    GL_CHECK_ERROR();
+
     uint32_t irradianceId = baker->GenerateIrradianceCubemap(cmId, irradianceMapSize);
-    GL_CHECK_ERROR();
+
     if (writeOutIrradiance)
     {
         std::array<JLEngine::ImageData, 6> faceData;
@@ -74,9 +77,9 @@ int BakeCubemapIrradiance(std::string assetFolder)
             JLEngine::TextureWriter::WriteTexture(facePath, faceData.at(i));
         }
     }
-    GL_CHECK_ERROR();
+
     uint32_t prefilteredEnvMap = baker->GeneratePrefilteredEnvMap(cmId, prefilteredMapSize, prefilteredSamples);
-    GL_CHECK_ERROR();
+
     if (writeOutPrefilter)
     {
         //std::array<JLEngine::ImageData, 6> faceData;

@@ -15,7 +15,6 @@
 #include "Node.h"
 #include "ImageData.h"
 
-#include <glad/glad.h>
 #include <GL/glext.h>
 
 inline void* BUFFER_OFFSET(std::size_t i) 
@@ -30,19 +29,6 @@ constexpr bool ENABLE_GL_DEBUG =
 	true;  // Debug build
 #endif
 
-inline void GLCheckError(const char* file, int line)
-{
-	if constexpr (ENABLE_GL_DEBUG)
-	{
-		GLenum error;
-		while ((error = glGetError()) != GL_NO_ERROR)
-		{
-			std::cerr << "[OpenGL Error] (" << error << ") "
-				<< " in file: " << file
-				<< " at line: " << line << std::endl;
-		}
-	}
-}
 
 typedef GLuint64(APIENTRY* PFNGLGETTEXTUREHANDLEARBPROC)(GLuint texture);
 typedef void(APIENTRY* PFNGLMAKETEXTUREHANDLERESIDENTARBPROC)(GLuint64 handle);
@@ -102,7 +88,6 @@ namespace JLEngine
 		 const int32_t& GetNumMSAABuffers() { return m_MSAABuffers; }
 		 const int32_t& GetNumMSAASamples() { return m_MSAASamples; }
 
-		 ViewFrustum* GetViewFrustum()		{ return m_viewFrustum; }
 		 Window* GetWindow()				{ return m_window; }
 
 		 glm::mat4& CalculateMVP(glm::mat4& modelMat, glm::mat4& projection, glm::mat4& view);
@@ -122,7 +107,7 @@ namespace JLEngine
 		 bool ShaderProgramLinkErrorCheck(uint32_t programid, const std::string& shaderFileName);
 
 		 // Template-based uniform setter
-		 template <typename T>
+		 template <typename T>			
 		 void SetProgUniform(uint32_t progId, uint32_t location, const T& value);
 		 template <>
 		 void SetProgUniform<uint32_t>(uint32_t progId, uint32_t location, const uint32_t& value);
@@ -142,6 +127,12 @@ namespace JLEngine
 		 void SetProgUniform<glm::mat3>(uint32_t progId, uint32_t location, const glm::mat3& value);
 		 template <>
 		 void SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4& value);
+		 template <typename T>
+		 void SetProgUniform(uint32_t progId, uint32_t location, const T* value, uint32_t count);
+		 template <>
+		 void SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4* values, uint32_t count);
+		 template <>
+		 void SetProgUniform<float>(uint32_t progId, uint32_t location, const float* values, uint32_t count);
 
 		 void BindShader(uint32_t programId);
 		 void UnbindShader();
@@ -151,6 +142,9 @@ namespace JLEngine
 		void SetMSAA(bool flag);
 		bool UsingMSAA() const;
 
+		GLint GetInteger(GLenum val);
+		GLboolean GetBoolean(GLenum val);
+		bool IsEnabled(GLenum val);
 		void Enable(uint32_t val);
 		void Disable(uint32_t val);
 
@@ -174,6 +168,7 @@ namespace JLEngine
 		void TextureStorage2D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height);
 		void TextureStorage3D(uint32_t tex, int levels, uint32_t internalformat, uint32_t width, uint32_t height, uint32_t depth);
 		void TextureParameter(uint32_t texture, uint32_t pname, uint32_t value);
+		void TextureParameter(uint32_t texture, uint32_t pname, float* data);
 
 		uint32_t GetInternalFormat(uint32_t texId, uint32_t texType, uint32_t texTarget);
 		std::string InternalFormatToString(GLint internalFormat);
@@ -189,9 +184,12 @@ namespace JLEngine
 		void CreateRenderBuffer(uint32_t count, uint32_t* id);
 		void BindFrameBuffer(uint32_t id);
 		void BindDrawBuffer(uint32_t id);
-		void DisposeFrameBuffer(uint32_t count, uint32_t* fbo);
+		void DeleteFrameBuffer(uint32_t count, uint32_t* fbo);
 		void NamedFramebufferTexture(uint32_t target, uint32_t attachment, uint32_t texture, uint32_t level);
 		void NamedFramebufferTextureLayer(uint32_t fbo, GLenum attachment, GLuint texture, GLint level, GLint layer);
+		void NamedFramebufferDrawBuffer(GLuint framebuffer, GLenum buf);
+		void NamedFramebufferReadBuffer(GLuint framebuffer, GLenum buf);
+		GLenum CheckNamedFramebufferStatus(GLuint framebuffer, GLenum target);
 		bool FramebufferComplete(uint32_t fboID);
 		// RBO
 		void CreateRenderBuffer(uint32_t count, uint32_t& id);
@@ -238,9 +236,9 @@ namespace JLEngine
 		void GeneratePrimitives();
 		void DumpInfo();
 		void PrintVRAMUsage();
-		void DebugLabelObject(uint32_t type, uint32_t item, const char* label)
+		void DebugLabelObject(uint32_t type, uint32_t item, const char* label, int32_t len = -1)
 		{
-			glObjectLabel(type, item, -1, label);
+			glObjectLabel(type, item, len, label);
 		}
 
 	private:
@@ -272,7 +270,6 @@ namespace JLEngine
 		std::array<uint32_t, 4> m_viewPort;
 
 		Window* m_window;
-		ViewFrustum* m_viewFrustum;
 
 		glm::mat4 m_mvp;
 	};

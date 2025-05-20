@@ -19,10 +19,7 @@ JLEngine::DeferredRenderer* renderer;
 
 void gameRender(JLEngine::GraphicsAPI& graphics, double dt)
 {
-    glm::mat4 view = flyCamera->GetViewMatrix();
-    auto frustum = graphics.GetViewFrustum();
-
-    renderer->Render(flyCamera->GetPosition(), flyCamera->GetForward(), view, frustum->GetProjectionMatrix(), dt);
+    renderer->Render(*flyCamera, dt);
 }
 
 void gameLogicUpdate(double deltaTime)
@@ -219,6 +216,11 @@ void TestScene4(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
     engine.LoadAndAttachToRoot(assetFolder + "MetalRoughSpheres.glb", glm::vec3(0, 5, -5));
 }
 
+void TestScene5(JLEngine::JLEngineCore& engine, const std::string& assetFolder)
+{
+    engine.LoadAndAttachToRoot(assetFolder + "Bistro_Part.glb");
+}
+
 int MainApp(std::string assetFolder)
 {
     m_assetPath = assetFolder;
@@ -234,10 +236,9 @@ int MainApp(std::string assetFolder)
     graphics->GetWindow()->SetResizeCallback(WindowResizeCallback);
     engine.InitIMGUI();
     renderer = engine.GetRenderer();
-
     flyCamera = engine.GetFlyCamera();
 
-    TestScene4(engine, assetFolder);
+    TestScene5(engine, assetFolder);
 
     engine.FinalizeLoading();
 

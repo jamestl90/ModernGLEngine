@@ -173,6 +173,9 @@ namespace JLEngine
 		else if (gltfNode.light >= 0)
 		{
 			node->SetTag(NodeTag::Light);
+			LightGPU light = ParseLight(model, gltfNode.light);
+			light.position = node->translation;
+			node->light = light;
 		}
 		else
 		{
@@ -670,8 +673,13 @@ namespace JLEngine
 		{
 			int textureIndex = gltfMaterial.values.at(METALLIC_ROUGHNESS_TEXTURE).TextureIndex();
 			auto texName = gltfMaterial.name + std::to_string(texId++);
+
 			TexParams params = Texture::EmptyParams();
 			material->metallicRoughnessTexture = ParseTexture(model, texName, std::string(METALLIC_ROUGHNESS_TEXTURE), textureIndex, params);
+			//auto& a = material->metallicRoughnessTexture->GetImageData();
+			//std::cout << a.data[0] / 255.0f << std::endl;
+			//std::cout << a.data[1] / 255.0f << std::endl;
+			//std::cout << a.data[2] / 255.0f << std::endl;
 		}
 
 		// Parse normal texture
@@ -857,6 +865,14 @@ namespace JLEngine
 
 		auto params = Texture::DefaultParams(imgData.channels, false);
 		auto newParams = Texture::OverwriteParams(params, overwriteParams);
+
+		if (name == "baseColorTexture")
+		{
+			if (channels == 4)
+				newParams.internalFormat = GL_SRGB8_ALPHA8;
+			if (channels == 3)
+				newParams.internalFormat = GL_SRGB8;
+		}
 
 		// bit of a hack here, will need to update the param
 		if (glbImageData.bits == 16)
@@ -1303,6 +1319,48 @@ namespace JLEngine
 			size_t count = accessor.count * 4; // JOINTS_0 is typically a vec4 of uint16
 			joints.insert(joints.end(), data, data + count);
 		}
+	}
+
+	LightGPU GLBLoader::ParseLight(const tinygltf::Model& model, int lightIndex)
+	{
+		LightGPU gpuLight = {}; 
+
+		gpuLight.enabled = 1; 
+		gpuLight.castsShadows = 0; 
+		gpuLight.intensity = 1.0f;
+		gpuLight.color = glm::vec3(1.0f);
+		gpuLight.radius = 10.0f;
+		gpuLight.spotAngleOuter = glm::cos(glm::radians(45.0f)); 
+		gpuLight.spotAngleInner = glm::cos(glm::radians(22.5f));
+
+		if (model.extensions.find("KHR_lights_punctual") == model.extensions.end()) 
+		{
+			std::cerr << "KHR_lights_punctual extension not found in model.\n" << std::endl;
+			gpuLight.enabled = 0; // Disable if not found
+			return gpuLight;
+		}
+
+		const auto& lightValue = model.lights[lightIndex];
+		string lightType = lightValue.type;
+
+		std::transform(lightType.begin(), lightType.end(), lightType.begin(),
+			[](unsigned char c) { return std::tolower(c); });
+		if (lightType == "point")
+			gpuLight.type = (int32_t)LightType::Point;
+		else
+			gpuLight.type = (int32_t)LightType::Spot;
+
+		gpuLight.intensity = static_cast<float>(lightValue.intensity);
+		gpuLight.spotAngleInner = static_cast<float>(glm::cos(lightValue.spot.innerConeAngle));
+		gpuLight.spotAngleOuter = static_cast<float>(glm::cos(lightValue.spot.outerConeAngle));
+		gpuLight.radius = glm::max(static_cast<float>(lightValue.range), 5.0f);
+		auto& col = lightValue.color;
+		gpuLight.color = glm::vec3(col[0], col[1], col[2]);
+		gpuLight.direction = glm::vec3(1.0f, 0.0f, 0.0f);
+		gpuLight.enabled = 1;
+		gpuLight.castsShadows = 0;
+
+		return gpuLight;
 	}
 
 	// Function to load NORMAL attribute

@@ -14,13 +14,14 @@ namespace JLEngine
 		// Sun 
 		glm::vec3 solarIrradiance = glm::vec3(1.0f, 1.0f, 1.0f);	// amount of light received from all directions in the atmosphere
 		float sunAngularRadius = 0.004675f;							// suns angular radius (from earth)
-		alignas(16) glm::vec3 sunDir = glm::normalize(glm::vec3(0.0f, 0.1f, -1.0f));	// direction TO the sun (normalized, world space)
+		alignas(16) glm::vec3 sunDir = glm::normalize(glm::vec3(0.0f, 0.3f, 1.0f));	// direction TO the sun (normalized, world space)
 		float exposure = 10.0f;			// exposure val for hdr 
 
 		// Earth
 		float bottomRadiusKM = 6371.0f;			// planet radius
 		float topRadiusKM = 6371.0f + 100.0f;	// distance from surface to top of atmosphere
 
+		// should remove this, not currently used 
 		alignas(16) glm::vec3 groundAlbedo = glm::vec3(0.1f, 0.1f, 0.1f);	// the colour of the ground 
 
 		// Rayleigh Scattering

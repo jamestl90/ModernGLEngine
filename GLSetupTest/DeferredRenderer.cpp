@@ -5,6 +5,7 @@
 #include "HDRISky.h"
 #include "UniformBuffer.h"
 
+#include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <imgui.h>
@@ -34,6 +35,7 @@ namespace JLEngine
         m_vgm(nullptr),
         m_pbSky(nullptr),
         m_skyProbe(nullptr),
+        m_brdfLUT(0),
 
         // Initialize scene manager
         m_sceneManager(SceneManager(new Node("SceneRoot", JLEngine::NodeTag::SceneRoot), m_resourceLoader)),
@@ -45,6 +47,7 @@ namespace JLEngine
         m_blendShader(nullptr),
         m_downsampleShader(nullptr),
         m_lightingTestShader(nullptr),
+        m_debugSkyboxShader(nullptr),
         m_passthroughShader(nullptr),
         m_skinningGBufferShader(nullptr),
         m_combineShader(nullptr),
@@ -105,7 +108,7 @@ namespace JLEngine
         auto sizeOfCamInfo = sizeof(ShaderGlobalData);
         m_gShaderData.GetGPUBuffer().SetSizeInBytes(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_gShaderData.GetGPUBuffer());
-        GL_CHECK_ERROR();
+        
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -113,26 +116,24 @@ namespace JLEngine
         // --- SHADOW MAP --- 
         auto dlShader = m_resourceLoader->CreateShaderFromFile("DLShadowMap", "dlshadowmap_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
         auto dlShaderSkinning = m_resourceLoader->CreateShaderFromFile("DLShadowMapSkinning", "dlshadowmap_skinning_vert.glsl", "dlshadowmap_frag.glsl", shaderAssetPath).get();
-        m_dlShadowMap = new DirectionalLightShadowMap(m_graphics, dlShader, dlShaderSkinning);
+        m_dlShadowMap = new DirectionalLightShadowMap(dlShader, dlShaderSkinning, 4, 50.0f);
         m_dlShadowMap->Initialise();
 
         SetupGBuffer();
         
         // --- RENDER TARGETS --- 
         std::vector<RTParams> lightRTParams(3);
-        lightRTParams[0] = { GL_RGB8 };    // direct lighting
-        lightRTParams[1] = { GL_RGB8 };    // indirect specular  
-        lightRTParams[2] = { GL_RGB8 };
+        lightRTParams[0] = { GL_RGB16F };    // direct lighting
+        lightRTParams[1] = { GL_RGB16F };    // specular specular  
+        lightRTParams[2] = { GL_RGB16F };    // indirect
         m_lightOutputTarget = m_resourceLoader->CreateRenderTarget("LightOutputTarget", m_width, m_height, lightRTParams, DepthType::None, 3).get();
 
         RTParams rtParams;
         rtParams.internalFormat = GL_RGBA8;
         m_finalOutputTarget = m_resourceLoader->CreateRenderTarget("FinalOutputTarget", m_width, m_height, rtParams, DepthType::None, 1).get();
 
-        GL_CHECK_ERROR();
-
         // --- SHADERS --- 
-        m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "screenspacetriangle.glsl", "/Debug/depth_debug_frag.glsl", shaderAssetPath).get();
+        m_shadowDebugShader = m_resourceLoader->CreateShaderFromFile("DebugDirShadows", "screenspacetriangle.glsl", "/Debug/array_tex_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferDebugShader = m_resourceLoader->CreateShaderFromFile("DebugGBuffer", "screenspacetriangle.glsl", "/Debug/gbuffer_debug_frag.glsl", shaderAssetPath).get();
         m_gBufferShader = m_resourceLoader->CreateShaderFromFile("GBuffer", "gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
         m_skinningGBufferShader = m_resourceLoader->CreateShaderFromFile("SkinningGBuffer", "skinning_gbuffer_vert.glsl", "gbuffer_frag.glsl", shaderAssetPath).get();
@@ -158,13 +159,15 @@ namespace JLEngine
         m_resourceLoader->DeleteShader("BRDFLUTShader");
 
         AtmosphereParams m_atmosphereParams{};
-        m_atmosphereParams.sunDir = glm::normalize(glm::vec3(0.0f, 0.1f, -1.0f));
+        m_atmosphereParams.sunDir = glm::normalize(glm::vec3(0.0f, 0.3f, 1.0f));
         m_pbSky = new PhysicallyBasedSky(m_resourceLoader, m_assetFolder);
         m_pbSky->Initialise(m_atmosphereParams);
 
         RTParams skyRTParams;
         skyRTParams.internalFormat = GL_RGB16F;
         m_skyTarget = m_resourceLoader->CreateRenderTarget("SkyOutputTarget", m_width, m_height, skyRTParams, DepthType::None, 1).get();
+        Graphics::API()->NamedFramebufferTexture(m_skyTarget->GetGPUID(), GL_DEPTH_ATTACHMENT,
+            m_gBufferTarget->GetDepthBufferId(), 0);
         
         std::string skyShaders = shaderAssetPath + "/Sky/";
         m_skyProbe = new SkyProbe(m_resourceLoader, skyShaders);
@@ -181,7 +184,7 @@ namespace JLEngine
         Graphics::API()->DebugLabelObject(GL_FRAMEBUFFER, m_gBufferTarget->GetGPUID(), "gBuffer");
         Graphics::API()->DebugLabelObject(GL_FRAMEBUFFER, m_lightOutputTarget->GetGPUID(), "lightingTarget");
 
-        GL_CHECK_ERROR();
+        
     }
 
     // once vao's have been created, setup the voxel grid / voxel texture for DDGI
@@ -294,54 +297,48 @@ namespace JLEngine
 
         if (skinnedMeshData.size() > 0 || instancedSkinnedMeshData.size() > 0)
             Graphics::UploadToGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), m_jointMatrices);
-        GL_CHECK_ERROR();
+        
     }
 
-    glm::mat4 DeferredRenderer::DirectionalShadowMapPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos)
+    void DeferredRenderer::DirectionalShadowMapPass(FrameRenderData& frd)
     {
         glm::vec3 currentSunDir = m_atmosphereParams.sunDir;
-        glm::mat4 lightSpaceMatrix = GetDirectionalLightSpaceMatrix(currentSunDir,
-                                                                    eyePos, 
-                                                                    m_dlShadowMap->GetSize(), 
-                                                                    1.0f, 
-                                                                    m_dlShadowMap->GetShadowDistance());
 
-        m_dlShadowMap->ShadowMapPassSetup(lightSpaceMatrix);
+        m_dlShadowMap->UpdateCascades(frd.viewMatrix, frd.projMatrix, currentSunDir, frd.nearClip, frd.fovRad, frd.aspect);
 
-        auto shadowMapShader = m_dlShadowMap->GetShadowMapShader();
-        Graphics::API()->BindShader(shadowMapShader->GetProgramId());
-        shadowMapShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
+        ShaderProgram* shadowMapShader = m_dlShadowMap->GetShadowMapShader();
+        ShaderProgram* shadowMapSkinningShader = m_dlShadowMap->GetShadowMapSkinningShader();
 
         auto stride = static_cast<uint32_t>(sizeof(JLEngine::DrawIndirectCommand));
-        
-        Graphics::BindGPUBuffer(m_ssboStaticPerDraw.GetGPUBuffer(), 0);
 
-        // --- STATIC MESHES ---
-        for (const auto& [key, resource] : m_staticResources)
+        for (int cascadeIdx = 0; cascadeIdx < m_dlShadowMap->GetNumCascades(); ++cascadeIdx)
         {
-            if (resource.vao->GetGPUID() == 0) continue;
+            m_dlShadowMap->BeginShadowMapPassForCascade(cascadeIdx);
 
-            DrawGeometry(resource, stride);
-        }
+            Graphics::API()->BindShader(shadowMapShader->GetProgramId());
+            Graphics::BindGPUBuffer(m_ssboStaticPerDraw.GetGPUBuffer(), 0);
+            shadowMapShader->SetUniform("u_LightSpaceMatrix", m_dlShadowMap->GetCascadeLightSpaceMatrices()[cascadeIdx]);
 
-        GL_CHECK_ERROR();
+            // --- STATIC MESHES ---
+            for (const auto& [key, resource] : m_staticResources)
+            {
+                if (resource.vao->GetGPUID() == 0) continue;
 
-        if (m_skinnedMeshResources.first == 0) return lightSpaceMatrix;
-        if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
-        {
-            auto shadowMapSkinningShader = m_dlShadowMap->GetShadowMapSkinningShader();
-            Graphics::API()->BindShader(shadowMapSkinningShader->GetProgramId());
-            shadowMapSkinningShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
+                DrawGeometry(resource, stride);
+            }
 
-            // --- DYNAMIC MESHES ---
-            Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 0);
-            Graphics::BindGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), 1);
-
-            if (m_skinnedMeshResources.second.vao->GetGPUID() != 0)
+            // --- DYNAMIC MESHES --- 
+            if (m_skinnedMeshResources.first != 0 && m_skinnedMeshResources.second.vao->GetGPUID() != 0)
+            {
+                Graphics::API()->BindShader(shadowMapSkinningShader->GetProgramId());
+                shadowMapSkinningShader->SetUniform("u_LightSpaceMatrix", m_dlShadowMap->GetCascadeLightSpaceMatrices()[cascadeIdx]);
+                Graphics::BindGPUBuffer(m_ssboDynamicPerDraw.GetGPUBuffer(), 0);
+                Graphics::BindGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer(), 1);
                 DrawGeometry(m_skinnedMeshResources.second, stride);
+            }
         }
 
-        return lightSpaceMatrix;
+        m_dlShadowMap->EndShadowMapPass();
     }
 
     void DeferredRenderer::GBufferPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
@@ -400,13 +397,26 @@ namespace JLEngine
         }
     }
 
-    void DeferredRenderer::Render(const glm::vec3& eyePos, const glm::vec3& camDir, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, double dt)
+    void DeferredRenderer::Render(FlyCamera& camera, double dt)
     {
+        auto viewFrustum = camera.GetViewFrustum();
+        FrameRenderData frd{};
+        frd.viewMatrix = camera.GetViewMatrix();
+        frd.projMatrix = viewFrustum.GetProjectionMatrix();
+        frd.invViewMatrix = glm::inverse(frd.viewMatrix);
+        frd.invProjMatrix = glm::inverse(frd.projMatrix);
+        frd.eyePos = camera.GetPosition();
+        frd.eyeDir = camera.GetForward();
+        frd.nearClip = viewFrustum.GetNear();
+        frd.farClip = viewFrustum.GetFar();
+        frd.fovRad = glm::radians(viewFrustum.GetFov());
+        frd.aspect = static_cast<float>(m_width) / static_cast<float>(m_height);
+
         ShaderGlobalData gShaderData{};
-        gShaderData.viewMatrix = viewMatrix;
-        gShaderData.projMatrix = projMatrix;
-        gShaderData.cameraPos = glm::vec4(eyePos.x, eyePos.y, eyePos.z, 1.0f);
-        gShaderData.camDir = glm::vec4(camDir, 1.0f);
+        gShaderData.viewMatrix = frd.viewMatrix;
+        gShaderData.projMatrix = frd.projMatrix;
+        gShaderData.cameraPos = glm::vec4(frd.eyePos.x, frd.eyePos.y, frd.eyePos.z, 1.0f);
+        gShaderData.camDir = glm::vec4(frd.eyeDir, 1.0f);
         double time = static_cast<float>(glfwGetTime());
         gShaderData.timeInfo = glm::vec2(dt, time);
         gShaderData.windowSize = glm::vec2(m_width, m_height);
@@ -423,9 +433,9 @@ namespace JLEngine
         UpdateRigidAnimations();
         UpdateSkinnedAnimations();
 
-        auto lightSpaceMatrix = DirectionalShadowMapPass(viewMatrix, projMatrix, eyePos);
-        GBufferPass(viewMatrix, projMatrix);
-        DrawSky(eyePos, viewMatrix, projMatrix);
+        DirectionalShadowMapPass(frd);
+        GBufferPass(frd.viewMatrix, frd.projMatrix);
+        DrawSky(frd);
 
         m_skyProbe->ProcessBake();
         //glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -435,7 +445,7 @@ namespace JLEngine
 
         if (m_debugModes != DebugModes::None) // specialized debug views
         {
-            DebugPass(viewMatrix, projMatrix);
+            DebugPass(frd);
         }
         else
         {
@@ -448,20 +458,16 @@ namespace JLEngine
             //    m_vgm->GetVoxelGrid());    
 
             // do lighting pass
-            LightPass(eyePos, viewMatrix, projMatrix, lightSpaceMatrix);
-            CombinePass(viewMatrix, projMatrix);
-
-            DrawUI();
-            // renders debug geometry/lines/points etc including imgui 
-            RenderDebugTools(eyePos, viewMatrix, projMatrix);
+            LightPass(frd);
+            CombinePass(frd);            
 
             if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
             {
-                ImageHelpers::CopyToScreen(m_finalOutputTarget, m_width, m_height, m_passthroughShader);
+                ImageHelpers::CopyToScreen(m_finalOutputTarget, m_width, m_height, m_passthroughShader, false);
             }
             else
             {
-                TransparencyPass(eyePos, viewMatrix, projMatrix);
+                TransparencyPass(frd);
             }
 
             //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
@@ -471,7 +477,11 @@ namespace JLEngine
             //m_rtPool.ReleaseRenderTarget(rtPingPong);
         }
 
-        m_lastEyePos = eyePos;
+        // renders debug geometry/lines/points etc including imgui 
+        DrawUI();
+        RenderDebugTools(frd);
+
+        m_lastEyePos = frd.eyePos;
         m_frameCount++;
 
         // wrap the frame count once it gets too big
@@ -479,30 +489,29 @@ namespace JLEngine
             m_frameCount = 0;
 
         Graphics::API()->BindFrameBuffer(0);
-        GL_CHECK_ERROR();
+        
     }
 
-    void DeferredRenderer::DrawSky(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    void DeferredRenderer::DrawSky(FrameRenderData& frd)
     {
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
         Graphics::API()->BindFrameBuffer(m_skyTarget->GetGPUID());
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
 
-        m_pbSky->RenderSky(viewMatrix, projMatrix, eyePos);
+        m_pbSky->RenderSky(frd.viewMatrix, frd.projMatrix, frd.eyePos);
         Graphics::API()->BindFrameBuffer(0);
     }
 
-    void DeferredRenderer::LightPass(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::mat4& lightSpaceMatrix)
+    void DeferredRenderer::LightPass(FrameRenderData& frd)
     {
         Graphics::API()->BindFrameBuffer(m_lightOutputTarget->GetGPUID());
-        // unbind any depth attachments from the lighting stage
-        Graphics::API()->NamedFramebufferTexture(m_lightOutputTarget->GetGPUID(), GL_DEPTH_ATTACHMENT, 0, 0);
-        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
         Graphics::API()->BindShader(m_lightingTestShader->GetProgramId());
+        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
 
         Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 4);
         Graphics::BindGPUBuffer(m_ddgi->GetProbeSSBO().GetGPUBuffer(), 7);
+        Graphics::BindGPUBuffer(m_lights.GetGPUBuffer(), 8);
 
         GLuint textures[] =
         {
@@ -511,33 +520,38 @@ namespace JLEngine
             m_gBufferTarget->GetTexId(2),           // gMetallicRoughness
             m_gBufferTarget->GetTexId(3),           // gEmissive
             m_gBufferTarget->GetDepthBufferId(),    // gDepth
-            m_dlShadowMap->GetShadowMapID(),        // gDLShadowMap
+            m_dlShadowMap->GetShadowMapTextureArrayID(),        // gDLShadowMap
             m_gBufferTarget->GetTexId(4),           // world pos
-            m_gBufferTarget->GetTexId(5),           // linear depth 
+            //m_gBufferTarget->GetTexId(5),           // linear depth 
             m_skyTarget->GetTexId(0),               // pbSky
             m_skyProbe->prefilteredTex,             // prefiltered environment map
             m_brdfLUT                               // brdf lut
         };
 
-        Graphics::API()->BindTextures(0, 11, textures);
+        Graphics::API()->BindTextures(0, 10, textures);
 
-        glm::vec3 currentSunDir = m_atmosphereParams.sunDir;
-        m_lightingTestShader->SetUniform("u_LightSpaceMatrix", lightSpaceMatrix);
-        m_lightingTestShader->SetUniform("u_LightDirection", currentSunDir);
+        const auto& cascadeLightSpaceMatrices = m_dlShadowMap->GetCascadeLightSpaceMatrices();
+        const auto& cascadeFarSplitsViewSpace = m_dlShadowMap->GetCascadeFarSplitsViewSpace();
+        int numCascades = m_dlShadowMap->GetNumCascades();
+        m_lightingTestShader->SetUniformi("u_NumCascades", numCascades);
+        m_lightingTestShader->SetUniform("u_LightSpaceMatrices", &cascadeLightSpaceMatrices[0], numCascades);
+        m_lightingTestShader->SetUniform("u_CascadeFarSplitsViewSpace", &cascadeFarSplitsViewSpace[0], numCascades + 1);
+        
+        m_lightingTestShader->SetUniformi("m_NumLights", (int)m_lights.GetDataImmutable().size());
+        m_lightingTestShader->SetUniform("u_LightDirection", m_atmosphereParams.sunDir);
         m_lightingTestShader->SetUniform("u_LightColor", m_atmosphereParams.solarIrradiance);
-        m_lightingTestShader->SetUniform("u_ViewInverse", glm::inverse(viewMatrix));
-        m_lightingTestShader->SetUniform("u_ProjectionInverse", glm::inverse(projMatrix));
+        m_lightingTestShader->SetUniform("u_ViewInverse", frd.invViewMatrix);
+        m_lightingTestShader->SetUniform("u_ProjectionInverse", frd.invProjMatrix);
+;
+        m_lightingTestShader->SetUniformf("u_Near", frd.nearClip);
+        m_lightingTestShader->SetUniformf("u_Far", frd.farClip);
 
-        auto frustum = m_graphics->GetViewFrustum();
-        m_lightingTestShader->SetUniformf("u_Near", frustum->GetNear());
-        m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
-
-        m_lightingTestShader->SetUniformf("u_Bias", m_dlShadowMap->GetBias());
+        m_lightingTestShader->SetUniformf("u_ShadowBias", m_dlShadowMap->GetBias());
         m_lightingTestShader->SetUniformi("u_PCFKernelSize", m_dlShadowMap->GetPCFKernelSize());
 
         m_lightingTestShader->SetUniformf("u_SpecularIndirectFactor", m_specularIndirectFactor);
         m_lightingTestShader->SetUniformf("u_DiffuseIndirectFactor", m_diffuseIndirectFactor);
-        m_lightingTestShader->SetUniformf("m_DirectFactor", m_directFactor);
+        m_lightingTestShader->SetUniformf("u_DirectFactor", m_directFactor);
 
         auto& gridRes = m_ddgi->GetGridResolution();
         auto& gridOrigin = m_ddgi->GetGridOrigin();
@@ -555,12 +569,15 @@ namespace JLEngine
         RenderScreenSpaceTriangle();
     }
 
-    void DeferredRenderer::CombinePass(const glm::mat4& viewMat, const glm::mat4& projMat)
+    void DeferredRenderer::CombinePass(FrameRenderData& frd)
     {
         Graphics::API()->BindFrameBuffer(m_finalOutputTarget->GetGPUID());
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
         Graphics::API()->BindShader(m_combineShader->GetProgramId());
         Graphics::API()->SetViewport(0, 0, m_width, m_height);
+        m_combineShader->SetUniformi("u_NeedsGammaCorrection",
+            Graphics::API()->GetWindow()->SRGBCapable() ? 0 : 1);
+        m_combineShader->SetUniformf("u_Exposure", m_tonemappingExposure);
          
         GLuint textures[] =
         {            
@@ -574,13 +591,13 @@ namespace JLEngine
         RenderScreenSpaceTriangle();
     }
 
-    void DeferredRenderer::TransparencyPass(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
+    void DeferredRenderer::TransparencyPass(FrameRenderData& frd)
     {
-        RenderBlended(eyePos, viewMat, projMatrix);
-        //RenderTransmissive(eyePos, viewMat, projMatrix);
+        RenderBlended(frd);
+        //RenderTransmissive(frd);
     }
 
-    void DeferredRenderer::RenderBlended(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
+    void DeferredRenderer::RenderBlended(FrameRenderData& frd)
     {
         if (m_ssboTransparentPerDraw.GetDataImmutable().empty()) return;
 
@@ -617,8 +634,8 @@ namespace JLEngine
         Graphics::BindGPUBuffer(m_ssboTransparentPerDraw.GetGPUBuffer(), 1);
         Graphics::BindGPUBuffer(m_gShaderData.GetGPUBuffer(), 2);
 
-        if (m_lastEyePos != eyePos) // dont need to sort until we move
-            m_sceneManager.SortTransparentBackToFront(eyePos);
+        if (m_lastEyePos != frd.eyePos) // dont need to sort until we move
+            m_sceneManager.SortTransparentBackToFront(frd.eyePos);
 
         DrawGeometry(vaoRes, stride);
 
@@ -629,13 +646,13 @@ namespace JLEngine
         Graphics::API()->Disable(GL_BLEND);
     }
 
-    void DeferredRenderer::RenderTransmissive(const glm::vec3& eyePos, const glm::mat4& viewMat, const glm::mat4& projMatrix)
+    void DeferredRenderer::RenderTransmissive(FrameRenderData& frd)
     {
         Graphics::API()->BindShader(m_transmissionShader->GetProgramId());
         // -- TO DO -- 
     }
 
-    void DeferredRenderer::DebugGBuffer(int debugMode)
+    void DeferredRenderer::DebugGBuffer(int debugMode, float nearVal, float farVal)
     {
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
         m_graphics->ClearColour(0.2f, 0.2f, 0.2f, 0.2f);
@@ -643,9 +660,8 @@ namespace JLEngine
 
         m_graphics->BindShader(m_gBufferDebugShader->GetProgramId());
 
-        auto frustum = m_graphics->GetViewFrustum();
-        m_lightingTestShader->SetUniformf("u_Near", frustum->GetNear());
-        m_lightingTestShader->SetUniformf("u_Far", frustum->GetFar());
+        m_lightingTestShader->SetUniformf("u_Near", nearVal);
+        m_lightingTestShader->SetUniformf("u_Far", farVal);
 
         const int numModes = 6; // Number of debug modes (Albedo, Normals, Metallic, AO, Roughness, Emissive)
         int cols = 2;           // Number of columns for split screen
@@ -707,9 +723,9 @@ namespace JLEngine
         m_graphics->SetViewport(0, 0, m_width, m_height);
     }
 
-    void DeferredRenderer::DebugDirectionalLightShadows()
+    void DeferredRenderer::DebugDirectionalLightShadows(float nearVal, float farVal)
     {
-        m_graphics->SetViewport(0, 0, (int)(m_width * 0.5f), m_height);
+        m_graphics->SetViewport(0, 0, m_width, m_height);
 
         m_graphics->BindFrameBuffer(0); // Render to the default framebuffer
         m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
@@ -717,24 +733,36 @@ namespace JLEngine
 
         m_graphics->BindShader(m_shadowDebugShader->GetProgramId());
         m_graphics->SetActiveTexture(0);
-        m_graphics->BindTexture(GL_TEXTURE_2D, m_dlShadowMap->GetShadowMapID());
+        m_graphics->BindTexture(GL_TEXTURE_2D_ARRAY, m_dlShadowMap->GetShadowMapTextureArrayID());
         m_shadowDebugShader->SetUniformi("u_DepthTexture", 0);
         m_shadowDebugShader->SetUniformi("u_Linearize", 0);
         m_shadowDebugShader->SetUniformf("u_Near", 0.01f);
-        m_shadowDebugShader->SetUniformf("u_Far", m_dlShadowMap->GetShadowDistance());
+        m_shadowDebugShader->SetUniformf("u_Far", m_dlShadowMap->GetDistance());
 
-        RenderScreenSpaceTriangle();
+        int halfWidth = m_width / 2;
+        int halfHeight = m_height / 2;
+        for (auto i = 0; i < m_dlShadowMap->GetNumCascades(); i++)
+        {
+            int col = i % 2;
+            int row = i / 2;
+            int x = col * halfWidth;
+            int y = row * halfHeight;
 
-        m_graphics->SetViewport((int)(m_width * 0.5f), 0, (int)(m_width * 0.5f), m_height);
+            m_graphics->SetViewport(x, y, halfWidth, halfHeight);
+            m_shadowDebugShader->SetUniformi("u_CascadeIndex", i);
+            RenderScreenSpaceTriangle();
+        }                
 
-        m_gBufferTarget->BindDepthTexture(0);
-        m_gBufferDebugShader->SetUniformi("u_DepthTexture", 0);
-        m_shadowDebugShader->SetUniformi("u_Linearize", 1);
-        auto frustum = m_graphics->GetViewFrustum();
-        m_shadowDebugShader->SetUniformf("u_Near", frustum->GetNear());
-        m_shadowDebugShader->SetUniformf("u_Far", frustum->GetFar());
-
-        RenderScreenSpaceTriangle();
+        // render depth
+        //m_graphics->SetViewport((int)(m_width * 0.5f), 0, (int)(m_width * 0.5f), m_height);
+        //
+        //m_gBufferTarget->BindDepthTexture(0);
+        //m_gBufferDebugShader->SetUniformi("u_DepthTexture", 0);
+        //m_shadowDebugShader->SetUniformi("u_Linearize", 1);
+        //m_shadowDebugShader->SetUniformf("u_Near", nearVal);
+        //m_shadowDebugShader->SetUniformf("u_Far", farVal);
+        //
+        //RenderScreenSpaceTriangle();
 
         m_graphics->SetViewport(0, 0, m_width, m_height);
     }
@@ -756,13 +784,10 @@ namespace JLEngine
 
     void DeferredRenderer::DebugPbrSky(const glm::vec3& eyePos) // Or maybe name it UpdateAndRenderAtmosphereUI
     {
-        if (!m_pbSky) return; // Ensure sky object exists
+        if (!m_pbSky) return; 
 
         ImGui::Begin("Atmosphere Settings");
-
-        bool paramsChanged = false; // Track if any parameter was changed this frame
-
-        // Temporary storage for atmosphere height
+        bool paramsChanged = false;
         static float atmosphereHeightKM = m_atmosphereParams.topRadiusKM - m_atmosphereParams.bottomRadiusKM;
 
         // --- Sun ---
@@ -819,7 +844,8 @@ namespace JLEngine
             ImGui::Text(" -> Top Radius: %.1f km", m_atmosphereParams.topRadiusKM);
 
 
-            if (ImGui::ColorEdit3("Ground Albedo", &m_atmosphereParams.groundAlbedo[0], ImGuiColorEditFlags_Float)) {
+            if (ImGui::ColorEdit3("Ground Albedo", &m_atmosphereParams.groundAlbedo[0], ImGuiColorEditFlags_Float))
+            {
                 paramsChanged = true;
             }
         }
@@ -827,11 +853,13 @@ namespace JLEngine
         // --- Rayleigh Scattering ---
         if (ImGui::CollapsingHeader("Rayleigh Scattering"))
         {
-            if (ImGui::ColorEdit3("Scattering Coeff", &m_atmosphereParams.rayleighScatteringCoeff[0], ImGuiColorEditFlags_Float)) {
+            if (ImGui::ColorEdit3("Scattering Coeff", &m_atmosphereParams.rayleighScatteringCoeff[0], ImGuiColorEditFlags_Float)) 
+            {
                 paramsChanged = true;
             }
 
-            if (ImGui::DragFloat("Density Height Scale", &m_atmosphereParams.rayleighDensityHeightScale, 0.1f, 0.1f, 20.0f, "%.1f km")) {
+            if (ImGui::DragFloat("Density Height Scale", &m_atmosphereParams.rayleighDensityHeightScale, 0.1f, 0.1f, 20.0f, "%.1f km"))
+            {
                 paramsChanged = true;
             }
         }
@@ -839,19 +867,23 @@ namespace JLEngine
         // --- Mie Scattering ---
         if (ImGui::CollapsingHeader("Mie Scattering"))
         {
-            if (ImGui::DragFloat3("Scattering Coeff", &m_atmosphereParams.mieScatteringCoeff[0], 0.0001f, 0.0f, 0.1f, "%.6f")) {
+            if (ImGui::DragFloat3("Scattering Coeff", &m_atmosphereParams.mieScatteringCoeff[0], 0.0001f, 0.0f, 0.1f, "%.6f"))
+            {
                 paramsChanged = true;
             }
 
-            if (ImGui::DragFloat3("Extinction Coeff", &m_atmosphereParams.mieExtinctionCoeff[0], 0.0001f, 0.0f, 0.1f, "%.6f")) {
+            if (ImGui::DragFloat3("Extinction Coeff", &m_atmosphereParams.mieExtinctionCoeff[0], 0.0001f, 0.0f, 0.1f, "%.6f")) 
+            {
                 paramsChanged = true;
             }
 
-            if (ImGui::DragFloat("Density Height Scale", &m_atmosphereParams.mieDensityHeightScale, 0.1f, 0.1f, 5.0f, "%.1f km")) {
+            if (ImGui::DragFloat("Density Height Scale", &m_atmosphereParams.mieDensityHeightScale, 0.1f, 0.1f, 5.0f, "%.1f km")) 
+            {
                 paramsChanged = true;
             }
 
-            if (ImGui::SliderFloat("Phase Func 'g'", &m_atmosphereParams.miePhaseG, -0.99f, 0.99f, "%.2f")) {
+            if (ImGui::SliderFloat("Phase Func 'g'", &m_atmosphereParams.miePhaseG, -0.99f, 0.99f, "%.2f")) 
+            {
                 paramsChanged = true;
             }
         }
@@ -859,11 +891,13 @@ namespace JLEngine
         // --- Absorption (Ozone) ---
         if (ImGui::CollapsingHeader("Absorption (Ozone)"))
         {
-            if (ImGui::ColorEdit3("Absorption Extinction", &m_atmosphereParams.absorptionExtinction[0], ImGuiColorEditFlags_Float)) {
+            if (ImGui::ColorEdit3("Absorption Extinction", &m_atmosphereParams.absorptionExtinction[0], ImGuiColorEditFlags_Float)) 
+            {
                 paramsChanged = true;
             }
 
-            if (ImGui::DragFloat("Absorption Density Scale", &m_atmosphereParams.absorptionDensityHeightScale, 0.1f, 0.1f, 50.0f, "%.1f km")) {
+            if (ImGui::DragFloat("Absorption Density Scale", &m_atmosphereParams.absorptionDensityHeightScale, 0.1f, 0.1f, 50.0f, "%.1f km")) 
+            {
                 paramsChanged = true;
             }
         }
@@ -948,9 +982,9 @@ namespace JLEngine
         Im3d::PopColor();
     }
 
-    void DeferredRenderer::RenderDebugTools(const glm::vec3& eyePos, const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    void DeferredRenderer::RenderDebugTools(FrameRenderData& frd)
     {
-        DebugPbrSky(eyePos);
+        DebugPbrSky(frd.eyePos);
         if (ImGui::Begin("Debug DDGI"))
         {
             ImGui::Checkbox("Show DDGI Probes", &m_showDDGI);
@@ -991,7 +1025,7 @@ namespace JLEngine
         // render im3d here
         if (m_im3dManager != nullptr)
         {
-            m_im3dManager->EndFrameAndRender(projMatrix * viewMatrix);
+            m_im3dManager->EndFrameAndRender(frd.projMatrix * frd.viewMatrix);
         }
     }
 
@@ -1113,7 +1147,8 @@ namespace JLEngine
         return m_ddgi;
     }
 
-    VoxelGridManager* DeferredRenderer::GetVoxelGridManager() {
+    VoxelGridManager* DeferredRenderer::GetVoxelGridManager() 
+    {
         if (m_vgm == nullptr)
         {
             m_vgm = new VoxelGridManager(m_resourceLoader, m_assetFolder);
@@ -1123,22 +1158,9 @@ namespace JLEngine
 
     void DeferredRenderer::DrawUI()
     {
-        static float lightAngle = 0.0f;  // Rotation angle in degrees
-        static float lightRadius = 30.0f; // Distance from the center
         ImGui::Begin("Shadow Controls");
-        // if (ImGui::SliderFloat("Light Rotation", &lightAngle, 0.0f, 360.0f, "%.1f degrees"))
-        // {
-        //     float radians = glm::radians(lightAngle);
-        //     m_directionalLight.position = glm::vec3(
-        //         lightRadius * cos(radians),
-        //         30.0f,
-        //         lightRadius * sin(radians)
-        //     );
-        //     m_directionalLight.direction = glm::normalize(-m_directionalLight.position);
-        // }
-        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00020f, 0.002f, "%.6f");
-        ImGui::SliderFloat("Distance", &m_dlShadowMap->GetShadowDistance(), 10.0, 200.0f, "%.6f");
-        ImGui::SliderFloat("Size", &m_dlShadowMap->GetSize(), 10.0, 50.0f, "%.6f");
+        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00002f, 0.002f, "%.6f");
+        ImGui::SliderFloat("Distance", &m_dlShadowMap->GetDistance(), 10.0, 200.0f, "%.6f");
         ImGui::SliderInt("PCF Kernel Size", &m_dlShadowMap->GetPCFKernelSize(), 0, 5);
         ImGui::End();
 
@@ -1146,6 +1168,7 @@ namespace JLEngine
         ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Direct Factor", &m_directFactor, 0.1f, 3.0f);
+        ImGui::SliderFloat("Tonemap Exposure", &m_tonemappingExposure, 0.1f, 3.0f);
 
         ImVec4 imColor = ImVec4(m_dirLightColor.x, m_dirLightColor.y, m_dirLightColor.z, 1.0f);
         ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoAlpha |
@@ -1168,7 +1191,7 @@ namespace JLEngine
         m_graphics->MultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, size, stride);
     }
 
-    void DeferredRenderer::DebugPass(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+    void DeferredRenderer::DebugPass(FrameRenderData& frd)
     {
         std::string debugString;
         if (m_debugModes == DebugModes::GBuffer)
@@ -1176,13 +1199,13 @@ namespace JLEngine
             debugString = "Bottom Left to Top Right:\nGBuffer - Albedo, Normal, Metallic, Occlusion, Depth, Emission";
             for (int mode = 0; mode < 6; ++mode)
             {
-                DebugGBuffer(mode);
+                DebugGBuffer(mode, frd.nearClip, frd.farClip);
             }
         }
         else if (m_debugModes == DebugModes::DirectionalLightShadows)
         {
             debugString = "Bottom Left to Top Right:\nDirectional Shadowmap Depth, Camera Depth";
-            DebugDirectionalLightShadows();
+            DebugDirectionalLightShadows(frd.nearClip, frd.farClip);
         }
         //else if (m_debugModes == DebugModes::HDRISkyTextures)
         //{
@@ -1191,7 +1214,19 @@ namespace JLEngine
         //}
         else if (m_debugModes == DebugModes::PbrSky)
         {
+            m_graphics->BindFrameBuffer(0);
 
+            m_graphics->SetViewport(0, 0, m_width, m_height);
+
+            m_graphics->ClearColour(0.0f, 0.0f, 0.0f, 0.0f);
+            m_graphics->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            m_graphics->BindShader(m_passthroughShader->GetProgramId());
+            m_graphics->SetActiveTexture(0);
+            m_graphics->BindTexture(GL_TEXTURE_2D, m_brdfLUT);
+            m_passthroughShader->SetUniformi("u_Texture", 0);
+
+            RenderScreenSpaceTriangle();
         }
         ImGui::Begin("Debug Views");
         ImGui::Text(debugString.c_str());
@@ -1367,7 +1402,7 @@ namespace JLEngine
             m_ssboTransparentPerDraw.AddData(pdd);
             m_transparentResources[item.first.attribKey].drawBuffer->AddDrawCommand(item.first.command);
         }
-        GL_CHECK_ERROR();
+
         // --- CREATE THE GPU DRAW BUFFERS ---
         for (auto& [vertexAttrib, vaoresource] : m_staticResources)
         {
@@ -1381,17 +1416,23 @@ namespace JLEngine
         {
             Graphics::CreateIndirectDrawBuffer(vaoresource.drawBuffer.get());
         }
-        GL_CHECK_ERROR();
+
         m_ssboGlobalTransforms.GetGPUBuffer().SetSizeInBytes((jointCount + instancedJointCount) * sizeof(glm::mat4));
         Graphics::CreateGPUBuffer(m_ssboJointMatrices.GetGPUBuffer(), m_ssboJointMatrices.GetDataImmutable());
-        GL_CHECK_ERROR();
         Graphics::CreateGPUBuffer(m_ssboGlobalTransforms.GetGPUBuffer());
-        GL_CHECK_ERROR();
+        
+        auto& lightNodes = m_sceneManager.GetLightNodes();
+        for (auto& lightNode : lightNodes)
+        {
+            lightNode.second->light.position = lightNode.second->translation; // update position to the nodes pos
+            m_lights.AddData(lightNode.second->light);
+        }
+        Graphics::CreateGPUBuffer(m_lights.GetGPUBuffer(), m_lights.GetDataImmutable());
+
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboStaticPerDraw.GetGPUBuffer(), m_ssboStaticPerDraw.GetDataImmutable());
-        GL_CHECK_ERROR();
         Graphics::CreateGPUBuffer<SkinnedMeshPerDrawData>(m_ssboDynamicPerDraw.GetGPUBuffer(), m_ssboDynamicPerDraw.GetDataImmutable());
         Graphics::CreateGPUBuffer<PerDrawData>(m_ssboTransparentPerDraw.GetGPUBuffer(), m_ssboTransparentPerDraw.GetDataImmutable());
-        GL_CHECK_ERROR();
+        
     }
 
     void DeferredRenderer::ExtractSceneTriangles()
@@ -1518,7 +1559,7 @@ namespace JLEngine
                         glm::vec3 v2_world = glm::vec3(worldTransform * glm::vec4(v2_local, 1.0f));
 
                         // *** CREATE AND ADD TriWithEmisison struct ***
-                        TriWithEmisison triangle;
+                        TriWithEmisison triangle{};
                         triangle.v0 = v0_world;
                         triangle.v1 = v1_world;
                         triangle.v2 = v2_world;
@@ -1549,9 +1590,7 @@ namespace JLEngine
 
         std::cout << "PrepareTriangleSSBO: Extracted " << totalTrianglesExtracted << " triangles." << std::endl;
 
-        GL_CHECK_ERROR();
         m_vgm->UpdateTriangleData(std::move(trianglesForSSBO));
-        GL_CHECK_ERROR();
     }
 
     glm::mat4 DeferredRenderer::GetDirectionalLightSpaceMatrix(
@@ -1573,9 +1612,7 @@ namespace JLEngine
 
         // The point the light camera looks AT is the focus point.
         glm::vec3 lightTarget = focusPoint;
-
-        glm::vec3 lightLookActualDir = glm::normalize(lightTarget - virtualLightPos); // Should be -lightDir_normalized
-
+        glm::vec3 lightLookActualDir = glm::normalize(lightTarget - virtualLightPos);
         glm::vec3 lightUp;
 
         if (glm::abs(glm::dot(lightLookActualDir, glm::vec3(0.0f, 1.0f, 0.0f))) > 0.999f)
@@ -1593,7 +1630,6 @@ namespace JLEngine
         }
 
         glm::mat4 lightView = glm::lookAt(virtualLightPos, lightTarget, lightUp);
-
         return lightProjection * lightView;
     }
 
@@ -1660,6 +1696,9 @@ namespace JLEngine
         m_lightOutputTarget->ResizeTextures(m_width, m_height);
         m_finalOutputTarget->ResizeTextures(m_width, m_height);
         m_skyTarget->ResizeTextures(m_width, m_height);
+        // reattach gbuffer depht to sky target
+        Graphics::API()->NamedFramebufferTexture(m_skyTarget->GetGPUID(), GL_DEPTH_ATTACHMENT,
+            m_gBufferTarget->GetDepthBufferId(), 0);
 
         // Recreate the G-buffer to match the new dimensions
         //m_assetLoader->GetRenderTargetManager()->Remove(m_gBufferTarget->GetName()); // Delete the old G-buffer

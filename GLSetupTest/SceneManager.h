@@ -41,6 +41,10 @@ namespace JLEngine
 					{
 						m_rigidAnimControllers.push_back(std::make_pair(node->animController, node));
 					}
+					if (node->GetTag() == NodeTag::Light)
+					{
+						m_lights.try_emplace(node->name, node);
+					}
 					if (node->GetTag() == NodeTag::Mesh)
 					{
 						auto matMgr = m_resourceLoader->GetMaterialManager();
@@ -104,7 +108,9 @@ namespace JLEngine
 			populateLists(m_sceneRoot.get());
 		}
 
-		std::vector<std::pair<JLEngine::SubMesh, Node*>> GetSubmeshes()
+		std::unordered_map<std::string, Node*>& GetLightNodes() { return m_lights; }
+
+		std::vector<std::pair<JLEngine::SubMesh, Node*>>& GetSubmeshes()
 		{
 			return m_submeshList;
 		}
@@ -208,7 +214,8 @@ namespace JLEngine
 		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedStatic;  // static meshes
 		std::vector<std::pair<SubMesh, Node*>> m_animatedRigidObjects; // rigid animations
 		std::vector<std::pair<SubMesh, Node*>> m_nonInstancedDynamic; // skinned meshes
-		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects; // transparent meshes
+		std::vector<std::pair<SubMesh, Node*>> m_transparentObjects; // transparent meshes		
+		std::unordered_map<std::string, Node*> m_lights;
 		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedStatic;	// instanced static meshes
 		std::unordered_map<std::string, std::pair<SubMesh, Node*>> m_instancedDynamic; // instanced skinned meshes
 		std::vector<std::pair<SubMesh, Node*>> m_submeshList;

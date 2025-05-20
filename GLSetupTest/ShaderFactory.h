@@ -54,7 +54,6 @@ namespace JLEngine
                     auto shaderPathFrag = program->GetFilePath() + fragProgram.GetName();
                     currentTimestamp = std::filesystem::last_write_time(shaderPathFrag);
                     m_shaderTimestamps[shaderPathFrag] = currentTimestamp;
-                    GL_CHECK_ERROR();
                     return program;
                 });
         }
@@ -81,7 +80,6 @@ namespace JLEngine
                     auto currentTimestamp = std::filesystem::last_write_time(shaderPathVert);
                     m_shaderTimestamps[shaderPathVert] = currentTimestamp;
 
-                    GL_CHECK_ERROR();
                     return program;
                 });
         }
@@ -182,7 +180,6 @@ namespace JLEngine
             }
 
             Graphics::CreateShader(program);     
-            GL_CHECK_ERROR();
         }
 
         static std::string PreprocessShaderIncludes(const std::string& shaderPath)

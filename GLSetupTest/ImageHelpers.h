@@ -19,7 +19,7 @@ namespace JLEngine
 
 		static void BlurInPlaceCompute(RenderTarget* target, ShaderProgram* blurShader);
 		
-		static void CopyToScreen(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog);
+		static void CopyToScreen(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog, bool enableSRGB = false);
 
 	protected:
 		static unsigned int m_vaoID;

@@ -95,8 +95,6 @@ namespace JLEngine
 			GLuint borderColourUint[] = { 0u, 0u, 0u, 0u };
 			glTextureParameterIuiv(m_voxelGrid.occupancyTexId, GL_TEXTURE_BORDER_COLOR, borderColourUint);
 
-			GL_CHECK_ERROR();
-
 			Graphics::API()->DebugLabelObject(GL_TEXTURE, m_voxelGrid.occupancyTexId, "VoxelGridOccupancy");
 
 			for (int i = 0; i < 3; i++)
@@ -120,8 +118,6 @@ namespace JLEngine
 			m_debugVoxelSSBO.GetGPUBuffer().SetUsageFlags(GL_MAP_READ_BIT); 
 
 			Graphics::CreateGPUBuffer(m_debugVoxelSSBO.GetGPUBuffer());
-
-			GL_CHECK_ERROR(); // Check error after clear
 		}
 
 		void Render()
@@ -201,7 +197,7 @@ namespace JLEngine
 				//	else 
 				//	{
 				//		std::cerr << "ERROR: Failed to map debug voxel SSBO!" << std::endl;
-				//		GL_CHECK_ERROR(); // Check why mapping failed
+				//		 // Check why mapping failed
 				//	}
 				//}
 				//else {
@@ -216,7 +212,6 @@ namespace JLEngine
 				Graphics::API()->BindImageTexture(2, 0, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_R32UI);
 				Graphics::API()->BindImageTexture(3, 0, 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_R32UI);
 			}
-			GL_CHECK_ERROR();
 		}
 
 		void UpdateTriangleData(std::vector<TriWithEmisison>&& tris)
@@ -250,8 +245,6 @@ namespace JLEngine
 				Graphics::CreateGPUBuffer(m_debugVoxelSSBO.GetGPUBuffer()); 
 				Graphics::API()->DebugLabelObject(GL_BUFFER, m_debugVoxelSSBO.GetGPUBuffer().GetGPUID(), "VoxelDebugSSBO"); 
 			}
-
-			GL_CHECK_ERROR(); 
 		}
 
 		VoxelGrid& GetVoxelGrid() { return m_voxelGrid; }

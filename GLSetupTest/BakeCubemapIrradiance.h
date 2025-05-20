@@ -1,9 +1,7 @@
 #ifndef TEST_2_H
 #define TEST_2_H
 
-#include <iostream>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>     
+#include <iostream>   
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 

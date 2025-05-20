@@ -4,6 +4,7 @@
 #include "Geometry.h"
 #include "TextureWriter.h"
 #include "CubemapBaker.h"
+#include <GLFW/glfw3.h>
 
 unsigned int quadVAO = 0;
 unsigned int quadVBO;
@@ -56,7 +57,7 @@ int GenerateBRDFLUT(const std::string& assetFolder)
     auto baker = new JLEngine::CubemapBaker(assetFolder, engine.GetResourceLoader());
     uint32_t brdfLUTTexture = baker->GenerateBRDFLUT(brdfLutSize, 1024);
 
-    GL_CHECK_ERROR();
+    
 
     JLEngine::ImageData brdfLutData;
     graphics->ReadTexture2D(brdfLUTTexture, brdfLutData, brdfLutSize, brdfLutSize, 3, true, false);

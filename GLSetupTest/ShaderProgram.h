@@ -34,6 +34,8 @@ namespace JLEngine
 		const std::string GetFilePath() { return m_filename; }
 		int GetUniformLocation(const std::string& name);
 
+		void SetUniform(const std::string& name, const float* matrices, uint32_t count);
+		void SetUniform(const std::string& name, const glm::mat4* matrices, uint32_t count);
 		void SetUniform(const std::string& name, const glm::mat4& matrix);
 		void SetUniform(const std::string& name, const glm::mat3& matrix);
 		void SetUniform(const std::string& name, const glm::vec4& vector);

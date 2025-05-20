@@ -1,13 +1,11 @@
 #version 460
 
-// Full-screen triangle positions in clip space
 vec4 clipSpacePositions[3] = vec4[](
     vec4(-1.0, -1.0, 0.0, 1.0), // Bottom-left corner
     vec4( 3.0, -1.0, 0.0, 1.0), // Bottom-right beyond right edge
     vec4(-1.0,  3.0, 0.0, 1.0)  // Top-left beyond top edge
 );
 
-// Corresponding texture coordinates
 vec2 texCoords[3] = vec2[](
     vec2(0.0, 0.0), // Bottom-left corner
     vec2(2.0, 0.0), // Bottom-right beyond right edge

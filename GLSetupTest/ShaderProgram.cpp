@@ -70,6 +70,24 @@ namespace JLEngine
 		}
 	}
 
+	void ShaderProgram::SetUniform(const std::string& name, const float* matrices, uint32_t count)
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetProgUniform(GetProgramId(), location, matrices, count);
+		}
+	}
+
+	void ShaderProgram::SetUniform(const std::string& name, const glm::mat4* matrices, uint32_t count)
+	{
+		GLint location = GetUniformLocation(name);
+		if (location != -1)
+		{
+			m_graphics->SetProgUniform(GetProgramId(), location, matrices, count);
+		}
+	}
+
 	void ShaderProgram::SetUniform(const std::string& name, const glm::mat4& matrix)
 	{
 		GLint location = GetUniformLocation(name);

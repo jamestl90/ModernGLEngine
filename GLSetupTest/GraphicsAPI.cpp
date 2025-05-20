@@ -5,6 +5,7 @@
 #include "RenderTarget.h"
 #include "TextureReader.h"
 
+#include <GLFW/glfw3.h>
 #include <array>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -19,11 +20,11 @@ namespace JLEngine
 		: m_shaderInfo(""), m_versionInfo(""), 
 		m_vendorInfo(""), m_extensionInfo(""), m_rendererInfo(""), m_window(window), m_usingMSAA(false)
 	{
-		float fov = 45.0f;
-		float nearDist = 0.1f;
-		float farDist = 70.0f;
+		//float fov = 45.0f;
+		//float nearDist = 0.1f;
+		//float farDist = 70.0f;
 
-		m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
+		//m_viewFrustum = new ViewFrustum(fov, (float)window->GetWidth() / (float)window->GetHeight(), nearDist, farDist);
 		m_viewPort = { 0, 0, 0, 0 };
 		m_clearColour = glm::vec4(1.0f);
 
@@ -72,7 +73,6 @@ namespace JLEngine
 
 	GraphicsAPI::~GraphicsAPI()
 	{
-		delete m_viewFrustum;
 		glDeleteShader(m_defaultShader);
 
 		glDeleteVertexArrays(1, &m_octahedronGeom[0]);
@@ -188,6 +188,25 @@ namespace JLEngine
 		return m_usingMSAA;
 	}
 
+	GLint GraphicsAPI::GetInteger(GLenum val)
+	{
+		GLint retVal;
+		glGetIntegerv(val, &retVal);
+		return retVal;
+	}
+
+	GLboolean GraphicsAPI::GetBoolean(GLenum val)
+	{
+		GLboolean retVal;
+		glGetBooleanv(val, &retVal);
+		return retVal;
+	}
+
+	bool GraphicsAPI::IsEnabled(GLenum val)
+	{
+		return glIsEnabled(val);
+	}
+
 	bool GraphicsAPI::ShaderCompileErrorCheck(uint32_t id, const std::string& shaderFileName)
 	{
 		GLint compileStatus;
@@ -234,22 +253,26 @@ namespace JLEngine
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<uint32_t>(uint32_t progId, uint32_t location, const uint32_t& value) {
+	void GraphicsAPI::SetProgUniform<uint32_t>(uint32_t progId, uint32_t location, const uint32_t& value) 
+	{
 		glProgramUniform1i(progId, location, value);
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<float>(uint32_t progId, uint32_t location, const float& value) {
+	void GraphicsAPI::SetProgUniform<float>(uint32_t progId, uint32_t location, const float& value) 
+	{
 		glProgramUniform1f(progId, location, value);
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<glm::vec2>(uint32_t progId, uint32_t location, const glm::vec2& value) {
+	void GraphicsAPI::SetProgUniform<glm::vec2>(uint32_t progId, uint32_t location, const glm::vec2& value) 
+	{
 		glProgramUniform2fv(progId, location, 1, glm::value_ptr(value));
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<glm::vec3>(uint32_t progId, uint32_t location, const glm::vec3& value) {
+	void GraphicsAPI::SetProgUniform<glm::vec3>(uint32_t progId, uint32_t location, const glm::vec3& value) 
+	{
 		glProgramUniform3fv(progId, location, 1, glm::value_ptr(value));
 	}
 
@@ -260,23 +283,39 @@ namespace JLEngine
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<glm::vec4>(uint32_t progId, uint32_t location, const glm::vec4& value) {
+	void GraphicsAPI::SetProgUniform<glm::vec4>(uint32_t progId, uint32_t location, const glm::vec4& value) 
+	{
 		glProgramUniform4fv(progId, location, 1, glm::value_ptr(value));
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<glm::mat2>(uint32_t progId, uint32_t location, const glm::mat2& value) {
+	void GraphicsAPI::SetProgUniform<glm::mat2>(uint32_t progId, uint32_t location, const glm::mat2& value) 
+	{
 		glProgramUniformMatrix2fv(progId, location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<glm::mat3>(uint32_t progId, uint32_t location, const glm::mat3& value) {
+	void GraphicsAPI::SetProgUniform<glm::mat3>(uint32_t progId, uint32_t location, const glm::mat3& value) 
+	{
 		glProgramUniformMatrix3fv(progId, location, 1, GL_FALSE, glm::value_ptr(value));
 	}
 
 	template <>
-	void GraphicsAPI::SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4& value) {
+	void GraphicsAPI::SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4& value) 
+	{
 		glProgramUniformMatrix4fv(progId, location, 1, GL_FALSE, glm::value_ptr(value));
+	}
+
+	template<>
+	void GraphicsAPI::SetProgUniform<glm::mat4>(uint32_t progId, uint32_t location, const glm::mat4* values, uint32_t count)
+	{
+		glProgramUniformMatrix4fv(progId, location, count, GL_FALSE, glm::value_ptr(values[0]));
+	}
+
+	template<>
+	void GraphicsAPI::SetProgUniform<float>(uint32_t progId, uint32_t location, const float* values, uint32_t count)
+	{
+		glProgramUniform1fv(progId, location, count, values);
 	}
 
 	std::vector<std::tuple<std::string, int>> GraphicsAPI::GetActiveUniforms(uint32_t programId)
@@ -607,7 +646,7 @@ namespace JLEngine
 		glGetIntegerv(GL_PACK_ALIGNMENT, &originalPackAlignment);
 		// Set alignment to 1 for tightly packed reading (common practice)
 		glPixelStorei(GL_PACK_ALIGNMENT, 1);
-		GL_CHECK_ERROR();
+		
 
 		// --- Reading Logic ---
 		try {
@@ -628,7 +667,7 @@ namespace JLEngine
 					// Attach the correct face and mip level (0) to the FBO
 					// glNamedFramebufferTextureLayer is better, but requires FBO ID from glCreate*
 					glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, texId, 0);
-					GL_CHECK_ERROR();
+					
 
 					// Check FBO completeness *after* attaching
 					GLenum status = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER);
@@ -640,7 +679,7 @@ namespace JLEngine
 
 					// Set the source buffer for reading
 					glReadBuffer(GL_COLOR_ATTACHMENT0);
-					GL_CHECK_ERROR();
+					
 
 					// Read pixels into the appropriate vector
 					if (hdr) {
@@ -653,7 +692,7 @@ namespace JLEngine
 						glReadPixels(0, 0, width, height, format, type, faceData.data());
 						imgData.at(i).data = std::move(faceData);
 					}
-					GL_CHECK_ERROR(); // Check after glReadPixels
+					 // Check after glReadPixels
 				}
 				glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Unbind FBO
 				glDeleteFramebuffers(1, &fbo); // Delete FBO
@@ -706,7 +745,7 @@ namespace JLEngine
 						glBindTexture(GL_TEXTURE_CUBE_MAP, 0); // Unbind
 						imgData.at(i).data = std::move(faceData);
 					}
-					GL_CHECK_ERROR(); // Check after reading face
+					 // Check after reading face
 				}
 			}
 		}
@@ -721,7 +760,7 @@ namespace JLEngine
 		// --- Restore State ---
 		glPixelStorei(GL_PACK_ALIGNMENT, originalPackAlignment); // Restore original alignment
 		glViewport(originalViewport[0], originalViewport[1], originalViewport[2], originalViewport[3]); // Restore viewport
-		GL_CHECK_ERROR();
+		
 
 		std::cout << "Successfully read Cubemap with " << (imgData.at(0).isHDR ? "HDR" : "LDR") << " data (Method: " << (useFramebuffer ? "FBO/ReadPixels" : "Direct/GetTexImage") << ")." << std::endl;
 	}
@@ -764,6 +803,11 @@ namespace JLEngine
 	void GraphicsAPI::TextureParameter(uint32_t texture, uint32_t pname, uint32_t value)
 	{
 		glTextureParameteri(texture, pname, value);
+	}
+
+	void GraphicsAPI::TextureParameter(uint32_t texture, uint32_t pname, float* data)
+	{
+		glTextureParameterfv(texture, pname, data);
 	}
 
 	void GraphicsAPI::DeleteTexture(uint32_t count, uint32_t* textures)
@@ -839,7 +883,7 @@ namespace JLEngine
 		glViewport(params.x, params.y, params.z, params.w);
 	}
 
-	void GraphicsAPI::DisposeFrameBuffer( uint32_t count, uint32_t* fbo )
+	void GraphicsAPI::DeleteFrameBuffer( uint32_t count, uint32_t* fbo )
 	{
 		glDeleteFramebuffers(count, fbo);
 	}
@@ -852,6 +896,21 @@ namespace JLEngine
 	void GraphicsAPI::NamedFramebufferTextureLayer(uint32_t fbo, GLenum attachment, GLuint texture, GLint level, GLint layer)
 	{
 		glNamedFramebufferTextureLayer(fbo, attachment, texture, level, layer);
+	}
+
+	void GraphicsAPI::NamedFramebufferDrawBuffer(GLuint framebuffer, GLenum buf)
+	{
+		glNamedFramebufferDrawBuffer(framebuffer, buf);
+	}
+
+	void GraphicsAPI::NamedFramebufferReadBuffer(GLuint framebuffer, GLenum buf)
+	{
+		glNamedFramebufferReadBuffer(framebuffer, buf);
+	}
+
+	GLenum GraphicsAPI::CheckNamedFramebufferStatus(GLuint framebuffer, GLenum target)
+	{
+		return glCheckNamedFramebufferStatus(framebuffer, target);
 	}
 
 	void GraphicsAPI::GeneratePrimitives()

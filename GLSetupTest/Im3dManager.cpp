@@ -5,6 +5,8 @@
 #include "UniformBuffer.h"
 #include "im3d/im3d_math.h"
 
+#include <GLFW/glfw3.h>
+
 void JLEngine::IM3DManager::Initialise(Window* window, ResourceLoader* resLoader, const std::string& assetFolder)
 {
 	m_resourceLoader = resLoader;

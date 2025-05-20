@@ -409,6 +409,12 @@ namespace JLEngine
         auto& vbo = vao.GetVBO();
         auto& ibo = vao.GetIBO();
 
+        Graphics::API()->BindShader(brdfShader->GetProgramId());
+        Graphics::API()->BindVertexArray(vao.GetGPUID());
+
+        // force shader compilation with a real draw
+        Graphics::API()->DrawElementBuffer(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
+
         GLuint captureFBO;
         Graphics::API()->CreateFrameBuffer(1, &captureFBO);
 
@@ -434,7 +440,7 @@ namespace JLEngine
         Graphics::API()->BindFrameBuffer(0);
         Graphics::DisposeVertexArray(&vao);
 
-        Graphics::API()->DisposeFrameBuffer(1, &captureFBO);
+        Graphics::API()->DeleteFrameBuffer(1, &captureFBO);
 
         return brdfLUTTexture;
     }

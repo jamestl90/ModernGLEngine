@@ -73,6 +73,7 @@ namespace JLEngine
 		void LoadPositionAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& vertexData);
 		void LoadWeightAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<float>& weights);
 		void LoadJointAttribute(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::vector<uint16_t>& joints);
+		LightGPU ParseLight(const tinygltf::Model& model, int lightIndex);
 		void GenerateMissingAttributes(std::vector<float>& positions, 
 			std::vector<float>& normals, 
 			std::vector<float>& texCoords, 

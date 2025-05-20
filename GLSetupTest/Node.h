@@ -213,7 +213,7 @@ namespace JLEngine
         glm::mat4 localMatrix;
         bool useMatrix;
 
-        Light* m_lightData;
+        LightGPU light;
         std::shared_ptr<Mesh> mesh;
         std::shared_ptr<AnimationController> animController;
 

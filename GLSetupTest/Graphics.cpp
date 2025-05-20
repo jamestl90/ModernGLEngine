@@ -116,7 +116,7 @@ namespace JLEngine
 		}
 
 		// debug 
-		glObjectLabel(GL_TEXTURE, image, -1, texture->GetName().c_str());
+		glObjectLabel(GL_TEXTURE, image, (GLsizei)texture->GetName().length(), texture->GetName().c_str());
 	}
 
 	void Graphics::CreateCubemap(Cubemap* cubemap)
@@ -291,7 +291,7 @@ namespace JLEngine
 
 	void Graphics::CreateShader(ShaderProgram* program)
 	{
-		GL_CHECK_ERROR();
+		
 		auto& shaders = program->GetShaders();
 		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
@@ -307,10 +307,10 @@ namespace JLEngine
 
 			Graphics::API()->ShaderCompileErrorCheck(shaderId, s.GetName());
 		}
-		GL_CHECK_ERROR();
+		
 		GLuint programID = glCreateProgram();
 		program->SetProgramId(programID);
-		GL_CHECK_ERROR();
+		
 		for (uint32_t i = 0; i < shaders.size(); i++)
 		{
 			glAttachShader(programID, shaders.at(i).GetShaderId());
@@ -330,7 +330,7 @@ namespace JLEngine
 				glDeleteShader(shaders.at(i).GetShaderId());
 			}
 
-			GL_CHECK_ERROR();
+			
 			auto activeUniforms = Graphics::API()->GetActiveUniforms(program->GetProgramId());
 			program->ClearUniforms();
 			for (auto& uniform : activeUniforms)
@@ -340,6 +340,7 @@ namespace JLEngine
 				program->SetActiveUniform(name, loc);
 			}
 		}
+		Graphics::API()->DebugLabelObject(GL_PROGRAM, programID, program->GetName().c_str());
 	}
 
 	void Graphics::DisposeShader(ShaderProgram* program)
@@ -615,7 +616,7 @@ namespace JLEngine
 
 			return;
 		}
-		GL_CHECK_ERROR();
+		
 		std::cout << "RenderTarget resized to " << newWidth << "x" << newHeight << std::endl;
 	}
 

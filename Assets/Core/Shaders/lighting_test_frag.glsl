@@ -7,29 +7,33 @@ layout(binding = 1) uniform sampler2D gNormals;
 layout(binding = 2) uniform sampler2D gMetallicRoughness;
 layout(binding = 3) uniform sampler2D gEmissive;
 layout(binding = 4) uniform sampler2D gDepth;
-layout(binding = 5) uniform sampler2D gDLShadowMap;
+layout(binding = 5) uniform sampler2DArray gShadowMaps;
 layout(binding = 6) uniform sampler2D gPositions;
-layout(binding = 7) uniform sampler2D gLinearDepth;
-layout(binding = 8) uniform sampler2D pbSky;
-layout(binding = 9) uniform samplerCube skyPrefiltered; // low res cubemap for reflections
-layout(binding = 10) uniform sampler2D brdfLUT;
+layout(binding = 7) uniform sampler2D pbSky;
+layout(binding = 8) uniform samplerCube skyPrefiltered; // low res cubemap for reflections
+layout(binding = 9) uniform sampler2D brdfLUT;
 
-uniform mat4 u_LightSpaceMatrix; // Combined light projection and view matrix
 uniform mat4 u_ViewInverse;
 uniform mat4 u_ProjectionInverse;
 
+#define MAX_CASCADES 4 
+#define MAX_CASCADE_SPLITS (MAX_CASCADES + 1)
+uniform mat4 u_LightSpaceMatrices[MAX_CASCADES];
+uniform float u_CascadeFarSplitsViewSpace[MAX_CASCADE_SPLITS];
+uniform int u_NumCascades;
 uniform int u_PCFKernelSize;
-uniform float u_Bias;
+uniform float u_ShadowBias;
 
 uniform float u_SpecularIndirectFactor;
 uniform float u_DiffuseIndirectFactor;
-uniform float m_DirectFactor;
+uniform float u_DirectFactor;
 
 uniform float u_Near;
 uniform float u_Far;
 
 uniform vec3 u_LightDirection;
 uniform vec3 u_LightColor;      
+uniform int m_NumLights;
 
 uniform vec3 u_DDGI_GridCenter;
 uniform vec3 u_DDGI_ProbeSpacing;
@@ -51,6 +55,28 @@ struct DDGIProbe
 layout(std430, binding = 7) readonly buffer ProbeData 
 {
     DDGIProbe probes[];
+};
+
+struct Light 
+{
+    vec3 position;
+    float intensity;
+
+    vec3 color;
+    float radius;
+
+    vec3 direction;     
+    float spotAngleOuter;  
+
+    int type;           // 0: Point, 1: Directional, 2: Spot
+    float spotAngleInner; 
+    bool enabled;      
+    bool castsShadows;  
+};
+
+layout(std430, binding = 8) buffer LightBlock 
+{
+    Light lights[];
 };
 
 layout(std140, binding = 4) uniform ShaderGlobalData 
@@ -116,40 +142,70 @@ vec3 ReconstructViewPosFromDepth(vec2 texCoords, float depth)
 }
 
 // Shadow calculation function
-float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir) 
+float ShadowCalculation(vec3 worldPos, vec3 normal, vec3 lightDir, float fragViewDepth, out vec3 mapColor) 
 {
-   // Perform perspective divide to get normalized device coordinates
-    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    int cascadeIndex = u_NumCascades - 1;
 
-    // Transform to [0, 1] range for shadow map sampling
-    projCoords = projCoords * 0.5 + 0.5;
-
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0) 
+    // check which cascade this z is in
+    for (int i = 0; i < u_NumCascades; ++i) 
     {
-        return 1.0; // Outside the shadow map, fully lit
+        if (fragViewDepth < u_CascadeFarSplitsViewSpace[i+1]) 
+        {
+            cascadeIndex = i;
+            break; 
+        }
     }
 
-    float closestDepth = texture(gDLShadowMap, projCoords.xy).r;
-    float currentDepth = projCoords.z;
-    float bias = max(u_Bias * tan(acos(dot(normal, lightDir))), 0.0001);
-    float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
+    if (cascadeIndex == 0) mapColor = vec3(1.0, 0.0, 0.0); // Red
+    else if (cascadeIndex == 1) mapColor = vec3(0.0, 1.0, 0.0); // Green
+    else if (cascadeIndex == 2) mapColor = vec3(0.0, 0.0, 1.0); // Blue
+    else if (cascadeIndex == 3) mapColor = vec3(1.0, 1.0, 0.0);
 
-    // Optional: Percentage Closer Filtering (PCF)
-    if (u_PCFKernelSize != 0)
+    vec4 fragPosLightSpace = u_LightSpaceMatrices[cascadeIndex] * vec4(worldPos, 1.0);
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0) // fragment lies beyond this cascade
+    { 
+        return 1.0; // no shadow
+    }
+
+    float currentDepth = projCoords.z; // depth of current fragment from light's view
+    float shadow = 1.0;
+
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float bias = u_ShadowBias * (1.0 - NdotL); 
+    bias = max(bias, 0.0001);
+
+    if (u_PCFKernelSize == 0) 
     {
-        float pcfShadow = 0.0;
-        float texelSize = 1.0 / 4096.0;
+        float closestDepth = texture(gShadowMaps, vec3(projCoords.xy, float(cascadeIndex))).r;
+        if (currentDepth - bias > closestDepth) 
+        {
+            shadow = 0.0; // in shadow
+        } else 
+        {
+            shadow = 1.0; // lit
+        }
+    }
+    else // PCF
+    {
+        float pcfShadowAccum = 0.0;
+        float texelSize = 1.0 / float(textureSize(gShadowMaps, 0).x);
+
         for (int x = -u_PCFKernelSize; x <= u_PCFKernelSize; ++x) 
         {
             for (int y = -u_PCFKernelSize; y <= u_PCFKernelSize; ++y) 
             {
                 vec2 offset = vec2(x, y) * texelSize;
-                float pcfDepth = texture(gDLShadowMap, projCoords.xy + offset).r;
-                pcfShadow += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0;
+                float pcfDepth = texture(gShadowMaps, vec3(projCoords.xy + offset, float(cascadeIndex))).r;
+                pcfShadowAccum += (currentDepth - bias) > pcfDepth ? 0.0 : 1.0; // 0 if shadowed, 1 if lit
             }
         }
-        shadow = pcfShadow / float((2 * u_PCFKernelSize + 1) * (2 * u_PCFKernelSize + 1));
+        float numSamplesPCF = (2.0 * float(u_PCFKernelSize) + 1.0) * (2.0 * float(u_PCFKernelSize) + 1.0);
+        shadow = pcfShadowAccum / numSamplesPCF;
     }
+    
     return shadow;
 }
 
@@ -357,11 +413,13 @@ void main()
     vec3 normalWS   = normalize((u_ViewInverse * vec4(gData.normal, 0.0)).xyz);
 
     // --- Shadows ---
-    vec4 fragPosLightSpace = u_LightSpaceMatrix * vec4(gData.worldPos, 1.0);
+    vec3 shadowMapDebugCol = vec3(0.0);
     float shadow = 1.0;
     if (gData.receiveShadows > 0.0) 
     {
-        shadow = ShadowCalculation(fragPosLightSpace, normalWS, lightDirWS);
+        vec4 viewPos = viewMatrix * vec4(gData.worldPos, 1.0);
+        float viewDepth = abs(viewPos.z);
+        shadow = ShadowCalculation(gData.worldPos, normalWS, -lightDirWS, viewDepth, shadowMapDebugCol);
     }
 
     // --- Direct Lighting ---
@@ -375,26 +433,21 @@ void main()
     float NDF           = ggxNDF(NdotH_WS, gData.roughness);
     float G             = geometrySmith(NdotV_WS, NdotL_WS, gData.roughness);
     vec3 specularDirect = F * NDF * G / max(4.0 * NdotV_WS * NdotL_WS, 0.001);
-    vec3 kD             = (vec3(1.0) - F) * (1.0 - gData.metallic); // Diffuse factor
+    vec3 kD             = (vec3(1.0) - F) * (1.0 - gData.metallic);
     vec3 diffuseDirect  = kD * gData.albedo / 3.14159;
     vec3 directLighting = (diffuseDirect + specularDirect) * u_LightColor * NdotL_WS * shadow;
 
     // Specular IBL 
     vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
-    vec3 prefilteredColor = textureLod(skyPrefiltered, reflectionWS, gData.roughness * 4.0).rgb; // 5 mip levels
+    vec3 prefilteredColor = textureLod(skyPrefiltered, reflectionWS, gData.roughness * 4.0).rgb ; // 5 mip levels
     vec2 brdfVal          = texture(brdfLUT, vec2(NdotV_WS, gData.roughness)).rg;
     SpecularIBL           = prefilteredColor * (gData.F0 * brdfVal.x + brdfVal.y) * u_SpecularIndirectFactor;
     
-    // Diffuse GI (Use DDGI result exclusively)
-    vec3 ddgiIrradiance   = vec3(0.03); // SampleDDGI(gData.worldPos, normalWS);
+    // Diffuse GI 
+    vec3 ddgiIrradiance   = vec3(0.15); // SampleDDGI(gData.worldPos, normalWS);
     vec3 diffuseGI        = ddgiIrradiance * kD * gData.albedo / 3.14159;
-
-    // Apply scaling factors (optional, can be done in combine pass too)
     diffuseGI            *= u_DiffuseIndirectFactor;
 
-    // --- Final Output Assignment (Option 1 Structure) ---
-    // AO affects all lighting components
-    DirectLight     = (directLighting + gData.emissive) * gData.ao * m_DirectFactor;
-
+    DirectLight     = (directLighting + gData.emissive) * gData.ao * u_DirectFactor;
     IndirectLight   = diffuseGI * gData.ao;
 }

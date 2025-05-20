@@ -80,7 +80,7 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	}
 	m_debugRaysSSBO.GetGPUBuffer().SetUsageFlags(GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
 	Graphics::CreateGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), m_debugRaysSSBO.GetDataImmutable());
-	GL_CHECK_ERROR();
+	
 }
 
 void JLEngine::DDGI::Update(float dt, 

@@ -10,6 +10,8 @@
 
 using std::map;
 
+struct GLFWwindow;
+
 namespace JLEngine
 {
     class Input

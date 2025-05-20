@@ -53,16 +53,16 @@ namespace JLEngine
 		ComputeLUT();
 	}
 
-	void PhysicallyBasedSky::PrecomputeLUTs()
-	{
-		// not implemented yet
-		// performance optimization 
-	}
-
 	void PhysicallyBasedSky::RenderSky(const glm::mat4& viewMatrix, const glm::mat4& projMatrix, const glm::vec3& eyePos)
 	{
 		if (!m_initialised) return;
 
+		bool usingDepth = Graphics::API()->IsEnabled(GL_DEPTH_TEST);
+		int prevDepthFunc = Graphics::API()->GetInteger(GL_DEPTH_FUNC);
+		bool prevDepthMask = Graphics::API()->GetBoolean(GL_DEPTH_WRITEMASK);
+
+		Graphics::API()->Enable(GL_DEPTH_TEST);
+		Graphics::API()->SetDepthFunc(GL_LEQUAL);
 		Graphics::API()->SetDepthMask(GL_FALSE);
 
 		Graphics::API()->BindShader(m_renderSky->GetProgramId());
@@ -81,14 +81,16 @@ namespace JLEngine
 		glm::vec3 pbSkyCamPos = eyePosKM - planetCenterKM;
 		m_renderSky->SetUniform("cameraPos_world_km", pbSkyCamPos);
 
-		GLuint textures[] = {m_transmittanceLUT};
-		Graphics::API()->BindTextures(0, 1, textures);
+		Graphics::API()->BindTextureUnit(0, m_transmittanceLUT);
 
 		Graphics::API()->BindVertexArray(m_triangleVAO.GetGPUID());
 		Graphics::API()->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
 		Graphics::API()->BindVertexArray(0);
 
-		Graphics::API()->SetDepthMask(GL_TRUE);
+		if (!usingDepth) Graphics::API()->Disable(GL_DEPTH_TEST);
+		Graphics::API()->SetDepthFunc(prevDepthFunc);
+		Graphics::API()->SetDepthMask(prevDepthMask);
+
 		Graphics::API()->BindBufferBase(GL_UNIFORM_BUFFER, 0, 0);
 		Graphics::API()->BindShader(0); // Unbind program
 	}

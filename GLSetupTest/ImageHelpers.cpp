@@ -55,7 +55,7 @@ namespace JLEngine
         Graphics::API()->SyncCompute();
     }
 
-    void ImageHelpers::CopyToScreen(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog)
+    void ImageHelpers::CopyToScreen(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog, bool enableSRGB)
     {
         if (m_vaoID == 0)
             m_vaoID = Graphics::API()->CreateVertexArray();
@@ -63,6 +63,10 @@ namespace JLEngine
         Graphics::API()->BindFrameBuffer(0);
         Graphics::API()->SetViewport(0, 0, defaultWidth, defaultHeight);
         Graphics::API()->Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        if (enableSRGB)
+            Graphics::API()->Enable(GL_FRAMEBUFFER_SRGB);
+
         Graphics::API()->BindShader(prog->GetProgramId());
         Graphics::API()->BindTextureUnit(0, target->GetTexId(0));
         prog->SetUniformi("u_Texture", 0);
@@ -70,5 +74,8 @@ namespace JLEngine
         Graphics::API()->BindVertexArray(m_vaoID);
         Graphics::API()->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
         Graphics::API()->BindVertexArray(0);
+
+        if (enableSRGB)
+            Graphics::API()->Disable(GL_FRAMEBUFFER_SRGB);
     }
 }

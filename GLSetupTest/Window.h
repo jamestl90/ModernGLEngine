@@ -1,9 +1,12 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
-#include <glad/glad.h> 
-#include <GLFW/glfw3.h>
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+
 #include <functional>
+
+struct GLFWwindow;
 
 namespace JLEngine
 {
@@ -26,11 +29,18 @@ namespace JLEngine
 
         void SetResizeCallback(std::function<void(int, int)> callback);
 
+        bool SRGBCapable() const;
         int GetVersionMajor() { return m_major; }
         int GetVersionMinor() { return m_minor; }
         int GetRevision() { return m_revision; }
 
     private:
+
+        static void PrintStackTrace();
+        static void GLDebugCallback(unsigned int source, unsigned int type, unsigned int id,
+            unsigned int severity, int length,
+            const char* message, const void* userParam);
+
         GLFWwindow* m_window;
         int m_width, m_height;
 
@@ -40,6 +50,7 @@ namespace JLEngine
         int m_major;
         int m_minor;
         int m_revision;
+        int m_defaultFramebufferEncoding;
     };
 }
 #endif

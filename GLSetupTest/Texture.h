@@ -118,7 +118,7 @@ namespace JLEngine
         static TexParams RGBTexParams(bool hdr = false)
         {
             TexParams texParams;
-            texParams.internalFormat = hdr ? GL_RGB16F : GL_RGB8;;
+            texParams.internalFormat = hdr ? GL_RGB16F : GL_RGB8;
             texParams.format = GL_RGB;
             return texParams;
         }

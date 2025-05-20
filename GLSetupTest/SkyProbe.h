@@ -59,7 +59,7 @@ namespace JLEngine
 
 		~SkyProbe()
 		{
-			if (captureFBO > 0)			Graphics::API()->DisposeFrameBuffer(1, &captureFBO);
+			if (captureFBO > 0)			Graphics::API()->DeleteFrameBuffer(1, &captureFBO);
 			if (environmentMapTex > 0)	Graphics::API()->DeleteTexture(1, &environmentMapTex);
 			if (prefilteredTex > 0)		Graphics::API()->DeleteTexture(1, &prefilteredTex);
 		}
