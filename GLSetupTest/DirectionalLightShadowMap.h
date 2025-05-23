@@ -24,6 +24,8 @@ namespace JLEngine
 								float maxShadowDistance = 50.0f);
 		~DirectionalLightShadowMap();
 
+		void DrawDebugUI();
+
 		void Initialise(int shadowMapResolutionPerCascade = 4096);
 		void UpdateCascades(const glm::mat4& cameraViewMatrix,
 			const glm::mat4& cameraProjectionMatrix,

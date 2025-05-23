@@ -51,6 +51,8 @@ namespace JLEngine
 	
 		void ClearCaches();
 
+		float EmissionStrengthMultiplier = 0.25f;
+
 	protected:
 		std::shared_ptr<Node> ParseNode(const tinygltf::Model& model, const tinygltf::Node& gltfNode, int nodeIndex);
 		std::shared_ptr<Mesh> ParseMesh(const tinygltf::Model& model, int meshIndex);

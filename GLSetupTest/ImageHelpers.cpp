@@ -27,15 +27,17 @@ namespace JLEngine
         auto width = output->GetWidth();
         auto height = output->GetHeight();
 
-        Graphics::API()->BindFrameBuffer(output->GetGPUID());       
+        Graphics::API()->BindFrameBuffer(output->GetGPUID());  
+        //auto res = Graphics::API()->CheckNamedFramebufferStatus(output->GetGPUID(), GL_FRAMEBUFFER);
+        //if (res != GL_FRAMEBUFFER_COMPLETE)
+        //{
+        //    std::cout << "ERROR" << std::endl;
+        //}
         Graphics::API()->SetViewport(0, 0, width, height);
         Graphics::API()->BindShader(downsample->GetProgramId());
         Graphics::API()->BindTextureUnit(0, input->GetTexId(0));
-        downsample->SetUniformi("u_Texture", 0);
 
-        Graphics::API()->BindVertexArray(m_vaoID);
-        Graphics::API()->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
-        Graphics::API()->BindVertexArray(0);
+        RenderFullscreenTriangle();
     }
 
     void ImageHelpers::BlurInPlaceCompute(RenderTarget* target, ShaderProgram* blurShader)
@@ -71,11 +73,16 @@ namespace JLEngine
         Graphics::API()->BindTextureUnit(0, target->GetTexId(0));
         prog->SetUniformi("u_Texture", 0);
 
-        Graphics::API()->BindVertexArray(m_vaoID);
-        Graphics::API()->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
-        Graphics::API()->BindVertexArray(0);
+        RenderFullscreenTriangle();
 
         if (enableSRGB)
             Graphics::API()->Disable(GL_FRAMEBUFFER_SRGB);
+    }
+
+    void ImageHelpers::RenderFullscreenTriangle()
+    {
+        Graphics::API()->BindVertexArray(m_vaoID);
+        Graphics::API()->DrawArrayBuffer(GL_TRIANGLES, 0, 3);
+        Graphics::API()->BindVertexArray(0);
     }
 }

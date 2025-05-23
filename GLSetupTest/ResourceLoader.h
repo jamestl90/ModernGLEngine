@@ -70,6 +70,7 @@ namespace JLEngine
 		std::shared_ptr<Texture> CreateTexture(const std::string& name, const std::string& filePath);
 		std::shared_ptr<Texture> CreateTexture(const std::string& name, ImageData& imageData, const TexParams& texParams = TexParams());
 		std::shared_ptr<Texture> CreateTextureEmpty(const std::string& name);
+		Texture* DefaultBlackTexture();
 		void DeleteTexture(const std::string& name);
 
 		std::shared_ptr<Cubemap> CreateCubemapFromFile(const std::string& name, std::array<std::string, 6> fileNames, std::string folderPath);
@@ -99,6 +100,7 @@ namespace JLEngine
 		std::shared_ptr<RenderTarget> CreateRenderTarget(const std::string& name,
 			int width, int height,RTParams& texAttribs,
 			JLEngine::DepthType depthType, uint32_t numSources);
+		void DeleteRenderTarget(const std::string& name);
 
 		// Mesh Loading ///////////////////////////////////
 		std::shared_ptr<Mesh> CreateMesh(const std::string& name);
@@ -182,6 +184,7 @@ namespace JLEngine
 
 		/*  Material Manager Variables */
 		Material* m_defaultMat;
+		Texture* m_defaultBlack1x1;
 	};
 }
 

@@ -115,7 +115,7 @@ vec3 getEmissive(MaterialGPU material)
         vec3 emissiveTexColor = texture(sampler2D(material.emissiveHandle), v_TexCoord).rgb;
         return material.emissiveFactor.rgb * emissiveTexColor;
     }
-    return material.emissiveFactor.rgb;
+    return material.emissiveFactor.rgb * material.emissiveFactor.a;
 }
 
 void main() 

@@ -46,6 +46,9 @@
     <Filter Include="Source Files\Im3d">
       <UniqueIdentifier>{5b339ee5-43a2-4d7a-b202-145e61c7aed5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Graphics\Rendering\PostProcessing">
+      <UniqueIdentifier>{cd573710-d61d-496e-b7f2-dd88a8c82b88}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -205,6 +208,12 @@
       <Filter>Source Files\Im3d</Filter>
     </ClCompile>
     <ClCompile Include="PhysicallyBasedSky.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PostProcessing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BloomEffect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -424,6 +433,12 @@
     </ClInclude>
     <ClInclude Include="SkyProbe.h">
       <Filter>Header Files\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="PostProcessing.h">
+      <Filter>Header Files\Graphics\Rendering\PostProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="BloomEffect.h">
+      <Filter>Header Files\Graphics\Rendering\PostProcessing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

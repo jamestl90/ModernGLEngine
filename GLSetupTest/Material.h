@@ -63,6 +63,7 @@ namespace JLEngine
         std::shared_ptr<Texture> emissiveTexture;         // Emissive map
 
         glm::vec3 emissiveFactor;            // Emissive color
+        float emissiveStrength;              // Emission strength 
 
         // Alpha properties
         AlphaMode alphaMode;               // Alpha mode: "OPAQUE", "MASK", "BLEND"

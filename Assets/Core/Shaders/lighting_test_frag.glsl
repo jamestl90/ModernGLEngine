@@ -94,9 +94,7 @@ layout(std140, binding = 4) uniform ShaderGlobalData
     int frameCount;
 };
 
-layout(location = 0) out vec3 DirectLight;
-layout(location = 1) out vec3 SpecularIBL;
-layout(location = 2) out vec3 IndirectLight;
+layout(location = 0) out vec3 LightOutput;
 
 struct GBufferData 
 {
@@ -431,9 +429,7 @@ void main()
     if (gData.depth >= 0.9999) 
     {
         vec3 viewDirWS_Sky = normalize(gData.worldPosFromDepth - camPos.xyz);
-        DirectLight = texture(pbSky, v_TexCoords).rgb; 
-        SpecularIBL = vec3(0.0);
-        IndirectLight = vec3(0.0);
+        LightOutput = texture(pbSky, v_TexCoords).rgb; 
         return;
     }
 
@@ -472,7 +468,8 @@ void main()
         accumulatedDirectLighting += sunDirectContribution;
     }
 
-    for (int i = 0; i < m_NumLights; ++i) {
+    for (int i = 0; i < m_NumLights; ++i) 
+    {
         Light currentLight = lights[i]; 
         if (!currentLight.enabled) continue;
 
@@ -482,7 +479,8 @@ void main()
         float currentNdotL_WS = 0.0;
         float currentShadow = 1.0; 
 
-        if (currentLight.type == POINT_LIGHT) {
+        if (currentLight.type == POINT_LIGHT) 
+        {
             vec3 toLightVector = currentLight.position - gData.worldPos;
             float distanceToLight = length(toLightVector);
             if (currentLight.radius > 0.0 && distanceToLight > currentLight.radius) continue;
@@ -490,7 +488,9 @@ void main()
             currentNdotL_WS = max(dot(normalWS, currentLightDirWS), 0.0);
             if (currentNdotL_WS <= 0.0) continue;
             currentAttenuation = calculateAttenuation(distanceToLight, currentLight.radius);
-        } else if (currentLight.type == SPOT_LIGHT) {
+        } 
+        else if (currentLight.type == SPOT_LIGHT) 
+        {
             vec3 toLightVector = currentLight.position - gData.worldPos;
             float distanceToLight = length(toLightVector);
             if (currentLight.radius > 0.0 && distanceToLight > currentLight.radius) continue;
@@ -501,7 +501,9 @@ void main()
             float spotFactor = calculateSpotFactor(-currentLightDirWS, currentLight.direction, currentLight.spotAngleOuter, currentLight.spotAngleInner);
             if (spotFactor <= 0.0) continue;
             currentAttenuation *= spotFactor;
-        } else { 
+        } 
+        else 
+        { 
             continue; 
         }
 
@@ -524,10 +526,10 @@ void main()
     
     float NdotV_WS_forIBL = max(dot(normalWS, viewDirWS), 0.001); 
     vec3 reflectionWS     = reflect(-viewDirWS, normalWS);
-    int maxMipLevel = textureQueryLevels(skyPrefiltered) - 1; 
+    int maxMipLevel       = textureQueryLevels(skyPrefiltered) - 1; 
     vec3 prefilteredColor = textureLod(skyPrefiltered, reflectionWS, gData.roughness * float(maxMipLevel)).rgb;
     vec2 brdfVal          = texture(brdfLUT, vec2(NdotV_WS_forIBL, gData.roughness)).rg; 
-    SpecularIBL           = prefilteredColor * (gData.F0 * brdfVal.x + brdfVal.y) * u_SpecularIndirectFactor * gData.ao; 
+    vec3 SpecularIBL      = prefilteredColor * (gData.F0 * brdfVal.x + brdfVal.y) * u_SpecularIndirectFactor * gData.ao; 
     
     vec3 F_for_GI         = fresnelSchlickRoughness(NdotV_WS_forIBL, gData.F0, gData.roughness); 
     vec3 kD_for_GI        = (vec3(1.0) - F_for_GI) * (1.0 - gData.metallic);
@@ -535,6 +537,8 @@ void main()
     vec3 diffuseGI        = ddgiIrradiance * kD_for_GI * gData.albedo / PI;
     diffuseGI            *= u_DiffuseIndirectFactor;
 
-    DirectLight     = (accumulatedDirectLighting + gData.emissive) * gData.ao * u_DirectFactor;
-    IndirectLight   = diffuseGI * gData.ao;
+    vec3 DirectLight     = (accumulatedDirectLighting + gData.emissive) * gData.ao * u_DirectFactor;
+    vec3 IndirectLight   = diffuseGI * gData.ao;
+
+    LightOutput = max(DirectLight + SpecularIBL + IndirectLight, vec3(0.0));
 }

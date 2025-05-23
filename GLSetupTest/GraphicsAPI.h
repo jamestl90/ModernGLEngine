@@ -152,6 +152,8 @@ namespace JLEngine
 		void SetDepthMask(uint32_t val);
 
 		void SetBlendFunc(uint32_t first, uint32_t second);
+		void SetBlendEquation(GLenum mode);
+		void SetBlendEquationi(GLuint buf, GLenum mode);
 		void SetCullFace(uint32_t face);
 
 		// Texture 

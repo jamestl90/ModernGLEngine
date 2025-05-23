@@ -16,7 +16,7 @@ namespace JLEngine
 	RenderTarget::~RenderTarget()
 	{
 		if (JLEngine::Graphics::Alive())
-			Graphics::DisposeRenderTarget(this);
+			Graphics::DeleteRenderTarget(this);
 	}
 
 	void RenderTarget::BindDepthTexture(int texUnit) const

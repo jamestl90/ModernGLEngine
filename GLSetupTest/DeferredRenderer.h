@@ -59,6 +59,7 @@ namespace JLEngine
     class DDGI;
     class PhysicallyBasedSky;
     class SkyProbe;
+    class PostProcessing;
 
     class DeferredRenderer 
     {
@@ -166,7 +167,7 @@ namespace JLEngine
         ShaderProgram* m_blendShader;
         ShaderProgram* m_transmissionShader;
         ShaderProgram* m_skinningGBufferShader;
-        ShaderProgram* m_combineShader;
+        //ShaderProgram* m_combineShader;
         ShaderProgram* m_debugSkyboxShader;
 
         // compute shaders
@@ -195,11 +196,14 @@ namespace JLEngine
 
         SceneManager m_sceneManager;
 
+        // --- POST PROCESSING --- ///
+        PostProcessing* m_postProcessing;
+
         // --- PBR SKY --- // 
         PhysicallyBasedSky* m_pbSky;
         SkyProbe* m_skyProbe;
         AtmosphereParams m_atmosphereParams = {};
-        float m_uiSunAzimuthDegrees = 360.0f; // Or initialize based on initial sunDir
+        float m_uiSunAzimuthDegrees = 360.0f; 
         float m_uiSunElevationDegrees = 15.0f;
         GLuint m_brdfLUT; // brdf look up texture
 

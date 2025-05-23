@@ -21,6 +21,8 @@ namespace JLEngine
 		
 		static void CopyToScreen(RenderTarget* target, int defaultWidth, int defaultHeight, ShaderProgram* prog, bool enableSRGB = false);
 
+		static void RenderFullscreenTriangle();
+
 	protected:
 		static unsigned int m_vaoID;
 	};

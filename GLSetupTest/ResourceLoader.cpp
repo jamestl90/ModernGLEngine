@@ -103,11 +103,18 @@ namespace JLEngine
         return m_textureFactory->CreateFromData(name, imageData, texParams);
     }
 
-
-
     std::shared_ptr<Texture> ResourceLoader::CreateTextureEmpty(const std::string& name)
     {
         return m_textureFactory->CreateEmpty(name);
+    }
+
+    Texture* ResourceLoader::DefaultBlackTexture()
+    {
+        if (m_defaultBlack1x1 == nullptr)
+        {
+            m_defaultBlack1x1 = m_textureFactory->Create(1, 1, GL_RGBA, GL_TEXTURE_2D, GL_UNSIGNED_BYTE);
+        }
+        return m_defaultBlack1x1;
     }
 
     void ResourceLoader::DeleteTexture(const std::string& name) { m_textureFactory->Delete(name); }
@@ -129,7 +136,7 @@ namespace JLEngine
 
     void ResourceLoader::DeleteShader(const std::string& name)
     {
-        return m_shaderManager->Remove(name);
+        m_shaderManager->Remove(name);
     }
 
     void ResourceLoader::PollForChanges(float deltaTime)
@@ -327,6 +334,11 @@ namespace JLEngine
         std::vector<RTParams> paramsVector;
         paramsVector.push_back(texAttribs);
         return m_renderTargetfactory->CreateRenderTarget(name, width, height, paramsVector, depthType, numSources);
+    }
+
+    void ResourceLoader::DeleteRenderTarget(const std::string& name)
+    {
+        m_renderTargetManager->Remove(name);
     }
 
     std::shared_ptr<Mesh> ResourceLoader::CreateMesh(const std::string& name)

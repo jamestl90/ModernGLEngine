@@ -66,7 +66,7 @@ namespace JLEngine
 		static void DisposeShader(ShaderProgram* program);
 
 		static void CreateRenderTarget(RenderTarget* renderTarget);
-		static void DisposeRenderTarget(RenderTarget* target);
+		static void DeleteRenderTarget(RenderTarget* target);
 		static void RecreateRenderTarget(RenderTarget* renderTarget, int w, int h);
 
 		static void CreateIndirectDrawBuffer(IndirectDrawBuffer* idbo);

@@ -31,6 +31,7 @@ namespace JLEngine
 		// init ubo size in bytes 
 		m_paramsUBO.GetGPUBuffer().SetSizeInBytes(sizeof(AtmosphereParams));
 		Graphics::CreateGPUBuffer(m_paramsUBO.GetGPUBuffer());
+		Graphics::API()->DebugLabelObject(GL_BUFFER, m_paramsUBO.GetGPUBuffer().GetGPUID(), "AtmosphereParams");
 
 		// upload data
 		Graphics::UploadToGPUBuffer(m_paramsUBO.GetGPUBuffer(), m_params, 0);

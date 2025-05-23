@@ -118,6 +118,7 @@ namespace JLEngine
 			m_debugVoxelSSBO.GetGPUBuffer().SetUsageFlags(GL_MAP_READ_BIT); 
 
 			Graphics::CreateGPUBuffer(m_debugVoxelSSBO.GetGPUBuffer());
+			Graphics::API()->DebugLabelObject(GL_BUFFER, m_debugVoxelSSBO.GetGPUBuffer().GetGPUID(), "DebugVoxelSSBO");
 		}
 
 		void Render()

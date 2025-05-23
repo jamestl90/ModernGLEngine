@@ -102,7 +102,7 @@ namespace JLEngine
             texture->InitFromData(data);
             texture->SetParams(params);
 
-            Graphics::CreateTexture(texture);
+            Graphics::CreateTexture(texture, false);
             return texture;
         }
 

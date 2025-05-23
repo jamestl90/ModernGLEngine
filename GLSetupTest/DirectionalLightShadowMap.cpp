@@ -69,6 +69,15 @@ namespace JLEngine
         if (m_cascadeShadowMapArrayTexture != 0) Graphics::API()->DeleteTexture(1, &m_cascadeShadowMapArrayTexture);
     }
 
+    void DirectionalLightShadowMap::DrawDebugUI()
+    {
+        ImGui::Begin("Shadow Controls");
+        ImGui::SliderFloat("Bias", &GetBias(), 0.00002f, 0.002f, "%.6f");
+        ImGui::SliderFloat("Distance", &GetDistance(), 10.0, 200.0f, "%.6f");
+        ImGui::SliderInt("PCF Kernel Size", &GetPCFKernelSize(), 0, 5);
+        ImGui::End();
+    }
+
     void DirectionalLightShadowMap::SetModelMatrix(const glm::mat4& model)
     {
         m_shadowMapShader->SetUniform("u_Model", model);

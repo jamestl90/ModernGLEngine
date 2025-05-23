@@ -404,7 +404,10 @@ namespace JLEngine
 		AttachDepth(target);
 
 		auto& drawBuffers = target->GetDrawBuffers();
-		glNamedFramebufferDrawBuffers(fbo, static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+		if (drawBuffers.size() > 1)
+		{
+			glNamedFramebufferDrawBuffers(fbo, static_cast<GLsizei>(drawBuffers.size()), drawBuffers.data());
+		}
 
 		if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
@@ -543,7 +546,7 @@ namespace JLEngine
 		}
 	}
 
-	void Graphics::DisposeRenderTarget(RenderTarget* target)
+	void Graphics::DeleteRenderTarget(RenderTarget* target)
 	{
 		GLuint fboId = target->GetGPUID();
 
@@ -631,8 +634,7 @@ namespace JLEngine
 		if (immutable && buffer.GetSizeInBytes() == 0) return;
 
 		GLuint id;
-		API()->CreateNamedBuffer(id);
-
+		API()->CreateNamedBuffer(id);		
 		if (immutable)
 			API()->NamedBufferStorage(id, buffer.GetSizeInBytes(), buffer.GetUsageFlags(), nullptr);
 		else

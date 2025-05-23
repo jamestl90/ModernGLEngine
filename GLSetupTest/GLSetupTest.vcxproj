@@ -132,6 +132,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BloomEffect.cpp">
+      <SubType>
+      </SubType>
+    </ClCompile>
     <ClCompile Include="Cubemap.cpp">
       <SubType>
       </SubType>
@@ -148,6 +152,7 @@
       </SubType>
     </ClCompile>
     <ClCompile Include="PhysicallyBasedSky.cpp" />
+    <ClCompile Include="PostProcessing.cpp" />
     <ClCompile Include="ResourceLoader.cpp">
       <SubType>
       </SubType>
@@ -243,6 +248,11 @@
     <ClInclude Include="AnimData.h" />
     <ClInclude Include="AnimHelpers.h" />
     <ClInclude Include="AtmosphereParameters.h" />
+    <ClInclude Include="BloomEffect.h">
+      <SubType>
+      </SubType>
+    </ClInclude>
+    <ClInclude Include="PostProcessing.h" />
     <ClInclude Include="SkyProbe.h" />
     <ClInclude Include="DDGI.h" />
     <ClInclude Include="Im3dManager.h" />

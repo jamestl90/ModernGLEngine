@@ -731,7 +731,7 @@ namespace JLEngine
 			if (emissionStr.Has("emissiveStrength"))
 			{
 				auto emissiveStrength = static_cast<float>(emissionStr.Get("emissiveStrength").GetNumberAsDouble());
-				material->emissiveFactor *= emissiveStrength;
+				material->emissiveStrength = emissiveStrength * EmissionStrengthMultiplier;
 			}
 		}
 
@@ -1353,7 +1353,7 @@ namespace JLEngine
 		gpuLight.intensity = static_cast<float>(lightValue.intensity) * 0.25f;
 		gpuLight.spotAngleInner = static_cast<float>(glm::cos(lightValue.spot.innerConeAngle));
 		gpuLight.spotAngleOuter = static_cast<float>(glm::cos(lightValue.spot.outerConeAngle));
-		gpuLight.radius = glm::max(static_cast<float>(lightValue.range), 5.0f);
+		gpuLight.radius = static_cast<float>(lightValue.range);
 		auto& col = lightValue.color;
 		gpuLight.color = glm::vec3(col[0], col[1], col[2]);
 		gpuLight.direction = glm::vec3(1.0f, 0.0f, 0.0f);

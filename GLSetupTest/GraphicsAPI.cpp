@@ -990,6 +990,16 @@ namespace JLEngine
 		glBlendFunc(first, second);
 	}
 
+	void GraphicsAPI::SetBlendEquation(GLenum mode)
+	{
+		glBlendEquation(mode);
+	}
+
+	void GraphicsAPI::SetBlendEquationi(GLuint buf, GLenum mode)
+	{
+		glBlendEquationi(buf, mode);
+	}
+
 	void GraphicsAPI::Enable( uint32_t val )
 	{
 		glEnable(val);

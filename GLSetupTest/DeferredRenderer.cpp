@@ -4,6 +4,7 @@
 #include "DirectionalLightShadowMap.h"
 #include "HDRISky.h"
 #include "UniformBuffer.h"
+#include "PostProcessing.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -50,7 +51,7 @@ namespace JLEngine
         m_debugSkyboxShader(nullptr),
         m_passthroughShader(nullptr),
         m_skinningGBufferShader(nullptr),
-        m_combineShader(nullptr),
+        //m_combineShader(nullptr),
         m_transmissionShader(nullptr),
         m_simpleBlurCompute(nullptr),
         m_jointTransformCompute(nullptr),
@@ -97,6 +98,7 @@ namespace JLEngine
         delete m_skyProbe;  
         delete m_vgm;       
         delete m_ddgi;
+        delete m_postProcessing;
     }
     
     // early renderer init, before any vertex arrays have been setup 
@@ -108,6 +110,7 @@ namespace JLEngine
         auto sizeOfCamInfo = sizeof(ShaderGlobalData);
         m_gShaderData.GetGPUBuffer().SetSizeInBytes(sizeOfCamInfo);
         Graphics::CreateGPUBuffer(m_gShaderData.GetGPUBuffer());
+        Graphics::API()->DebugLabelObject(GL_BUFFER, m_gShaderData.GetGPUBuffer().GetGPUID(), "ShaderGlobalData");
 
         auto shaderAssetPath = m_assetFolder + "Core/Shaders/";
         auto textureAssetPath = m_assetFolder + "HDRI/";
@@ -140,7 +143,7 @@ namespace JLEngine
         m_passthroughShader = m_resourceLoader->CreateShaderFromFile("PassthroughShader", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_downsampleShader = m_resourceLoader->CreateShaderFromFile("Downsampling", "screenspacetriangle.glsl", "pos_uv_frag.glsl", shaderAssetPath).get();
         m_blendShader = m_resourceLoader->CreateShaderFromFile("BlendShader", "alpha_blend_vert.glsl", "alpha_blend_frag.glsl", shaderAssetPath).get();
-        m_combineShader = m_resourceLoader->CreateShaderFromFile("CombineStages", "screenspacetriangle.glsl", "combine_frag.glsl", shaderAssetPath).get();
+        //m_combineShader = m_resourceLoader->CreateShaderFromFile("CombineStages", "screenspacetriangle.glsl", "combine_frag.glsl", shaderAssetPath).get();
         m_debugSkyboxShader = m_resourceLoader->CreateShaderFromFile("SkyboxShader", "enviro_cubemap_vert.glsl", "enviro_cubemap_frag.glsl", shaderAssetPath).get();
 
         // --- COMPUTE --- 
@@ -175,6 +178,10 @@ namespace JLEngine
         if (m_ddgi == nullptr)
             m_ddgi = new DDGI(m_resourceLoader, m_assetFolder);
         m_ddgi->GenerateProbes(m_sceneManager.GetSubmeshes());
+
+        // --- POST PROCESSING ---
+        m_postProcessing = new PostProcessing(m_resourceLoader, m_assetFolder);
+        m_postProcessing->Initialise(m_width, m_height);
 
         // possible not needed now
         m_triangleVAO.SetGPUID(Graphics::API()->CreateVertexArray());
@@ -455,16 +462,24 @@ namespace JLEngine
 
             // do lighting pass
             LightPass(frd);
-            CombinePass(frd);            
+            //CombinePass(frd);            
 
-            if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
-            {
-                ImageHelpers::CopyToScreen(m_finalOutputTarget, m_width, m_height, m_passthroughShader, false);
-            }
-            else
-            {
-                TransparencyPass(frd);
-            }
+            m_postProcessing->Render(m_lightOutputTarget, 
+                m_finalOutputTarget, 
+                m_width, m_height, 
+                frd.eyePos, 
+                frd.viewMatrix,
+                frd.projMatrix);
+            ImageHelpers::CopyToScreen(m_finalOutputTarget, m_width, m_height, m_passthroughShader, false);
+
+            //if (m_ssboTransparentPerDraw.GetDataImmutable().empty())
+            //{
+            //    
+            //}
+            //else
+            //{
+            //    TransparencyPass(frd);
+            //}
 
             //auto rtPingPong = m_rtPool.RequestRenderTarget(sizeX, sizeY, GL_RGBA8);
             //ImageHelpers::Downsample(m_lightOutputTarget, rtPingPong, m_passthroughShader);
@@ -485,7 +500,6 @@ namespace JLEngine
             m_frameCount = 0;
 
         Graphics::API()->BindFrameBuffer(0);
-        
     }
 
     void DeferredRenderer::DrawSky(FrameRenderData& frd)
@@ -565,27 +579,27 @@ namespace JLEngine
         RenderScreenSpaceTriangle();
     }
 
-    void DeferredRenderer::CombinePass(FrameRenderData& frd)
-    {
-        Graphics::API()->BindFrameBuffer(m_finalOutputTarget->GetGPUID());
-        Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
-        Graphics::API()->BindShader(m_combineShader->GetProgramId());
-        Graphics::API()->SetViewport(0, 0, m_width, m_height);
-        m_combineShader->SetUniformi("u_NeedsGammaCorrection",
-            Graphics::API()->GetWindow()->SRGBCapable() ? 0 : 1);
-        m_combineShader->SetUniformf("u_Exposure", m_tonemappingExposure);
-         
-        GLuint textures[] =
-        {            
-            m_lightOutputTarget->GetTexId(0),
-            m_lightOutputTarget->GetTexId(1),
-            m_lightOutputTarget->GetTexId(2),
-        };
-
-        Graphics::API()->BindTextures(0, 3, textures);
-
-        RenderScreenSpaceTriangle();
-    }
+    // void DeferredRenderer::CombinePass(FrameRenderData& frd)
+    // {
+    //     Graphics::API()->BindFrameBuffer(m_finalOutputTarget->GetGPUID());
+    //     Graphics::API()->Clear(GL_COLOR_BUFFER_BIT);
+    //     Graphics::API()->BindShader(m_combineShader->GetProgramId());
+    //     Graphics::API()->SetViewport(0, 0, m_width, m_height);
+    //     m_combineShader->SetUniformi("u_NeedsGammaCorrection",
+    //         Graphics::API()->GetWindow()->SRGBCapable() ? 0 : 1);
+    //     m_combineShader->SetUniformf("u_Exposure", m_tonemappingExposure);
+    //      
+    //     GLuint textures[] =
+    //     {            
+    //         m_lightOutputTarget->GetTexId(0),
+    //         m_lightOutputTarget->GetTexId(1),
+    //         m_lightOutputTarget->GetTexId(2),
+    //     };
+    // 
+    //     Graphics::API()->BindTextures(0, 3, textures);
+    // 
+    //     RenderScreenSpaceTriangle();
+    // }
 
     void DeferredRenderer::TransparencyPass(FrameRenderData& frd)
     {
@@ -1154,17 +1168,14 @@ namespace JLEngine
 
     void DeferredRenderer::DrawUI()
     {
-        ImGui::Begin("Shadow Controls");
-        ImGui::SliderFloat("Bias", &m_dlShadowMap->GetBias(), 0.00002f, 0.002f, "%.6f");
-        ImGui::SliderFloat("Distance", &m_dlShadowMap->GetDistance(), 10.0, 200.0f, "%.6f");
-        ImGui::SliderInt("PCF Kernel Size", &m_dlShadowMap->GetPCFKernelSize(), 0, 5);
-        ImGui::End();
+        m_dlShadowMap->DrawDebugUI();
+        m_postProcessing->DrawDebugUI();
 
         ImGui::Begin("Light Settings");
         ImGui::SliderFloat("Specular Factor", &m_specularIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Diffuse Factor", &m_diffuseIndirectFactor, 0.1f, 3.0f);
         ImGui::SliderFloat("Direct Factor", &m_directFactor, 0.1f, 3.0f);
-        ImGui::SliderFloat("Tonemap Exposure", &m_tonemappingExposure, 0.1f, 3.0f);
+        ImGui::SliderFloat("Tonemap Exposure", &m_postProcessing->tonemapExposure, 0.1f, 3.0f);
         if (ImGui::Button("Toggle Lights"))
         {
             m_enableLights = !m_enableLights;
@@ -1651,7 +1662,7 @@ namespace JLEngine
         {
             MaterialGPU matGPU{};
             matGPU.baseColorFactor = material->baseColorFactor;
-            matGPU.emissiveFactor = glm::vec4(material->emissiveFactor, 1.0f);
+            matGPU.emissiveFactor = glm::vec4(material->emissiveFactor, material->emissiveStrength);
             matGPU.metallicFactor = material->metallicFactor;
             matGPU.roughnessFactor = material->roughnessFactor;
             matGPU.alphaCutoff = material->alphaCutoff;

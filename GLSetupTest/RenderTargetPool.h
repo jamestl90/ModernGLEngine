@@ -19,7 +19,7 @@ namespace JLEngine
 			{
 				for (auto target : entry.second)
 				{
-					Graphics::DisposeRenderTarget(target);
+					Graphics::DeleteRenderTarget(target);
 					delete target;
 				}
 			}

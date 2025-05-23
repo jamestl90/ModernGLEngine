@@ -72,6 +72,7 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	}
 
 	Graphics::CreateGPUBuffer(m_probeSSBO.GetGPUBuffer(), m_probeSSBO.GetDataImmutable());
+	Graphics::API()->DebugLabelObject(GL_BUFFER, m_probeSSBO.GetGPUBuffer().GetGPUID(), "ProbeSSBO");
 
 	for (int i = 0; i < m_debugRayCount; i++)
 	{
@@ -80,7 +81,7 @@ void JLEngine::DDGI::GenerateProbes(const std::vector<std::pair<JLEngine::SubMes
 	}
 	m_debugRaysSSBO.GetGPUBuffer().SetUsageFlags(GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
 	Graphics::CreateGPUBuffer(m_debugRaysSSBO.GetGPUBuffer(), m_debugRaysSSBO.GetDataImmutable());
-	
+	Graphics::API()->DebugLabelObject(GL_BUFFER, m_debugRaysSSBO.GetGPUBuffer().GetGPUID(), "DebugRaySSBO");
 }
 
 void JLEngine::DDGI::Update(float dt, 
