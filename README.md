@@ -2,7 +2,7 @@ Engine is based on Modern OpenGL 4.6 and utilises it's features such as DSA (Dir
 
 https://trello.com/b/9M6YkL0b/opengl-engine-jlengine
 
-Current feature in progress: Dynamic Diffuse Global Illumination 
+Current feature in progress: Dynamic Diffuse Global Illumination </br>
 Recently Completed: Bloom post processing effect
 
 Generate a grid of irradiance probes to populate the space in the world, using AABB collision to determine valid probes. Red probes = skip processing
