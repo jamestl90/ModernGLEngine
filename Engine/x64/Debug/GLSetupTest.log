@@ -1,0 +1,62 @@
+﻿  BloomEffect.cpp
+  Cubemap.cpp
+  DDGI.cpp
+  Graphics.cpp
+  Im3dManager.cpp
+  im3d.cpp
+  ImageHelpers.cpp
+  PhysicallyBasedSky.cpp
+  PostProcessing.cpp
+  ResourceLoader.cpp
+  CubemapBaker.cpp
+  DeferredRenderer.cpp
+  DirectionalLightShadowMap.cpp
+  FileHelpers.cpp
+  FileSystem.cpp
+  FlyCamera.cpp
+  GenerateBRDFLUT.cpp
+  Geometry.cpp
+  GLBLoader.cpp
+  GlobalVars.cpp
+  Generating Code...
+  Compiling...
+  GraphicsAPI.cpp
+  HDRISky.cpp
+  IMGuiManager.cpp
+  imgui_impl_glfw.cpp
+  imgui_impl_opengl3.cpp
+  imgui.cpp
+  imgui_draw.cpp
+  imgui_tables.cpp
+  imgui_widgets.cpp
+  Input.cpp
+  JLEngine.cpp
+  JLHelpers.cpp
+  Light.cpp
+  main.cpp
+  Material.cpp
+  Mesh.cpp
+  Node.cpp
+  CollisionShapes.cpp
+  RenderTarget.cpp
+  Resource.cpp
+  Generating Code...
+  Compiling...
+  ResourceManager.cpp
+  Shader.cpp
+  ShaderProgram.cpp
+  ShaderStorageBuffer.cpp
+  Singleton.cpp
+  MainApp.cpp
+  BakeCubemapIrradiance.cpp
+  Texture.cpp
+  TextureReader.cpp
+  TextureWriter.cpp
+  VertexArrayObject.cpp
+  VertexBuffers.cpp
+  VertexStructures.cpp
+  ViewFrustum.cpp
+  Window.cpp
+  Generating Code...
+     Creating library D:\Repos\GLSetupTest\x64\Debug\GLSetupTest.lib and object D:\Repos\GLSetupTest\x64\Debug\GLSetupTest.exp
+  GLSetupTest.vcxproj -> D:\Repos\GLSetupTest\x64\Debug\GLSetupTest.exe
