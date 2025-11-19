@@ -1,12 +1,13 @@
 <h1>Description</h1>Engine is based on Modern OpenGL 4.6 and utilises it's features such as DSA (Direct State Access), bindless textures (GL_ARB_bindless_texture), SSBOs (Shader Storage Buffer Objects) and Multi-Draw Indirect. 
 
+![demo](Screenshots/Lighting.gif)
+
 <h1>Libraries</h1>
 GLFW - for window creation and management </br>
 glad - for opengl bindings</br>
 tiny_gltf - for loading GLB and GLTF files</br>
 stb_image - for loading images</br>
 Dear IMGUI - for debug UI rendering</br>
-
 
 <h1>Features</h1> 
 
@@ -26,7 +27,7 @@ Cycle through each probe and visualize the rays it casts. White ray = hit, black
 AABB visualization of the world. For indoor lighting will need to refine this. 
 <img src='https://github.com/jamestl90/GLSetupTest/blob/main/Screenshots/AABB_Debug_draw.png'/>
 
-<h3>Bloom post processing effect</h3> Modern technique using prefiltering/upsampling/downsampling (Screenshots not uploaded yet) </br> 
+<h3>Bloom post processing effect</h3> Modern technique using prefiltering/upsampling/downsampling  </br> 
 <h3>Cascade Shadowmapping</h3> Implemented based on https://learnopengl.com/Guest-Articles/2021/CSM 
 
 <h2>**NEW SKY METHOD** Physically based sky</h2>
